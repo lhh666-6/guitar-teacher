@@ -1,0 +1,676 @@
+/* ---------- CSS 变量（统一主题） ---------- */
+:root {
+    --wood-dark: #3c2b21;
+    --wood-medium: #5a3e2b;
+    --wood-light: #8b6b4f;
+    --gold-primary: #FFD700;
+    --gold-secondary: #FFA500;
+    --copper: #E64A19;
+    --text-light: #f2e9d8;
+    --border-gold: rgba(255, 215, 0, 0.3);
+    --shadow-heavy: 0 20px 50px rgba(0, 0, 0, 0.3);
+    --shadow-light: 0 10px 20px rgba(0, 0, 0, 0.2);
+    --border-radius: 50px;
+    --panel-radius: 20px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Microsoft YaHei', sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    padding: 20px;
+    color: var(--text-light);
+    /* 纯CSS木纹背景，不依赖外部图片，彻底解决绿色问题 */
+    background-color: #6b4a2e; /* 深木色基底 */
+    background-image: 
+        linear-gradient(45deg, #8b5a2b 25%, transparent 25%),
+        linear-gradient(-45deg, #8b5a2b 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #8b5a2b 75%),
+        linear-gradient(-45deg, transparent 75%, #8b5a2b 75%);
+    background-size: 30px 30px;
+    background-position: 0 0, 0 15px, 15px -15px, -15px 0px;
+    background-blend-mode: overlay;
+    background-attachment: fixed;
+    position: relative;
+}
+
+/* 叠加一层半透明深色，增强木纹质感 */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(60, 43, 33, 0.3);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ---------- 吉他背景装饰（半透明，不干扰交互） ---------- */
+.guitar-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.2;
+}
+
+.guitar-bg .body {
+    position: absolute;
+    right: 5%;
+    bottom: 10%;
+    width: 30vw;
+    height: 40vh;
+    background: radial-gradient(circle at 30% 50%, #8B4513, #5D3A1A);
+    border-radius: 45% 20% 40% 30% / 50% 30% 50% 40%;
+    box-shadow: inset -5px -10px 20px rgba(0,0,0,0.3);
+}
+
+.guitar-bg .head {
+    position: absolute;
+    left: 5%;
+    top: 20%;
+    width: 8vw;
+    height: 15vh;
+    background: linear-gradient(145deg, #6B4F3C, #4A3729);
+    border-radius: 20% 50% 20% 50% / 30% 50% 30% 50%;
+    transform: rotate(-8deg);
+}
+
+.guitar-bg .soundhole {
+    position: absolute;
+    right: 12%;
+    bottom: 25%;
+    width: 8vw;
+    height: 8vw;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #222, #0a0a0a);
+    border: 2px solid #B87333;
+}
+
+.guitar-bg .strings {
+    position: absolute;
+    left: 15%;
+    right: 15%;
+    top: 30%;
+    height: 40%;
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 4px,
+        rgba(255,215,0,0.1) 4px,
+        rgba(255,215,0,0.1) 6px
+    );
+}
+
+.header, .string-select, .tuning-panel {
+    position: relative;
+    z-index: 2;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    animation: fadeIn 0.8s ease;
+}
+
+.back-btn {
+    padding: 10px 24px;
+    background: linear-gradient(135deg, var(--wood-dark), #2b1e16);
+    color: var(--gold-primary);
+    border: 2px solid var(--border-gold);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.back-btn:hover {
+    background: linear-gradient(135deg, #4b3828, #382818);
+    border-color: rgba(255, 215, 0, 0.6);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-light);
+}
+
+.string-select {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    animation: slideUp 0.8s ease;
+}
+
+.string-btn {
+    padding: 12px 28px;
+    border: none;
+    border-radius: var(--border-radius);
+    background: linear-gradient(135deg, rgba(60,43,33,0.6), rgba(43,30,22,0.4));
+    color: var(--text-light);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border-gold);
+    min-width: 100px;
+}
+
+.string-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,215,0,0.2), transparent);
+    transition: left 0.6s ease;
+}
+
+.string-btn:hover::before {
+    left: 100%;
+}
+
+.string-btn.active {
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+    color: #1a2a6c;
+    box-shadow: 0 10px 30px rgba(255,215,0,0.4);
+    transform: translateY(-3px);
+    border-color: transparent;
+}
+
+/* 当前选中弦的呼吸动画 */
+.string-btn.active::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 120%; height: 120%;
+    border-radius: 50%;
+    background: rgba(255,215,0,0.2);
+    transform: translate(-50%, -50%) scale(0);
+    animation: ripple 1.5s infinite;
+    pointer-events: none;
+}
+
+@keyframes ripple {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+
+.tuning-panel {
+    max-width: 800px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, rgba(60,43,33,0.3), rgba(255,255,255,0.05));
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-gold);
+    border-radius: var(--panel-radius);
+    padding: 40px;
+    box-shadow: var(--shadow-heavy);
+    animation: popIn 1s ease;
+}
+
+.string-name {
+    font-size: 32px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 30px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    background: linear-gradient(90deg, var(--gold-primary), var(--gold-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* 波形可视化 */
+.waveform {
+    height: 80px;
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+}
+
+.wave-bar {
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(to top, #2196F3, var(--gold-primary));
+    border-radius: 2px;
+    animation: wave 1s infinite ease-in-out;
+}
+
+.wave-bar:nth-child(2n) { animation-delay: 0.1s; }
+.wave-bar:nth-child(3n) { animation-delay: 0.2s; }
+.wave-bar:nth-child(4n) { animation-delay: 0.3s; }
+
+@keyframes wave {
+    0%, 100% { height: 20px; }
+    50% { height: 60px; }
+}
+
+/* 琴弦振动动画 */
+.string-vibration {
+    height: 40px;
+    margin: 20px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.vibrate-string {
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold-primary), white, var(--gold-primary));
+    transform: translateY(-50%);
+    border-radius: 1.5px;
+    animation: vibrate 0.2s infinite ease-in-out;
+}
+
+@keyframes vibrate {
+    0%, 100% { transform: translateY(-50%) scaleX(1); }
+    50% { transform: translateY(-50%) scaleX(1.02); }
+}
+
+/* 音量条 */
+.volume-meter {
+    width: 100%;
+    height: 20px;
+    background: rgba(60,43,33,0.3);
+    border-radius: 10px;
+    margin: 15px 0;
+    overflow: hidden;
+    border: 1px solid var(--border-gold);
+}
+
+.volume-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4caf50, var(--gold-primary));
+    border-radius: 10px;
+    transition: width 0.05s ease;
+}
+
+/* 偏差趋势图 */
+.trend-chart {
+    height: 40px;
+    margin: 15px 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.trend-bar {
+    flex: 1;
+    background: var(--gold-primary);
+    height: 0%;
+    min-height: 2px;
+    border-radius: 2px 2px 0 0;
+    transition: height 0.2s ease;
+}
+
+.trend-bar.positive {
+    background: #ff5722; /* 偏高用暖色 */
+}
+
+.trend-bar.negative {
+    background: #2196f3; /* 偏低用冷色 */
+}
+
+/* 仪表盘区域 */
+.pitch-gauge {
+    height: 60px;
+    background: linear-gradient(90deg, #f44336, #e0e0e0, var(--gold-primary));
+    position: relative;
+    border-radius: 30px;
+    margin: 30px 0;
+    box-shadow: inset 0 5px 15px rgba(0,0,0,0.2);
+    overflow: hidden;
+    border: 2px solid var(--border-gold);
+}
+
+.pitch-center {
+    position: absolute;
+    left: 50%; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--gold-primary);
+    box-shadow: 0 0 10px var(--gold-primary);
+    z-index: 2;
+}
+
+.pitch-needle {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 4px;
+    background: linear-gradient(to bottom, #FF5722, var(--copper));
+    border-radius: 2px;
+    transform: translateX(-50%);
+    transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 0 15px rgba(255, 87, 34, 0.8);
+    z-index: 3;
+}
+
+.pitch-needle::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 20px; height: 20px;
+    background: radial-gradient(circle, #ff8a5c, #ff5722);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 15px rgba(255, 87, 34, 1);
+    border: 2px solid var(--gold-primary);
+}
+
+/* 中心偏差数字 */
+.gauge-center-number {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 10px black;
+    z-index: 4;
+    pointer-events: none;
+    background: rgba(0,0,0,0.5);
+    padding: 5px 15px;
+    border-radius: 30px;
+    border: 1px solid var(--border-gold);
+}
+
+/* 自动模式开关 */
+.auto-mode {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin: 10px 0;
+    color: var(--text-light);
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    border-radius: 24px;
+    transition: 0.2s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.2s;
+}
+
+input:checked + .slider {
+    background-color: var(--gold-primary);
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.tuning-info {
+    text-align: center;
+    font-size: 20px;
+    margin: 15px 0;
+    font-weight: 500;
+    color: var(--text-light);
+}
+
+.guide-text {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(60,43,33,0.2);
+    backdrop-filter: blur(5px);
+    margin: 10px 0;
+    animation: pulse 2s infinite ease-in-out;
+    border: 1px solid var(--border-gold);
+    color: var(--text-light);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.start-btn {
+    width: 100%;
+    padding: 18px;
+    margin-top: 30px;
+    background: linear-gradient(135deg, #2196F3, #9C27B0);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    box-shadow: 0 10px 30px rgba(33, 150, 243, 0.4);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border-gold);
+}
+
+.start-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(255,255,255,0.1);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.start-btn:hover::before {
+    transform: translateX(0);
+}
+
+.start-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 40px rgba(33, 150, 243, 0.6);
+    border-color: rgba(255,215,0,0.4);
+}
+
+.info-note {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #d1c7b8;
+    text-align: center;
+    border-top: 1px solid var(--border-gold);
+    padding-top: 15px;
+}
+
+#fireworks {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 100;
+    display: none;
+}
+
+.firework-particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ffd966, #ffaa00);
+    animation: explode 1s ease-out forwards;
+}
+
+@keyframes explode {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0) translate(var(--dx), var(--dy)); opacity: 0; }
+}
+
+/* 动画定义 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* 移动端优化 */
+@media (max-width: 600px) {
+    .string-btn {
+        padding: 14px 20px; /* 增大触摸区域 */
+        font-size: 16px;
+        min-width: 70px;
+    }
+    .tuning-panel {
+        padding: 20px;
+    }
+    .string-name {
+        font-size: 26px;
+    }
+    .switch {
+        width: 60px;
+        height: 30px;
+    }
+    .slider:before {
+        height: 26px;
+        width: 26px;
+    }
+}
+/* ===== 自动模式紧凑透明风格覆盖 ===== */
+.auto-mode-fusion {
+    background: rgba(40, 30, 22, 0.15) !important;   /* 更透明的背景 */
+    backdrop-filter: blur(6px) !important;
+    margin-bottom: 12px !important;                 /* 减小下边距 */
+    border-width: 1px !important;
+}
+
+.fusion-inner {
+    padding: 10px 16px !important;                  /* 缩小内边距 */
+}
+
+.fusion-header {
+    margin-bottom: 6px !important;
+    padding-bottom: 4px !important;
+}
+
+/* 隐藏图标和徽章，节省垂直空间 */
+.fusion-icon,
+.fusion-badge {
+    display: none !important;
+}
+
+.fusion-title {
+    font-size: 18px !important;                     /* 稍小字体 */
+}
+
+.fusion-body {
+    flex-direction: row !important;                  /* 开关和说明放在一行 */
+    align-items: center !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;                      /* 小屏幕时换行 */
+}
+
+.fusion-switch-wrapper {
+    background: transparent !important;               /* 完全透明背景 */
+    padding: 4px 0 !important;                        /* 减少内边距 */
+    border: none !important;
+    box-shadow: none !important;
+    flex: 0 0 auto !important;
+}
+
+.fusion-label {
+    font-size: 16px !important;
+    margin-right: 0 !important;
+}
+
+.fusion-desc {
+    background: transparent !important;               /* 透明描述背景 */
+    border-left: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 13px !important;
+    color: #d4c5b0 !important;
+    flex: 1 !important;                               /* 占据剩余空间 */
+    min-width: 180px !important;                      /* 避免过窄 */
+}
+
+/* 透明边框开关样式 */
+.fusion-switch .slider {
+    background-color: transparent !important;
+    border: 2px solid var(--gold-primary) !important;
+    box-shadow: none !important;
+    width: 44px !important;
+    height: 22px !important;
+}
+
+.fusion-switch .slider:before {
+    background-color: var(--gold-primary) !important;
+    width: 18px !important;
+    height: 18px !important;
+    left: 2px !important;
+    bottom: 2px !important;
+}
+
+.fusion-switch input:checked + .slider {
+    background-color: transparent !important;
+    border-color: #ffaa00 !important;
+}
+
+.fusion-switch input:checked + .slider:before {
+    background-color: #ffaa00 !important;
+    transform: translateX(22px) !important;
+}
+
+/* 小屏幕时描述换行 */
+@media (max-width: 550px) {
+    .fusion-body {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    .fusion-desc {
+        margin-left: 0 !important;
+    }
+}

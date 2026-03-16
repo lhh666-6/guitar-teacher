@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能吉他教学系统 · 音乐家风格</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', 'Georgia', serif;
+            min-height: 100vh;
+            background: #1a120b; /* 深木色底 */
+            color: #fff;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 木质纹理和琴弦背景 (纯CSS绘制) */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                repeating-linear-gradient(45deg, rgba(100, 60, 20, 0.15) 0px, rgba(100, 60, 20, 0.15) 2px, transparent 2px, transparent 8px),
+                linear-gradient(to bottom, transparent 90%, rgba(200, 140, 60, 0.2) 90%),
+                linear-gradient(to right, transparent 90%, rgba(200, 140, 60, 0.2) 90%);
+            background-size: 20px 20px, 100% 20px, 20px 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 琴弦装饰 (6条横线) */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(transparent, transparent 16.66%, rgba(210, 180, 140, 0.15) 16.66%, rgba(210, 180, 140, 0.15) 16.76%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            display: block;
+            pointer-events: none; /* 让粒子不干扰点击 */
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;  /* 减小底部间距，让卡片更紧凑 */
+            background: linear-gradient(135deg, #f4c542, #e3a72e, #c6861f);
+            -webkit-background-clip: text;
+            background-clip: text; 
+            color: transparent;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(230, 150, 30, 0.5);
+            animation: fadeInDown 1s ease;
+            letter-spacing: 2px;
+            position: relative;
+            display: inline-block;
+            padding: 0 20px;
+        }
+        .title::before, .title::after {
+            content: '🎸';
+            font-size: 2.5rem;
+            opacity: 0.6;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .title::before { left: -40px; }
+        .title::after { right: -40px; }
+
+        /* 五线谱装饰线 */
+        .title-notation {
+            width: 200px;
+            height: 20px;
+            margin: 0 auto 1.5rem auto;
+            background: repeating-linear-gradient(90deg, transparent, transparent 15px, #c0a070 15px, #c0a070 20px);
+            opacity: 0.5;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.8rem;  /* 稍微减小间距，使排列更紧密 */
+            margin-top: 1rem;
+        }
+
+        .mode-card {
+            background: rgba(30, 20, 15, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(220, 160, 80, 0.5);
+            border-radius: 32px;
+            padding: 1.8rem 1.2rem 2.2rem 1.2rem;  /* 内边距微调，减少上下留白 */
+            cursor: pointer;
+            transition: transform 0.25s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
+            text-align: center;
+            animation: fadeInUp 1s ease backwards;
+            position: relative;
+            overflow: hidden;
+            /* 增强可访问性 */
+            outline: none;
+        }
+        .mode-card:focus-visible {
+            border-color: #e3a72e;
+            box-shadow: 0 0 0 3px rgba(227, 167, 46, 0.5);
+        }
+
+        .mode-card:nth-child(1) { animation-delay: 0.1s; }
+        .mode-card:nth-child(2) { animation-delay: 0.2s; }
+        .mode-card:nth-child(3) { animation-delay: 0.3s; }
+
+        /* 卡片底部五线谱装饰 */
+        .mode-card::after {
+            content: '';
+            position: absolute;
+            bottom: 10px;
+            left: 15%;
+            width: 70%;
+            height: 8px;
+            background: repeating-linear-gradient(90deg, #d4af37, #d4af37 4px, transparent 4px, transparent 8px);
+            opacity: 0.3;
+            border-radius: 2px;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-8px) scale(1.02);  /* 悬停上浮略微柔和 */
+            border-color: #e3a72e;
+            box-shadow: 0 30px 40px -10px rgba(200, 130, 30, 0.5);
+            background: rgba(40, 30, 20, 0.75);
+        }
+
+        /* 按下时的即时反馈 */
+        .mode-card:active {
+            transform: scale(0.98) translateY(-2px);
+            transition: transform 0.1s;
+        }
+
+        .mode-icon {
+            font-size: 4.5rem;
+            line-height: 1;
+            margin-bottom: 1.2rem;
+            filter: drop-shadow(0 0 15px rgba(230, 150, 30, 0.6));
+            transition: transform 0.2s;
+        }
+
+        .mode-card:hover .mode-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .mode-name {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #f3c26b;
+            margin-bottom: 0.6rem;  /* 减小标题与描述的间距 */
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px #00000050;
+        }
+
+        .mode-desc {
+            font-size: 1rem;
+            color: #ecd9b4;
+            line-height: 1.5;  /* 略微紧凑 */
+            opacity: 0.95;
+            max-width: 280px;
+            margin: 0 auto;
+        }
+
+        /* 入场动画 */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 移动端调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1.5rem 1rem;
+            }
+            .title {
+                font-size: 2.2rem;
+                margin-bottom: 0.5rem;
+            }
+            .title::before, .title::after {
+                font-size: 1.8rem;
+            }
+            .title::before { left: -30px; }
+            .title::after { right: -30px; }
+            .title-notation {
+                margin-bottom: 1rem;
+            }
+            .mode-grid {
+                gap: 1.2rem;
+            }
+            .mode-card {
+                padding: 1.5rem 1rem 2rem 1rem;
+            }
+            .mode-icon {
+                font-size: 3.5rem;
+            }
+            .mode-name {
+                font-size: 1.8rem;
+            }
+            .mode-desc {
+                font-size: 0.95rem;
+            }
+        }
+
+        /* 超小屏进一步优化 */
+        @media (max-width: 380px) {
+            .title {
+                font-size: 1.9rem;
+            }
+            .title::before, .title::after {
+                display: none;  /* 避免空间不足 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particles-js"></canvas>
+
+    <div class="container">
+        <h1 class="title">智能吉他和弦教学系统</h1>
+        <div class="title-notation"></div>
+        <div class="mode-grid">
+            <!-- 为每个卡片添加 role 和 tabindex 提升可访问性，键盘用户也可触发 -->
+            <div class="mode-card" onclick="window.location.href='/tuning'" role="button" tabindex="0" aria-label="调音模式">
+                <div class="mode-icon">🎵</div>
+                <h3 class="mode-name">调音模式</h3>
+                <p class="mode-desc">精准单弦调音，实时音高检测，渐变仪表盘+弦振动动画，调音完成触发烟花特效</p>
+            </div>
+            <div class="mode-card" onclick="window.location.href='/solo'" role="button" tabindex="0" aria-label="SOLO模式">
+                <div class="mode-icon">🎶</div>
+                <h3 class="mode-name">SOLO模式</h3>
+                <p class="mode-desc">3D吉他指板，手部骨骼识别，演奏轨迹动画，粒子背景，支持保存演奏记录</p>
+            </div>
+            <div class="mode-card" onclick="window.location.href='/teach'" role="button" tabindex="0" aria-label="教学模式">
+                <div class="mode-icon">📚</div>
+                <h3 class="mode-name">教学模式</h3>
+                <p class="mode-desc">摄像头实时滤镜，AI语音交互，手部动作分析，自动生成教学建议</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 保留原有外部脚本引用，同时可添加键盘事件支持回车键激活卡片 -->
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+    <script>
+        // 简单增强：当卡片获得焦点时按下回车键触发点击（模拟按钮行为）
+        document.querySelectorAll('.mode-card[role="button"]').forEach(card => {
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaPipe 手部关键点 + OneEuroFilter 平滑 + FPS</title>
+    <style>
+        body {
+            margin: 0;
+            background: black;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        video, canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+        }
+        video {
+            transform: scaleX(-1); /* 视频镜像，照镜子 */
+        }
+        canvas {
+            background: transparent;
+            pointer-events: none;
+        }
+        #status {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #0ff;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-family: monospace;
+            font-size: 16px;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            line-height: 1.6;
+        }
+        #params {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-family: monospace;
+            font-size: 14px;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+    </style>
+    <!-- 使用 fastly CDN 加载 MediaPipe -->
+    <script src="https://fastly.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://fastly.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+</head>
+<body>
+    <div class="container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div id="status">
+            <div>状态: <span id="statusText">初始化中...</span></div>
+            <div>FPS: <span id="fpsValue">0</span></div>
+            <div>推理耗时: <span id="inferenceTime">0</span> ms</div>
+        </div>
+        <div id="params">参数: mincutoff=2.0, beta=0.1, dcutoff=1.0 (可修改代码中的值)</div>
+    </div>
+
+    <script>
+        // ---------- OneEuroFilter 类定义 ----------
+        class OneEuroFilter {
+            /**
+             * @param {number} t0 初始时间戳 (毫秒)
+             * @param {number} x0 初始值
+             * @param {number} mincutoff 最小截止频率，控制平滑程度 (越小越平滑，默认 1.0)
+             * @param {number} beta 速度系数，控制对快速运动的反应 (越大对快速运动越敏感，默认 0.007)
+             * @param {number} dcutoff 导数截止频率 (默认 1.0)
+             */
+            constructor(t0, x0, mincutoff = 1.0, beta = 0.0, dcutoff = 1.0) {
+                this.mincutoff = mincutoff;
+                this.beta = beta;
+                this.dcutoff = dcutoff;
+                this.x_prev = x0;
+                this.dx_prev = 0.0;
+                this.t_prev = t0;
+            }
+
+            smoothingFactor(t, cutoff) {
+                const r = 2 * Math.PI * cutoff * t / 1000; // t 是毫秒，转为秒
+                return r / (r + 1);
+            }
+
+            exponentialSmoothing(a, x, x_prev) {
+                return a * x + (1 - a) * x_prev;
+            }
+
+            filter(t, x) {
+                const tElapsed = t - this.t_prev;
+                if (tElapsed <= 0) return this.x_prev;
+
+                // 导数估计
+                const dx = (x - this.x_prev) / tElapsed;
+
+                // 对导数平滑
+                const a_d = this.smoothingFactor(tElapsed, this.dcutoff);
+                const dx_hat = this.exponentialSmoothing(a_d, dx, this.dx_prev);
+
+                // 根据速度动态调整截止频率
+                const cutoff = this.mincutoff + this.beta * Math.abs(dx_hat);
+                const a = this.smoothingFactor(tElapsed, cutoff);
+
+                // 平滑值
+                const x_hat = this.exponentialSmoothing(a, x, this.x_prev);
+
+                // 更新状态
+                this.x_prev = x_hat;
+                this.dx_prev = dx_hat;
+                this.t_prev = t;
+
+                return x_hat;
+            }
+        }
+
+        // ---------- 主程序 ----------
+        (async function() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const statusText = document.getElementById('statusText');
+            const fpsSpan = document.getElementById('fpsValue');
+            const inferenceTimeSpan = document.getElementById('inferenceTime');
+
+            // 可修改的参数
+            const CAMERA_WIDTH = 1920;   // 摄像头宽度
+            const CAMERA_HEIGHT = 1080;    // 摄像头高度
+            const KEYPOINT_RADIUS = 4;     // 关键点绘制半径
+            const FILTER_MIN_CUTOFF = 2.0; // 滤波参数：最小截止频率
+            const FILTER_BETA = 0.1;        // 滤波参数：速度系数
+            const FILTER_DCUTOFF = 1.0;     // 滤波参数：导数截止频率
+
+            // ---------- FPS 和推理耗时统计 ----------
+            let frameCount = 0;
+            let lastFpsUpdate = performance.now();
+            let fps = 0;
+            let lastInferenceTime = 0;      // 上一次 onResults 开始的时间戳
+            let inferenceDuration = 0;       // 最近一次推理耗时 (ms)
+
+            function updateFPS() {
+                const now = performance.now();
+                frameCount++;
+                if (now - lastFpsUpdate >= 1000) {
+                    fps = frameCount;
+                    frameCount = 0;
+                    lastFpsUpdate = now;
+                    fpsSpan.textContent = fps;
+                }
+            }
+
+            // 请求摄像头
+            statusText.innerText = '请求摄像头...';
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: CAMERA_WIDTH, height: CAMERA_HEIGHT }
+                });
+                video.srcObject = stream;
+            } catch (e) {
+                statusText.innerText = '摄像头错误：' + e.message;
+                return;
+            }
+
+            video.addEventListener('loadedmetadata', () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                statusText.innerText = `视频已就绪 (${video.videoWidth}x${video.videoHeight})，加载模型中...`;
+            });
+
+            // 初始化滤波器数组 (21个关键点，每个点有 x 和 y 两个滤波器)
+            const numLandmarks = 21;
+            const filters = [];
+            for (let i = 0; i < numLandmarks; i++) {
+                filters[i] = { x: null, y: null };
+            }
+
+            // 初始化 MediaPipe Hands
+            statusText.innerText = '加载 MediaPipe 模型...';
+            const hands = new Hands({
+                locateFile: (file) => `https://fastly.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+
+            hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,        // 1 = 全量模型 (精度高)，0 = 轻量模型 (速度快)
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            // 处理检测结果
+            hands.onResults((results) => {
+                const now = performance.now();
+
+                // 计算推理耗时（从上次 onResults 结束到这次开始的时间差，近似）
+                if (lastInferenceTime > 0) {
+                    inferenceDuration = now - lastInferenceTime;
+                    inferenceTimeSpan.textContent = inferenceDuration.toFixed(1);
+                }
+                lastInferenceTime = now;
+
+                // 更新 FPS 计数器
+                updateFPS();
+
+                // 清空画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 可选：在画布上显示调试文字
+                ctx.fillStyle = 'yellow';
+                ctx.font = '18px monospace';
+                ctx.fillText('平滑后', 10, 30);
+
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const landmarks = results.multiHandLandmarks[0]; // 取第一只手
+
+                    // 存储平滑后的坐标 (用于绘制)
+                    const smoothed = [];
+
+                    landmarks.forEach((lm, idx) => {
+                        if (filters[idx].x === null) {
+                            // 第一帧，初始化滤波器
+                            filters[idx].x = new OneEuroFilter(now, lm.x, FILTER_MIN_CUTOFF, FILTER_BETA, FILTER_DCUTOFF);
+                            filters[idx].y = new OneEuroFilter(now, lm.y, FILTER_MIN_CUTOFF, FILTER_BETA, FILTER_DCUTOFF);
+                            smoothed.push({ x: lm.x, y: lm.y });
+                        } else {
+                            const sx = filters[idx].x.filter(now, lm.x);
+                            const sy = filters[idx].y.filter(now, lm.y);
+                            smoothed.push({ x: sx, y: sy });
+                        }
+                    });
+
+                    // 绘制平滑后的关键点
+                    smoothed.forEach((p) => {
+                        // 翻转 x 坐标以匹配镜像视频
+                        const x = canvas.width - p.x * canvas.width;
+                        const y = p.y * canvas.height;
+                        ctx.beginPath();
+                        ctx.arc(x, y, KEYPOINT_RADIUS, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#00ff00';  // 绿色点
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    });
+
+                    // 可选：绘制手指连线 (使用平滑后的坐标)
+                    const connections = [
+                        [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
+                        [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
+                        [0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]
+                    ];
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#00ffff';
+                    ctx.lineWidth = 2;
+                    for (const [i, j] of connections) {
+                        const p1 = smoothed[i];
+                        const p2 = smoothed[j];
+                        if (p1 && p2) {
+                            const x1 = canvas.width - p1.x * canvas.width;
+                            const y1 = p1.y * canvas.height;
+                            const x2 = canvas.width - p2.x * canvas.width;
+                            const y2 = p2.y * canvas.height;
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                        }
+                    }
+                    ctx.stroke();
+
+                    statusText.innerText = `检测到 1 只手 (已平滑)`;
+                } else {
+                    statusText.innerText = '未检测到手';
+                }
+            });
+
+            // 启动摄像头循环
+            const camera = new Camera(video, {
+                onFrame: async () => {
+                    await hands.send({ image: video });
+                },
+                width: CAMERA_WIDTH,
+                height: CAMERA_HEIGHT
+            });
+            camera.start();
+
+            statusText.innerText = '运行中，请将手放入画面';
+        })();
+    </script>
+</body>
+</html>

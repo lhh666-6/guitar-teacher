@@ -1,0 +1,21 @@
+# 基础 Web 框架
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-SocketIO==5.3.4
+eventlet==0.33.3
+
+# 图像处理
+opencv-python==4.8.1.78
+numpy==1.24.3
+
+# 手部检测
+mediapipe==0.10.7
+
+# YOLOv10 所需的 PyTorch（根据您的 CUDA 版本调整）
+# CPU 版本（无 GPU）
+torch==2.0.1
+torchvision==0.15.2
+# 如果使用 GPU，请从 https://pytorch.org 选择对应 CUDA 的安装命令
+
+# 固定 protobuf 版本避免冲突
+protobuf==3.20.3

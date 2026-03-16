@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>智能吉他 · AR六线谱全语音教学</title>
+    <style>
+        /* ----- 全局深色科技风，响应式左右/上下自适应 ----- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at 30% 40%, #0a141c, #03080c);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #e6f7ff;
+        }
+
+        /* 主容器：左右布局，移动端自动流式 */
+        .main {
+            max-width: 1600px;
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+            gap: 24px;
+            background: rgba(8, 28, 36, 0.7);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 48px;
+            padding: 28px;
+            border: 1px solid rgba(0, 255, 200, 0.2);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+            transition: all 0.2s ease;
+        }
+
+        /* ---------- 左侧视觉教学区（65%） ---------- */
+        .visual-area {
+            flex: 0 0 65%;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            min-width: 0; /* 防止溢出 */
+        }
+
+        /* ----- 上半：摄像头 + AR 叠加层 ----- */
+        .camera-panel {
+            background: #0c1a20;
+            border-radius: 32px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 230, 200, 0.25);
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #051013;
+        }
+
+        #camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* AR叠加层 —— 绿色空心圈(目标) / 白色实心点(实际) */
+        .ar-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        .target-marker, .actual-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 8px black;
+        }
+
+        .target-marker {
+            width: 44px;
+            height: 44px;
+            border: 4px solid #00ffaa;
+            border-radius: 50%;
+            background: transparent;
+            box-shadow: 0 0 30px #00ffaa, inset 0 0 12px rgba(0, 255, 170, 0.4);
+        }
+
+        .actual-marker {
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 20px white;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+        }
+
+        .marker-label {
+            position: absolute;
+            top: -34px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 12px;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ddd;
+            letter-spacing: 1px;
+        }
+
+        .target-marker .marker-label {
+            border: 1px solid #00ffaa;
+            color: #ccffdd;
+        }
+
+        /* ----- 下半：六线谱 TAB 横向滚动 ----- */
+        .tab-panel {
+            background: rgba(0, 20, 25, 0.7);
+            backdrop-filter: blur(16px);
+            border-radius: 28px;
+            padding: 20px;
+            border: 1px solid rgba(64, 224, 208, 0.3);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+        }
+
+        .tab-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            color: #aaffdd;
+            font-weight: 600;
+        }
+
+        .tab-scroll {
+            width: 100%;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 12px;
+            scrollbar-width: thin;
+            scrollbar-color: #00ccaa #1e3a3a;
+            border-radius: 16px;
+        }
+
+        .tab-scroll::-webkit-scrollbar {
+            height: 6px;
+            background: rgba(0, 50, 50, 0.5);
+            border-radius: 10px;
+        }
+
+        .tab-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(90deg, #00ccaa, #00aaff);
+            border-radius: 10px;
+        }
+
+        .tab-canvas {
+            position: relative;
+            display: inline-block;
+            min-width: 100%;
+            height: 180px;
+            background: repeating-linear-gradient(
+                transparent 0px,
+                transparent 23px,
+                rgba(0, 255, 200, 0.08) 23px,
+                rgba(0, 255, 200, 0.08) 24px
+            );
+            border-radius: 20px;
+        }
+
+        /* 6根弦线 */
+        .string-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(100, 255, 200, 0.6);
+            box-shadow: 0 0 8px #4ecdc4;
+        }
+        .string-line:nth-child(1) { top: 14px; }
+        .string-line:nth-child(2) { top: 44px; }
+        .string-line:nth-child(3) { top: 74px; }
+        .string-line:nth-child(4) { top: 104px; }
+        .string-line:nth-child(5) { top: 134px; }
+        .string-line:nth-child(6) { top: 164px; }
+
+        .notes-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .beat {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            height: 100%;
+            width: 70px;          /* 每拍宽度，可滚动 */
+            flex-shrink: 0;
+            align-items: center;
+            padding-top: 6px;
+            border-left: 1px dashed rgba(0, 200, 200, 0.2);
+        }
+
+        /* 音符样式：绿色=即将弹，白色=已弹过，当前拍放大高亮 */
+        .note {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: bold;
+            color: black;
+            margin: 3px 0;
+            transition: all 0.1s;
+            box-shadow: 0 0 12px currentColor;
+        }
+
+        .note.upcoming {
+            background: #00cc88;
+            border: 2px solid #aaffdd;
+            color: white;
+            box-shadow: 0 0 22px #00ffaa;
+        }
+
+        .note.played {
+            background: white;
+            border: 1px solid #ccc;
+            color: #222;
+            box-shadow: 0 0 12px rgba(255,255,255,0.8);
+        }
+
+        .note.current {
+            width: 42px;
+            height: 42px;
+            background: #00ffaa;
+            border: 3px solid white;
+            color: #000;
+            font-weight: 800;
+            box-shadow: 0 0 35px #00ffff;
+            z-index: 15;
+        }
+
+        .string-tag {
+            font-size: 9px;
+            color: #333;
+            margin-left: 2px;
+            background: rgba(255,255,255,0.6);
+            padding: 0 4px;
+            border-radius: 10px;
+        }
+
+        /* ---------- 右侧 AI 智能反馈区（35%），纯展示，无输入框 ---------- */
+        .ai-panel {
+            flex: 0 0 35%;
+            background: rgba(0, 25, 30, 0.75);
+            backdrop-filter: blur(24px);
+            border-radius: 36px;
+            padding: 28px 24px;
+            border: 1px solid rgba(0, 255, 200, 0.3);
+            box-shadow: 0 15px 45px rgba(0, 255, 200, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            color: #e0ffff;
+        }
+
+        .ai-panel h2 {
+            font-size: 1.6rem;
+            font-weight: 600;
+            background: linear-gradient(145deg, #a0f0ea, #70ffd0);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(0,255,200,0.4);
+            padding-bottom: 12px;
+        }
+
+        /* 各项反馈卡片 */
+        .feedback-item {
+            background: rgba(0, 50, 55, 0.4);
+            border-radius: 24px;
+            padding: 18px 20px;
+            border-left: 6px solid #00e6c3;
+            backdrop-filter: blur(5px);
+        }
+
+        .mode-badge {
+            display: inline-block;
+            background: linear-gradient(145deg, #005f5f, #003333);
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #b3ffe6;
+            border: 1px solid #00ccaa;
+        }
+
+        .score-number {
+            font-size: 3.2rem;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 0 25px #00ffaa;
+            line-height: 1;
+        }
+
+        .stat-list {
+            list-style: none;
+            margin-top: 8px;
+        }
+
+        .stat-list li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            color: #ccffff;
+        }
+
+        .stat-list li::before {
+            content: "▹";
+            color: #ffaa66;
+            font-size: 1.2rem;
+        }
+
+        /* 语音字幕滚动区域 */
+        .voice-transcript {
+            background: rgba(0, 0, 0, 0.45);
+            border-radius: 20px;
+            padding: 16px;
+            height: 150px;
+            overflow-y: auto;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            scrollbar-width: thin;
+        }
+
+        .voice-transcript .user {
+            color: #7fffd4;
+            font-weight: 600;
+        }
+
+        .voice-transcript .ai {
+            color: #ffd966;
+            font-weight: 600;
+        }
+
+        /* 语音波形 */
+        .voice-wave {
+            display: flex;
+            gap: 4px;
+            height: 40px;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .voice-bar {
+            width: 5px;
+            height: 12px;
+            background: #4ecdc4;
+            border-radius: 3px;
+            animation: wave 0.9s infinite alternate;
+        }
+
+        @keyframes wave {
+            0% { height: 8px; }
+            100% { height: 28px; }
+        }
+
+        .action-btn {
+            background: linear-gradient(145deg, #ff6b6b, #d44a4a);
+            border: none;
+            border-radius: 60px;
+            padding: 14px 24px;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 10px 25px rgba(255, 80, 80, 0.4);
+            border: 1px solid rgba(255,255,255,0.3);
+            letter-spacing: 2px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(255, 100, 100, 0.6);
+        }
+
+        /* 返回主页按钮（独立） */
+        .back-home {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(12px);
+            padding: 10px 26px;
+            border-radius: 60px;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.95rem;
+            z-index: 100;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .back-home:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* ---------- 移动端自适应（≤900px 流式布局） ---------- */
+        @media screen and (max-width: 900px) {
+            .main {
+                flex-direction: column;
+                padding: 20px;
+            }
+            .visual-area {
+                flex: 1 1 auto;
+                width: 100%;
+            }
+            .ai-panel {
+                flex: 1 1 auto;
+                width: 100%;
+                margin-top: 10px;
+            }
+            .back-home {
+                position: relative;
+                top: 0;
+                left: 0;
+                margin-bottom: 20px;
+                width: fit-content;
+            }
+            .score-number {
+                font-size: 2.6rem;
+            }
+        }
+
+        /* 小屏手机额外优化 */
+        @media screen and (max-width: 480px) {
+            .main { padding: 16px; }
+            .camera-panel { border-radius: 24px; }
+            .beat { width: 55px; }
+        }
+
+        /* 隐藏原 hand-analysis 卡片，已移入右侧 */
+        .hand-analysis-old {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 独立返回主页按钮 -->
+    <button class="back-home" onclick="window.location.href='/'">← 返回主页</button>
+
+    <!-- 主布局容器（左右/上下自适应） -->
+    <div class="main">
+        <!-- 左侧视觉教学区 65% -->
+        <div class="visual-area">
+            <!-- 上半：摄像头 + AR -->
+            <div class="camera-panel">
+                <div class="camera-container">
+                    <video id="camera-feed" autoplay muted playsinline></video>
+                    <!-- AR 叠加层：绿色空心圈(目标) / 白色实心点(实际) -->
+                    <div class="ar-overlay" id="arOverlay"></div>
+                </div>
+            </div>
+
+            <!-- 下半：六线谱 TAB 横向滚动 -->
+            <div class="tab-panel">
+                <div class="tab-header">
+                    <span>🎸 六线谱 · 动态跟弹</span>
+                    <span style="background: rgba(0,200,100,0.2); padding: 6px 20px; border-radius: 50px;">
+                        🟢 即将弹  ⚪ 已弹过
+                    </span>
+                </div>
+                <div class="tab-scroll" id="tabScroll">
+                    <div class="tab-canvas" id="tabCanvas">
+                        <!-- 6根琴弦线（静态） -->
+                        <div class="string-line"></div>
+                        <div class="string-line"></div>
+                        <div class="string-line"></div>
+                        <div class="string-line"></div>
+                        <div class="string-line"></div>
+                        <div class="string-line"></div>
+                        <!-- 音符容器（动态插入 beats） -->
+                        <div class="notes-track" id="notesTrack"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧 AI 智能反馈区 35% 纯展示 + 全语音 -->
+        <div class="ai-panel">
+            <h2>🤖 AI 教学助理</h2>
+            
+            <!-- 1. 当前模式 -->
+            <div class="feedback-item">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="mode-badge" id="currentMode">新手模式</span>
+                    <span style="color: #aaffdd;">🎯 实时跟学</span>
+                </div>
+            </div>
+
+            <!-- 2. 本次弹奏分数 -->
+            <div class="feedback-item" style="border-left-color: #ffaa66;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <span style="font-size: 1.1rem;">本次得分</span>
+                    <span class="score-number" id="scoreDisplay">87</span>
+                </div>
+                <div style="margin-top: 5px; background: rgba(0,0,0,0.3); height: 8px; border-radius: 10px;">
+                    <div id="scoreBar" style="width: 87%; height: 8px; background: linear-gradient(90deg,#00ffaa,#00ccff); border-radius: 10px;"></div>
+                </div>
+            </div>
+
+            <!-- 3. 实时音准与姿势评价 -->
+            <div class="feedback-item">
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                    <div><span style="color: #7fffd4;">🎵 音准</span> <span id="pitchEval" style="font-weight: bold; color:white;">+3 音分</span></div>
+                    <div><span style="color: #7fffd4;">✋ 姿势</span> <span id="postureEval" style="font-weight: bold; color:white;">手腕放松</span></div>
+                </div>
+            </div>
+
+            <!-- 4. TOP 3 常见错误统计 -->
+            <div class="feedback-item">
+                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                    <span style="color: #ffaa66;">📊 高频错误</span>
+                </div>
+                <ul class="stat-list" id="errorList">
+                    <li>按弦离品丝太远 <span style="color: #ff9999;">(38%)</span></li>
+                    <li>换把速度滞后 <span style="color: #ff9999;">(27%)</span></li>
+                    <li>击弦力度不足 <span style="color: #ff9999;">(19%)</span></li>
+                </ul>
+            </div>
+
+            <!-- 5. AI 实时语音字幕 + 语音波形 + 分析按钮（全程语音，无输入框） -->
+            <div class="feedback-item" style="border-left-color: #ffd966; padding-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="color: #ffd966;">🎤 实时对话</span>
+                    <div class="voice-wave" id="voiceWave">
+                        <div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>
+                        <div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>
+                    </div>
+                </div>
+                <!-- 字幕滚动区域 -->
+                <div class="voice-transcript" id="voiceTranscript">
+                    <span class="ai">AI老师：</span>你好！我已开启AR指法比对与六线谱。请随意提问，或点击下方分析你的SOLO记录。<br>
+                </div>
+                <!-- 唯一按钮：分析SOLO记录（非输入框） -->
+                <button class="action-btn" id="analyzeSoloBtn" style="margin-top: 16px; width: 100%;">🤖 分析我的SOLO演奏记录</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 全局兼容 & 媒体设备初始化 ==========
+        (function() {
+            if (!navigator.mediaDevices) navigator.mediaDevices = {};
+            if (!navigator.mediaDevices.getUserMedia) {
+                const gum = navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+                if (!gum) {
+                    navigator.mediaDevices.getUserMedia = () => Promise.reject(new Error('浏览器不支持摄像头/麦克风'));
+                } else {
+                    navigator.mediaDevices.getUserMedia = (c) => new Promise((res, rej) => gum.call(navigator, c, res, rej));
+                }
+            }
+        })();
+
+        // ========== 全局状态 ==========
+        let cameraStream = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        // DOM 元素
+        const cameraFeed = document.getElementById('camera-feed');
+        const arOverlay = document.getElementById('arOverlay');
+        const notesTrack = document.getElementById('notesTrack');
+        const tabScroll = document.getElementById('tabScroll');
+        const voiceTranscript = document.getElementById('voiceTranscript');
+        const analyzeBtn = document.getElementById('analyzeSoloBtn');
+
+        // 模拟指法数据
+        let targetFret = { string: 3, fret: 5 };
+        let actualFret = { string: 3, fret: 5 };
+
+        // ---------- 摄像头启动 ----------
+        async function startCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+                });
+                cameraFeed.srcObject = cameraStream;
+            } catch (e) {
+                console.warn('摄像头启动失败，使用模拟画面');
+                cameraFeed.style.background = 'linear-gradient(145deg, #1a4a5e, #0b2a30)';
+                cameraFeed.style.display = 'flex';
+                cameraFeed.style.alignItems = 'center';
+                cameraFeed.style.justifyContent = 'center';
+                cameraFeed.innerHTML = '<span style="font-size:24px; color:#aaffdd;">🎸 模拟摄像头（演示模式）</span>';
+            }
+        }
+
+        // ---------- 麦克风启动 + 语音识别模拟（全语音）----------
+        async function startMicrophone() {
+            try {
+                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(audioStream);
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                mediaRecorder.start(6000);
+                // 语音波形动画
+                setInterval(() => {
+                    document.querySelectorAll('.voice-bar').forEach(b => {
+                        b.style.height = `${Math.floor(Math.random() * 20 + 12)}px`;
+                    });
+                }, 350);
+                // 模拟用户语音提问（自动，每25秒）
+                setInterval(() => {
+                    const questions = [
+                        "为什么按弦总有杂音？",
+                        "怎么练爬格子？",
+                        "换把速度怎么提升？"
+                    ];
+                    const q = questions[Math.floor(Math.random() * questions.length)];
+                    appendTranscript('user', q);
+                    // 自动AI回复 + 语音朗读
+                    getAIReply(q);
+                }, 25000);
+            } catch (e) {
+                console.warn('麦克风失败，启用模拟语音');
+                // 保持波形动画
+                setInterval(() => {
+                    document.querySelectorAll('.voice-bar').forEach(b => b.style.height = `${Math.random()*20+8}px`);
+                }, 400);
+                // 模拟对话
+                setInterval(() => {
+                    const q = ["怎么调1弦？", "SOLO节奏不稳？"][Math.floor(Math.random() * 2)];
+                    appendTranscript('user', q);
+                    getAIReply(q);
+                }, 22000);
+            }
+        }
+
+        // ---------- 语音回复 + 朗读 + 字幕 ----------
+        function getAIReply(question) {
+            const replies = {
+                "为什么按弦总有杂音？": "按弦靠近品丝，手指垂直，避免碰到相邻弦。",
+                "怎么练爬格子？": "从1品到12品，1234指依次按，节拍器60起步，每天10分钟。",
+                "换把速度怎么提升？": "提前记忆目标把位，手指预动，慢速分解练习。",
+                "怎么调1弦？": "1弦标准音E4，调音表显示偏低顺时针拧紧，偏高逆时针。",
+                "SOLO节奏不稳？": "先放慢速度，用脚打拍子，每拍一个音，稳定再加速。"
+            };
+            const reply = replies[question] || "多练习音阶，注意手腕放松。";
+            setTimeout(() => {
+                appendTranscript('ai', reply);
+                // 语音朗读
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(reply);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.1;
+                    window.speechSynthesis.speak(utterance);
+                }
+            }, 800);
+        }
+
+        // 追加字幕
+        function appendTranscript(role, text) {
+            const msg = document.createElement('span');
+            msg.className = role;
+            msg.innerHTML = (role === 'user' ? '你：' : 'AI老师：') + text + '<br>';
+            voiceTranscript.appendChild(msg);
+            voiceTranscript.scrollTop = voiceTranscript.scrollHeight;
+        }
+
+        // ---------- AR 标记绘制（绿色空心圈/白色实心点）----------
+        function drawMarkers() {
+            arOverlay.innerHTML = '';
+
+            // 映射位置（模拟）
+            const baseX = 35 + (targetFret.fret * 1.8);
+            const baseY = 25 + (targetFret.string * 4.2);
+
+            // 目标：绿色空心圈
+            const targetDiv = document.createElement('div');
+            targetDiv.className = 'target-marker';
+            targetDiv.style.left = `${baseX}%`;
+            targetDiv.style.top = `${baseY}%`;
+            const label1 = document.createElement('span');
+            label1.className = 'marker-label';
+            label1.innerText = `${targetFret.string}弦${targetFret.fret}品`;
+            targetDiv.appendChild(label1);
+            arOverlay.appendChild(targetDiv);
+
+            // 实际：白色实心点（可能重合或偏移）
+            let actX = baseX, actY = baseY;
+            const isCorrect = Math.random() > 0.35; // 65%正确率
+            if (!isCorrect) {
+                actX += (Math.random() > 0.5 ? 6 : -4);
+                actY += (Math.random() > 0.5 ? 5 : -3);
+            }
+            const actualDiv = document.createElement('div');
+            actualDiv.className = 'actual-marker';
+            actualDiv.style.left = `${actX}%`;
+            actualDiv.style.top = `${actY}%`;
+            const label2 = document.createElement('span');
+            label2.className = 'marker-label';
+            label2.innerText = `${actualFret.string}弦${actualFret.fret}品`;
+            actualDiv.appendChild(label2);
+            arOverlay.appendChild(actualDiv);
+
+            // 更新右侧实时评价
+            const match = (Math.abs(actX - baseX) < 3 && Math.abs(actY - baseY) < 3);
+            document.getElementById('pitchEval').innerText = match ? '+2 音分' : '-18 音分';
+            document.getElementById('postureEval').innerText = match ? '手腕放松' : '手指偏上';
+        }
+
+        // ---------- 六线谱渲染（接收JSON格式）----------
+        function renderTab() {
+            notesTrack.innerHTML = '';
+            // 模拟后端tabs数据
+            const totalBeats = 16;
+            const currentBeat = 7;  // 第8拍为当前拍
+
+            for (let i = 0; i < totalBeats; i++) {
+                const beatDiv = document.createElement('div');
+                beatDiv.className = 'beat';
+                const noteCount = Math.floor(Math.random() * 3) + 2; // 每拍2~4个音
+                for (let j = 0; j < noteCount; j++) {
+                    const stringIdx = Math.floor(Math.random() * 6) + 1;
+                    const fretNum = Math.floor(Math.random() * 12) + 1;
+                    const note = document.createElement('div');
+                    note.className = 'note';
+                    if (i < currentBeat) {
+                        note.classList.add('played');
+                    } else if (i === currentBeat) {
+                        note.classList.add('current');
+                    } else {
+                        note.classList.add('upcoming');
+                    }
+                    note.textContent = fretNum;
+                    const tag = document.createElement('span');
+                    tag.className = 'string-tag';
+                    tag.textContent = stringIdx;
+                    note.appendChild(tag);
+                    beatDiv.appendChild(note);
+                }
+                notesTrack.appendChild(beatDiv);
+            }
+            // 滚动到当前拍居中
+            setTimeout(() => {
+                if (tabScroll) {
+                    tabScroll.scrollLeft = currentBeat * 70 - 200;
+                }
+            }, 50);
+        }
+
+        // ---------- 模拟手部检测（更新指法）----------
+        function mockHandDetection() {
+            targetFret = {
+                string: Math.floor(Math.random() * 6) + 1,
+                fret: Math.floor(Math.random() * 10) + 1
+            };
+            actualFret = { ...targetFret };
+            if (Math.random() > 0.65) {
+                actualFret.string = Math.min(6, Math.max(1, targetFret.string + (Math.random() > 0.5 ? 1 : -1)));
+                actualFret.fret = Math.min(15, Math.max(1, targetFret.fret + (Math.random() > 0.5 ? 2 : -2)));
+            }
+            drawMarkers();
+            renderTab();
+
+            // 更新右侧分数、错误统计（模拟）
+            const score = Math.floor(Math.random() * 21 + 70);
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('scoreBar').style.width = score + '%';
+            // 错误统计随机变化
+            const errors = [
+                `按弦离品丝太远 <span style="color:#ff9999;">(${Math.floor(Math.random()*30+20)}%)</span>`,
+                `换把速度滞后 <span style="color:#ff9999;">(${Math.floor(Math.random()*25+15)}%)</span>`,
+                `击弦力度不足 <span style="color:#ff9999;">(${Math.floor(Math.random()*20+10)}%)</span>`
+            ];
+            document.getElementById('errorList').innerHTML = errors.map(e => `<li>${e}</li>`).join('');
+        }
+
+        // ---------- 分析SOLO记录按钮（复用原逻辑）----------
+        analyzeBtn.addEventListener('click', () => {
+            const record = localStorage.getItem('soloRecord');
+            if (!record) {
+                appendTranscript('ai', '❌ 暂无SOLO记录，请先在SOLO模式演奏并保存');
+                return;
+            }
+            appendTranscript('ai', '🤖 正在分析你的SOLO演奏记录...');
+            setTimeout(() => {
+                appendTranscript('ai', '分析结果：整体节奏86分，换把流畅度良好，建议加强击弦练习。');
+            }, 1200);
+        });
+
+        // ---------- 页面启动 ----------
+        window.addEventListener('DOMContentLoaded', async () => {
+            await startCamera();
+            await startMicrophone();
+            // 初始化AR与谱子
+            mockHandDetection();
+            // 每3.5秒更新一次模拟检测
+            setInterval(mockHandDetection, 3500);
+        });
+
+        // 清理摄像头
+        window.addEventListener('beforeunload', () => {
+            if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+        });
+    </script>
+</body>
+</html>

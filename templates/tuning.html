@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>🎸 专业调音器 · 典藏版</title>
+    <style>
+        /* ========== 全局变量 ========== */
+        :root {
+            --wood-dark: #3c2b21;
+            --wood-medium: #5a3e2b;
+            --wood-light: #8b6b4f;
+            --gold-primary: #FFD700;
+            --gold-secondary: #FFA500;
+            --copper: #E64A19;
+            --text-light: #f2e9d8;
+            --border-gold: rgba(255, 215, 0, 0.3);
+            --shadow-heavy: 0 20px 50px rgba(0, 0, 0, 0.3);
+            --shadow-light: 0 10px 20px rgba(0, 0, 0, 0.2);
+            --border-radius: 50px;
+            --panel-radius: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-light);
+            /* 纯CSS木纹背景 */
+            background-color: #6b4a2e;
+            background-image: 
+                linear-gradient(45deg, #8b5a2b 25%, transparent 25%),
+                linear-gradient(-45deg, #8b5a2b 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #8b5a2b 75%),
+                linear-gradient(-45deg, transparent 75%, #8b5a2b 75%);
+            background-size: 30px 30px;
+            background-position: 0 0, 0 15px, 15px -15px, -15px 0px;
+            background-blend-mode: overlay;
+            background-attachment: fixed;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(60, 43, 33, 0.3);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ========== 吉他背景装饰 ========== */
+        .guitar-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.2;
+        }
+        .guitar-bg .body {
+            position: absolute;
+            right: 5%; bottom: 10%;
+            width: 30vw; height: 40vh;
+            background: radial-gradient(circle at 30% 50%, #8B4513, #5D3A1A);
+            border-radius: 45% 20% 40% 30% / 50% 30% 50% 40%;
+            box-shadow: inset -5px -10px 20px rgba(0,0,0,0.3);
+        }
+        .guitar-bg .head {
+            position: absolute;
+            left: 5%; top: 20%;
+            width: 8vw; height: 15vh;
+            background: linear-gradient(145deg, #6B4F3C, #4A3729);
+            border-radius: 20% 50% 20% 50% / 30% 50% 30% 50%;
+            transform: rotate(-8deg);
+        }
+        .guitar-bg .soundhole {
+            position: absolute;
+            right: 12%; bottom: 25%;
+            width: 8vw; height: 8vw;
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 40%, #222, #0a0a0a);
+            border: 2px solid #B87333;
+        }
+        .guitar-bg .strings {
+            position: absolute;
+            left: 15%; right: 15%; top: 30%;
+            height: 40%;
+            background: repeating-linear-gradient(to bottom, transparent, transparent 4px, rgba(255,215,0,0.1) 4px, rgba(255,215,0,0.1) 6px);
+        }
+
+        .header, .string-select, .tuning-panel {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ========== 头部区域（含自动模式按钮） ========== */
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            animation: fadeIn 0.8s ease;
+        }
+
+        /* 按压式自动模式按钮 */
+        .auto-mode-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(40, 30, 22, 0.4);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            user-select: none;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+        .auto-mode-btn:active {
+            transform: scale(0.96); /* 按压缩放效果 */
+            background: rgba(60, 45, 33, 0.6);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .auto-mode-btn.active {
+            border-color: var(--gold-primary);
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+        }
+        .auto-icon {
+            font-size: 20px;
+            filter: drop-shadow(0 0 4px gold);
+        }
+        .auto-text {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-light);
+        }
+        .auto-status {
+            font-size: 13px;
+            padding: 2px 8px;
+            border-radius: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #d4c5b0;
+            transition: all 0.2s;
+        }
+        .auto-mode-btn.active .auto-status {
+            background: rgba(255, 215, 0, 0.2);
+            color: var(--gold-primary);
+        }
+
+        .header h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #ffd966, #ffb347);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px #00000050;
+            margin-right: auto;
+        }
+
+        .back-btn {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, var(--wood-dark), #2b1e16);
+            color: var(--gold-primary);
+            border: 2px solid var(--border-gold);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .back-btn:hover {
+            background: linear-gradient(135deg, #4b3828, #382818);
+            border-color: rgba(255, 215, 0, 0.6);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+
+        /* ========== 琴弦选择 ========== */
+        .string-select {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            animation: slideUp 0.8s ease;
+        }
+        .string-btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: var(--border-radius);
+            background: linear-gradient(135deg, rgba(60,43,33,0.6), rgba(43,30,22,0.4));
+            color: var(--text-light);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-gold);
+            min-width: 100px;
+        }
+        .string-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,215,0,0.2), transparent);
+            transition: left 0.6s;
+        }
+        .string-btn:hover::before {
+            left: 100%;
+        }
+        .string-btn.active {
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+            color: #1a2a6c;
+            box-shadow: 0 10px 30px rgba(255,215,0,0.4);
+            transform: translateY(-3px);
+            border-color: transparent;
+        }
+        .string-btn.active::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 120%; height: 120%;
+            border-radius: 50%;
+            background: rgba(255,215,0,0.2);
+            transform: translate(-50%, -50%) scale(0);
+            animation: ripple 1.5s infinite;
+            pointer-events: none;
+        }
+        @keyframes ripple {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        }
+
+        /* ========== 调音主面板 ========== */
+        .tuning-panel {
+            max-width: 800px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, rgba(60,43,33,0.3), rgba(255,255,255,0.05));
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-gold);
+            border-radius: var(--panel-radius);
+            padding: 40px;
+            box-shadow: var(--shadow-heavy);
+            animation: popIn 1s ease;
+        }
+        .string-name {
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            background: linear-gradient(90deg, var(--gold-primary), var(--gold-secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* ---------- 移除原有自动模式卡片，只保留面板内空位 ---------- */
+        /* （无需额外代码） */
+
+        /* ---------- 波形可视化 ---------- */
+        .waveform {
+            height: 80px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+        }
+        .wave-bar {
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(to top, #2196F3, var(--gold-primary));
+            border-radius: 2px;
+            animation: wave 1s infinite ease-in-out;
+        }
+        .wave-bar:nth-child(2n) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3n) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4n) { animation-delay: 0.3s; }
+        @keyframes wave {
+            0%, 100% { height: 20px; }
+            50% { height: 60px; }
+        }
+
+        /* 琴弦振动 */
+        .string-vibration {
+            height: 40px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .vibrate-string {
+            position: absolute;
+            top: 50%; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gold-primary), white, var(--gold-primary));
+            transform: translateY(-50%);
+            border-radius: 1.5px;
+            animation: vibrate 0.2s infinite ease-in-out;
+        }
+        @keyframes vibrate {
+            0%, 100% { transform: translateY(-50%) scaleX(1); }
+            50% { transform: translateY(-50%) scaleX(1.02); }
+        }
+
+        /* 音量条 */
+        .volume-meter {
+            width: 100%;
+            height: 20px;
+            background: rgba(60,43,33,0.3);
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+            border: 1px solid var(--border-gold);
+        }
+        .volume-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4caf50, var(--gold-primary));
+            border-radius: 10px;
+            transition: width 0.05s;
+        }
+
+        /* 偏差趋势图 */
+        .trend-chart {
+            height: 40px;
+            margin: 15px 0;
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+        }
+        .trend-bar {
+            flex: 1;
+            background: var(--gold-primary);
+            height: 0%;
+            min-height: 2px;
+            border-radius: 2px 2px 0 0;
+            transition: height 0.2s;
+        }
+        .trend-bar.positive { background: #ff5722; }
+        .trend-bar.negative { background: #2196f3; }
+
+        /* 仪表盘 */
+        .pitch-gauge {
+            height: 60px;
+            background: linear-gradient(90deg, #f44336, #e0e0e0, var(--gold-primary));
+            position: relative;
+            border-radius: 30px;
+            margin: 30px 0;
+            box-shadow: inset 0 5px 15px rgba(0,0,0,0.2);
+            overflow: hidden;
+            border: 2px solid var(--border-gold);
+        }
+        .pitch-center {
+            position: absolute;
+            left: 50%; top: 0; bottom: 0;
+            width: 3px;
+            background: var(--gold-primary);
+            box-shadow: 0 0 10px var(--gold-primary);
+            z-index: 2;
+        }
+        .pitch-needle {
+            position: absolute;
+            top: 0; bottom: 0;
+            left: 50%;
+            width: 4px;
+            background: linear-gradient(to bottom, #FF5722, var(--copper));
+            border-radius: 2px;
+            transform: translateX(-50%);
+            transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 15px rgba(255, 87, 34, 0.8);
+            z-index: 3;
+        }
+        .pitch-needle::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            background: radial-gradient(circle, #ff8a5c, #ff5722);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(255, 87, 34, 1);
+            border: 2px solid var(--gold-primary);
+        }
+        .gauge-center-number {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px black;
+            z-index: 4;
+            pointer-events: none;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 15px;
+            border-radius: 30px;
+            border: 1px solid var(--border-gold);
+        }
+
+        /* 文本区域 */
+        .tuning-info {
+            text-align: center;
+            font-size: 20px;
+            margin: 15px 0;
+            font-weight: 500;
+            color: var(--text-light);
+        }
+        .guide-text {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(60,43,33,0.2);
+            backdrop-filter: blur(5px);
+            margin: 10px 0;
+            animation: pulse 2s infinite ease-in-out;
+            border: 1px solid var(--border-gold);
+            color: var(--text-light);
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .start-btn {
+            width: 100%;
+            padding: 18px;
+            margin-top: 30px;
+            background: linear-gradient(135deg, #2196F3, #9C27B0);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s;
+            box-shadow: 0 10px 30px rgba(33, 150, 243, 0.4);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-gold);
+        }
+        .start-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(255,255,255,0.1);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+        .start-btn:hover::before {
+            transform: translateX(0);
+        }
+        .start-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(33, 150, 243, 0.6);
+            border-color: rgba(255,215,0,0.4);
+        }
+
+        .info-note {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #d1c7b8;
+            text-align: center;
+            border-top: 1px solid var(--border-gold);
+            padding-top: 15px;
+        }
+
+        /* 烟花 */
+        #fireworks {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+        }
+        .firework-particle {
+            position: absolute;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffd966, #ffaa00);
+            animation: explode 1s ease-out forwards;
+        }
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0) translate(var(--dx), var(--dy)); opacity: 0; }
+        }
+
+        /* 动画定义 */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 600px) {
+            .header {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .auto-mode-btn {
+                order: 1;
+                padding: 6px 12px;
+            }
+            .header h2 {
+                order: 2;
+                font-size: 1.6rem;
+            }
+            .back-btn {
+                order: 3;
+                padding: 6px 15px;
+                font-size: 14px;
+            }
+            .string-btn { padding: 10px 18px; font-size: 14px; min-width: 70px; }
+            .tuning-panel { padding: 20px; }
+            .string-name { font-size: 26px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="guitar-bg">
+        <div class="body"></div>
+        <div class="head"></div>
+        <div class="soundhole"></div>
+        <div class="strings"></div>
+    </div>
+
+    <!-- 头部：包含自动模式按钮（按压式） -->
+    <div class="header">
+        <div class="auto-mode-btn" id="auto-mode-btn">
+            <span class="auto-icon">🎯</span>
+            <span class="auto-text">自动模式</span>
+            <span class="auto-status" id="auto-status">关闭</span>
+        </div>
+        <h2>🎸 专业调音台</h2>
+        <button class="back-btn" onclick="window.location.href='/'">← 返回主页</button>
+    </div>
+
+    <div class="string-select">
+        <button class="string-btn active" data-string="1">1弦 (E)</button>
+        <button class="string-btn" data-string="2">2弦 (B)</button>
+        <button class="string-btn" data-string="3">3弦 (G)</button>
+        <button class="string-btn" data-string="4">4弦 (D)</button>
+        <button class="string-btn" data-string="5">5弦 (A)</button>
+        <button class="string-btn" data-string="6">6弦 (E)</button>
+    </div>
+
+    <div class="tuning-panel">
+        <div class="string-name" id="current-string">1弦 (E)</div>
+
+        <!-- 注意：原自动模式卡片已移除，节省空间 -->
+
+        <!-- 波形可视化 -->
+        <div class="waveform">
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+        </div>
+
+        <!-- 琴弦振动 -->
+        <div class="string-vibration" id="vibrate-string">
+            <div class="vibrate-string"></div>
+        </div>
+
+        <!-- 音量条 -->
+        <div class="volume-meter">
+            <div class="volume-bar" id="volume-bar"></div>
+        </div>
+
+        <!-- 偏差趋势图 -->
+        <div class="trend-chart" id="trend-chart"></div>
+
+        <!-- 仪表盘 -->
+        <div class="pitch-gauge">
+            <div class="pitch-center"></div>
+            <div class="pitch-needle" id="pitch-needle"></div>
+            <div class="gauge-center-number" id="gauge-center-number">0</div>
+        </div>
+
+        <div class="tuning-info" id="deviation">当前偏差：0 音分</div>
+        <div class="guide-text" id="guide">音调准确 ✅</div>
+        <div class="info-note">注：由于环境噪音和算法误差，偏差在±8音分内可视为调音完成。</div>
+
+        <button class="start-btn" id="start-tuning">开始调这根弦</button>
+    </div>
+
+    <div id="fireworks"></div>
+
+    <script>
+        // ==================== 简易语音指导模块 (VoiceGuide) ====================
+        const VoiceGuide = {
+            speak: function(text, options = {}) {
+                if (!window.speechSynthesis) {
+                    console.warn('当前浏览器不支持语音合成');
+                    return;
+                }
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = options.rate || 1.0;
+                utterance.pitch = options.pitch || 1.0;
+                utterance.lang = 'zh-CN';
+                window.speechSynthesis.speak(utterance);
+            },
+            stop: function() {
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                }
+            }
+        };
+
+        // ==================== YIN 基频检测算法 ====================
+        class YINTuner {
+            constructor() {
+                this.audioContext = null;
+                this.analyser = null;
+                this.microphone = null;
+                this.isActive = false;
+                this.animationFrame = null;
+                this.onPitchDetected = null;
+
+                this.stringFreqs = {
+                    1: 329.63, 2: 246.94, 3: 196.00, 4: 146.83, 5: 110.00, 6: 82.41
+                };
+
+                this.smoothedCents = 0;
+                this.smoothingFactor = 0.3;
+                this.accurateCount = 0;
+                this.requiredAccurate = 5;
+                this.lastValidTime = 0;
+                this.timeoutDuration = 5000;
+                this.noSignalTimer = null;
+                this.rmsThreshold = 500;
+            }
+
+            async start(stringNumber, callback) {
+                if (this.isActive) return;
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.audioContext = new AudioContext();
+                    await this.audioContext.resume();
+
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.microphone = this.audioContext.createMediaStreamSource(stream);
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.analyser.fftSize = 2048;
+                    this.microphone.connect(this.analyser);
+
+                    this.isActive = true;
+                    this.onPitchDetected = callback;
+                    this.targetString = stringNumber;
+                    this.smoothedCents = 0;
+                    this.accurateCount = 0;
+                    this.lastValidTime = Date.now();
+                    this.startNoSignalCheck();
+
+                    this.detectLoop();
+                } catch (err) {
+                    console.error('麦克风访问失败:', err);
+                    alert('无法访问麦克风，请确保已授予权限并连接了麦克风。');
+                }
+            }
+
+            stop() {
+                this.isActive = false;
+                if (this.animationFrame) {
+                    cancelAnimationFrame(this.animationFrame);
+                    this.animationFrame = null;
+                }
+                if (this.microphone) {
+                    this.microphone.disconnect();
+                    this.microphone = null;
+                }
+                if (this.audioContext) {
+                    this.audioContext.close();
+                    this.audioContext = null;
+                }
+                if (this.noSignalTimer) {
+                    clearTimeout(this.noSignalTimer);
+                    this.noSignalTimer = null;
+                }
+            }
+
+            startNoSignalCheck() {
+                if (this.noSignalTimer) clearTimeout(this.noSignalTimer);
+                this.noSignalTimer = setTimeout(() => {
+                    if (this.isActive && Date.now() - this.lastValidTime > this.timeoutDuration) {
+                        this.onPitchDetected(null, null, 'noSignal', false, 0);
+                    }
+                }, this.timeoutDuration);
+            }
+
+            restartNoSignalCheck() {
+                if (this.noSignalTimer) clearTimeout(this.noSignalTimer);
+                this.noSignalTimer = setTimeout(() => {
+                    if (this.isActive && Date.now() - this.lastValidTime > this.timeoutDuration) {
+                        this.onPitchDetected(null, null, 'noSignal', false, 0);
+                    }
+                }, this.timeoutDuration);
+            }
+
+            detectLoop() {
+                if (!this.isActive) return;
+
+                const buffer = new Float32Array(this.analyser.fftSize);
+                this.analyser.getFloatTimeDomainData(buffer);
+
+                let sum = 0;
+                for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
+                const rms = Math.sqrt(sum / buffer.length) * 32768;
+
+                if (rms > this.rmsThreshold * 1.5) {
+                    this.rmsThreshold = rms * 0.7;
+                }
+
+                let pitch = null;
+                if (rms > this.rmsThreshold) {
+                    pitch = this.yin(buffer, this.audioContext.sampleRate);
+                }
+
+                if (pitch) {
+                    this.lastValidTime = Date.now();
+                    this.restartNoSignalCheck();
+
+                    const targetFreq = this.stringFreqs[this.targetString];
+                    const cents = 1200 * Math.log2(pitch / targetFreq);
+
+                    this.smoothedCents = this.smoothedCents * (1 - this.smoothingFactor) + cents * this.smoothingFactor;
+
+                    const isAccurate = Math.abs(this.smoothedCents) <= 8;
+                    if (isAccurate) {
+                        this.accurateCount++;
+                    } else {
+                        this.accurateCount = 0;
+                    }
+
+                    const fire = this.accurateCount >= this.requiredAccurate;
+                    if (this.onPitchDetected) this.onPitchDetected(pitch, this.smoothedCents, 'valid', fire, rms);
+                } else {
+                    if (this.onPitchDetected) this.onPitchDetected(null, null, 'invalid', false, rms);
+                }
+
+                this.animationFrame = requestAnimationFrame(() => this.detectLoop());
+            }
+
+            yin(buffer, sampleRate) {
+                const threshold = 0.1;
+                const minFreq = 60;
+                const maxFreq = 400;
+                const maxLag = Math.floor(sampleRate / minFreq);
+                const minLag = Math.floor(sampleRate / maxFreq);
+
+                let lag = null;
+                let prevDiff = 0;
+
+                for (let tau = minLag; tau < maxLag; tau++) {
+                    let numerator = 0;
+                    let denominator = 0;
+                    for (let i = 0; i < maxLag; i++) {
+                        if (i + tau < buffer.length) {
+                            const diff = buffer[i] - buffer[i + tau];
+                            numerator += diff * diff;
+                            denominator += buffer[i] * buffer[i] + buffer[i + tau] * buffer[i + tau];
+                        }
+                    }
+                    if (denominator === 0) continue;
+                    const cm = numerator / denominator * 2;
+
+                    if (tau > minLag && cm < threshold) {
+                        const betterTau = tau - 0.5 * (cm - prevDiff) / ((cm + prevDiff) - 2 * cm);
+                        lag = betterTau;
+                        break;
+                    }
+                    prevDiff = cm;
+                }
+
+                if (lag) {
+                    const freq = sampleRate / lag;
+                    if (freq >= minFreq && freq <= maxFreq) return freq;
+                }
+                return null;
+            }
+        }
+
+        // ==================== 页面逻辑 ====================
+        (function() {
+            let currentString = 1;
+            let isTuning = false;
+            let tuner = new YINTuner();
+
+            let lastSpokenGuide = '';
+            let lastVoiceTime = 0;
+            const voiceCooldown = 2000;
+
+            // 获取新按钮
+            const autoModeBtn = document.getElementById('auto-mode-btn');
+            const autoStatusSpan = document.getElementById('auto-status');
+            let autoMode = false; // 自动模式状态
+
+            const needle = document.getElementById('pitch-needle');
+            const deviationEl = document.getElementById('deviation');
+            const guideEl = document.getElementById('guide');
+            const startBtn = document.getElementById('start-tuning');
+            const fireworksDiv = document.getElementById('fireworks');
+            const vibrateString = document.getElementById('vibrate-string');
+            const volumeBar = document.getElementById('volume-bar');
+            const trendChart = document.getElementById('trend-chart');
+            const gaugeCenterNumber = document.getElementById('gauge-center-number');
+
+            let centsHistory = [];
+            const maxHistory = 10;
+
+            function createFirework() {
+                fireworksDiv.style.display = 'block';
+                for (let i = 0; i < 30; i++) {
+                    const p = document.createElement('div');
+                    p.className = 'firework-particle';
+                    const angle = Math.random() * 2 * Math.PI;
+                    const distance = Math.random() * 150 + 50;
+                    const dx = Math.cos(angle) * distance;
+                    const dy = Math.sin(angle) * distance;
+                    p.style.setProperty('--dx', dx + 'px');
+                    p.style.setProperty('--dy', dy + 'px');
+                    p.style.left = Math.random() * 100 + '%';
+                    p.style.top = Math.random() * 100 + '%';
+                    p.style.background = `hsl(${Math.random() * 60 + 30}, 100%, 60%)`;
+                    fireworksDiv.appendChild(p);
+                    setTimeout(() => p.remove(), 1000);
+                }
+                setTimeout(() => fireworksDiv.style.display = 'none', 1000);
+            }
+
+            function drawTrendChart() {
+                trendChart.innerHTML = '';
+                centsHistory.forEach(cents => {
+                    const bar = document.createElement('div');
+                    bar.className = 'trend-bar';
+                    const height = Math.min(100, Math.abs(cents) * 3);
+                    bar.style.height = height + '%';
+                    if (cents > 0) bar.classList.add('positive');
+                    else if (cents < 0) bar.classList.add('negative');
+                    trendChart.appendChild(bar);
+                });
+            }
+
+            // 切换弦
+            document.querySelectorAll('.string-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (isTuning) {
+                        tuner.stop();
+                        isTuning = false;
+                        startBtn.textContent = '开始调这根弦';
+                        startBtn.classList.remove('tuning');
+                        vibrateString.classList.remove('vibrating');
+                        VoiceGuide.stop();
+                    }
+                    document.querySelectorAll('.string-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentString = parseInt(this.dataset.string);
+                    const note = ['E','B','G','D','A','E'][currentString-1];
+                    document.getElementById('current-string').textContent = `${currentString}弦 (${note})`;
+
+                    needle.style.left = '50%';
+                    deviationEl.textContent = '当前偏差：0 音分';
+                    gaugeCenterNumber.textContent = '0';
+                    guideEl.textContent = '音调准确 ✅';
+                    guideEl.style.color = '';
+                    lastSpokenGuide = '';
+                    centsHistory = [];
+                    drawTrendChart();
+                });
+            });
+
+            // 按压式自动模式按钮点击事件
+            autoModeBtn.addEventListener('click', function() {
+                autoMode = !autoMode; // 切换状态
+                // 更新按钮UI
+                if (autoMode) {
+                    autoModeBtn.classList.add('active');
+                    autoStatusSpan.textContent = '开启';
+                    if (isTuning) {
+                        VoiceGuide.speak('自动模式已开启', { rate: 0.9 });
+                    }
+                } else {
+                    autoModeBtn.classList.remove('active');
+                    autoStatusSpan.textContent = '关闭';
+                    if (isTuning) {
+                        VoiceGuide.speak('自动模式已关闭', { rate: 0.9 });
+                    }
+                }
+            });
+
+            // 开始/停止调音
+            startBtn.addEventListener('click', function() {
+                if (!isTuning) {
+                    tuner.start(currentString, (freq, cents, status, fire, rms) => {
+                        // 更新音量条
+                        const volumePercent = Math.min(100, (rms / 5000) * 100);
+                        volumeBar.style.width = volumePercent + '%';
+
+                        if (status === 'valid') {
+                            let leftPercent = 50 + (cents / 50) * 25;
+                            leftPercent = Math.max(0, Math.min(100, leftPercent));
+                            needle.style.left = leftPercent + '%';
+
+                            deviationEl.textContent = `当前偏差：${cents.toFixed(1)} 音分`;
+                            gaugeCenterNumber.textContent = cents.toFixed(0);
+
+                            centsHistory.push(cents);
+                            if (centsHistory.length > maxHistory) centsHistory.shift();
+                            drawTrendChart();
+
+                            let guideText = '';
+                            let voiceText = '';
+
+                            if (fire) {
+                                guideText = '音调准确 ✅ 恭喜！';
+                                voiceText = '音调准确，恭喜';
+                                createFirework();
+                                tuner.accurateCount = 0;
+                            } else if (Math.abs(cents) <= 8) {
+                                guideText = '音调准确 ✅';
+                                voiceText = '音调准确';
+                            } else if (cents > 8) {
+                                guideText = `音调偏高 ← 逆时针调${cents.toFixed(1)}音分`;
+                                voiceText = '偏高';
+                            } else if (cents < -8) {
+                                guideText = `音调偏低 → 顺时针调${Math.abs(cents).toFixed(1)}音分`;
+                                voiceText = '偏低';
+                            }
+
+                            guideEl.textContent = guideText;
+                            const now = Date.now();
+                            if (voiceText && voiceText !== lastSpokenGuide && now - lastVoiceTime > voiceCooldown) {
+                                VoiceGuide.speak(voiceText, { rate: 1.0, pitch: 1.0 });
+                                lastSpokenGuide = voiceText;
+                                lastVoiceTime = now;
+                            }
+
+                            vibrateString.classList.add('vibrating');
+
+                            // 自动模式匹配（使用autoMode变量）
+                            if (autoMode && freq) {
+                                let minDiff = Infinity;
+                                let matchedString = currentString;
+                                for (let s in tuner.stringFreqs) {
+                                    const diff = Math.abs(freq - tuner.stringFreqs[s]);
+                                    if (diff < minDiff) {
+                                        minDiff = diff;
+                                        matchedString = parseInt(s);
+                                    }
+                                }
+                                if (matchedString !== currentString && minDiff < 10) {
+                                    currentString = matchedString;
+                                    document.querySelectorAll('.string-btn').forEach(b => b.classList.remove('active'));
+                                    document.querySelector(`.string-btn[data-string="${currentString}"]`).classList.add('active');
+                                    const note = ['E','B','G','D','A','E'][currentString-1];
+                                    document.getElementById('current-string').textContent = `${currentString}弦 (${note})`;
+                                    VoiceGuide.speak(`请调${currentString}弦`, { rate: 0.9 });
+                                }
+                            }
+                        } else if (status === 'invalid') {
+                            vibrateString.classList.remove('vibrating');
+                        } else if (status === 'noSignal') {
+                            guideEl.textContent = '⚠️ 没有检测到琴声，请拨动琴弦';
+                            guideEl.style.color = '#ffaa00';
+                            vibrateString.classList.remove('vibrating');
+                            const now = Date.now();
+                            if (lastSpokenGuide !== 'noSignal' && now - lastVoiceTime > voiceCooldown) {
+                                VoiceGuide.speak('请拨动琴弦', { rate: 0.9 });
+                                lastSpokenGuide = 'noSignal';
+                                lastVoiceTime = now;
+                            }
+                        }
+                    });
+
+                    isTuning = true;
+                    startBtn.textContent = '停止调音';
+                    startBtn.classList.add('tuning');
+                    lastSpokenGuide = '';
+                } else {
+                    tuner.stop();
+                    isTuning = false;
+                    startBtn.textContent = '开始调这根弦';
+                    startBtn.classList.remove('tuning');
+                    vibrateString.classList.remove('vibrating');
+                    needle.style.left = '50%';
+                    deviationEl.textContent = '当前偏差：0 音分';
+                    gaugeCenterNumber.textContent = '0';
+                    guideEl.textContent = '音调准确 ✅';
+                    guideEl.style.color = '';
+                    VoiceGuide.stop();
+                    lastSpokenGuide = '';
+                    volumeBar.style.width = '0%';
+                    centsHistory = [];
+                    drawTrendChart();
+                }
+            });
+
+            // 初始化趋势图
+            drawTrendChart();
+        })();
+    </script>
+</body>
+</html>
