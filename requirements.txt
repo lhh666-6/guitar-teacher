@@ -11,11 +11,16 @@ numpy==1.24.3
 # 手部检测
 mediapipe==0.10.7
 
-# YOLOv10 所需的 PyTorch（根据您的 CUDA 版本调整）
-# CPU 版本（无 GPU）
-torch==2.0.1
-torchvision==0.15.2
-# 如果使用 GPU，请从 https://pytorch.org 选择对应 CUDA 的安装命令
+# YOLOv10 所需的 ultralytics（自动管理 PyTorch 依赖）
+ultralytics==8.0.0
+# 如果遇到 PyTorch 安装问题，可以手动指定 CUDA 版本，例如：
+# torch==2.0.1+cu118
+# torchvision==0.15.2+cu118
+# 安装命令可参考：https://pytorch.org/get-started/locally/
 
-# 固定 protobuf 版本避免冲突
+# 固定 protobuf 版本避免与 mediapipe 冲突
 protobuf==3.20.3
+
+# 其他常用工具（如果用到）
+# scipy==1.10.1
+# matplotlib==3.7.1
