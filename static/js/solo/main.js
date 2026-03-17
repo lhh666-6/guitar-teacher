@@ -177,8 +177,9 @@
             }
         }
 
+        // 将后端弦号转换为显示索引（顶部为6弦，底部为1弦）
         backendToDisplayIndex(backendString) {
-            return STRING_COUNT - 1;
+            return STRING_COUNT - backendString; // 例如 6弦 -> 0, 1弦 -> 5
         }
 
         updateStats() {
@@ -307,6 +308,18 @@
             this.updateStats();
             this.recordedForCurrentChord = true;
             this.renderTestList();
+
+            // 保存正确记录
+            fetch('/api/save_record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chord_name: this.currentChord.name,
+                    correct: true,
+                    time_spent: elapsed
+                })
+            }).catch(err => console.error('保存记录失败:', err));
+
             this.moveToNextTest();
         }
 
@@ -317,6 +330,18 @@
             this.updateStats();
             this.recordedForCurrentChord = true;
             this.renderTestList();
+
+            // 保存错误记录（不计时）
+            fetch('/api/save_record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chord_name: this.currentChord.name,
+                    correct: false,
+                    time_spent: 0.0
+                })
+            }).catch(err => console.error('保存记录失败:', err));
+
             this.moveToNextTest();
         }
 
@@ -338,7 +363,7 @@
             const innerHeight = containerHeight - topPadding - bottomPadding;
 
             const stringSpacing = innerHeight / (STRING_COUNT - 1);
-            const fretSpacing = innerWidth / (FRET_COUNT - 1);
+            const fretSpacing = innerWidth / (FRET_COUNT - 1);  // FRET_COUNT 应为 5
 
             const baseY = topPadding;
             const baseX = leftPadding;
@@ -367,70 +392,112 @@
                 el.style.left = (x - 15) + 'px';
             });
 
-            // 标准横按
-            if (chord && chord.barre) {
-                const barre = chord.barre;
-                const barreDiv = this.createBarreElement(barre, baseX, baseY, fretSpacing, stringSpacing, 'standard');
-                container.appendChild(barreDiv);
-            }
-
-            // 标准按点
+            // ---------- 按品数排序分配列 ----------
+            // 收集所有按点（标准 + 用户）
+            const allPositions = [];
             if (chord && chord.positions) {
                 chord.positions.forEach(pos => {
-                    const dot = this.createDotElement(pos, baseX, baseY, fretSpacing, stringSpacing, 'standard');
-                    container.appendChild(dot);
+                    allPositions.push({
+                        ...pos,
+                        type: 'standard',
+                        correct: false  // 标准点无正确性，但用于类名
+                    });
+                });
+            }
+            userPositions.forEach(up => {
+                allPositions.push({
+                    string: up.string,
+                    fret: up.fret,
+                    type: 'user',
+                    correct: up.correct
+                });
+            });
+
+            // 收集所有横按（标准 + 用户）
+            const allBarres = [];
+            if (chord && chord.barre) {
+                allBarres.push({
+                    ...chord.barre,
+                    type: 'standard',
+                    correct: false
+                });
+            }
+            if (userBarre) {
+                allBarres.push({
+                    fret: userBarre.fret,
+                    startString: userBarre.startString,
+                    endString: userBarre.endString,
+                    type: 'user',
+                    correct: userBarre.correct
                 });
             }
 
-            // 用户横按
-            if (userBarre) {
-                const barreDiv = this.createBarreElement(userBarre, baseX, baseY, fretSpacing, stringSpacing, userBarre.correct ? 'user-correct' : 'user-wrong');
-                container.appendChild(barreDiv);
-            }
+            // 收集所有不同的品数（用于分配列）
+            const allFrets = new Set();
+            allPositions.forEach(p => allFrets.add(p.fret));
+            allBarres.forEach(b => allFrets.add(b.fret));
+            const uniqueFrets = Array.from(allFrets).sort((a, b) => a - b); // 升序
 
-            // 用户按点
-            userPositions.forEach(up => {
-                const dot = this.createDotElement(up, baseX, baseY, fretSpacing, stringSpacing, up.correct ? 'user-correct' : 'user-wrong');
+            // 最多取前5个品数（FRET_COUNT = 5）
+            const validFrets = uniqueFrets.slice(0, FRET_COUNT);
+            const fretToCol = {};
+            validFrets.forEach((fret, idx) => {
+                fretToCol[fret] = idx;
+            });
+
+            // 绘制按点（只显示品数在 validFrets 中的）
+            allPositions.forEach(p => {
+                if (!(p.fret in fretToCol)) return; // 品数超出前5，不显示
+                const colIndex = fretToCol[p.fret];
+                const idx = this.backendToDisplayIndex(p.string);
+                console.log('弦号:', p.string, '显示索引:', idx); // 调试打印，可删除
+                const x = baseX + colIndex * fretSpacing + fretSpacing / 2; // 居中
+                const y = baseY + idx * stringSpacing;
+
+                const dot = document.createElement('div');
+                dot.className = `dot ${p.type === 'standard' ? 'standard' : (p.correct ? 'user-correct' : 'user-wrong')}`;
+                dot.style.left = (x - DOT_RADIUS) + 'px';
+                dot.style.top = (y - DOT_RADIUS) + 'px';
+                dot.textContent = p.fret;  // 显示真实品数
                 container.appendChild(dot);
+            });
+
+            // 绘制横按（只显示品数在 validFrets 中的）
+            allBarres.forEach(b => {
+                if (!(b.fret in fretToCol)) return;
+                const colIndex = fretToCol[b.fret];
+                const startIdx = this.backendToDisplayIndex(b.startString);
+                const endIdx = this.backendToDisplayIndex(b.endString);
+                const idxMin = Math.min(startIdx, endIdx);
+                const idxMax = Math.max(startIdx, endIdx);
+                const yStart = baseY + idxMin * stringSpacing;
+                const yEnd = baseY + idxMax * stringSpacing;
+                const topY = Math.min(yStart, yEnd) - DOT_RADIUS;
+                const bottomY = Math.max(yStart, yEnd) + DOT_RADIUS;
+                const height = bottomY - topY;
+                const x = baseX + colIndex * fretSpacing + fretSpacing / 2; // 居中
+
+                const barreDiv = document.createElement('div');
+                barreDiv.className = `barre ${b.type === 'standard' ? 'standard' : (b.correct ? 'user-correct' : 'user-wrong')}`;
+                barreDiv.style.left = (x - 4) + 'px';
+                barreDiv.style.top = topY + 'px';
+                barreDiv.style.height = height + 'px';
+                barreDiv.style.width = '8px';
+                barreDiv.style.backgroundColor = ''; // 由 CSS 控制
+                barreDiv.style.opacity = '0.9';
+                barreDiv.style.borderRadius = '4px';
+                barreDiv.style.position = 'absolute';
+                container.appendChild(barreDiv);
             });
         }
 
-        // 创建单个按点元素
+        // 保留原方法空定义以防其他地方调用（不影响功能）
         createDotElement(pos, baseX, baseY, fretSpacing, stringSpacing, className) {
-            const dot = document.createElement('div');
-            dot.className = `dot ${className}`;
-            const idx = this.backendToDisplayIndex(pos.string);
-            const x = baseX + (pos.fret - 1) * fretSpacing;
-            const y = baseY + idx * stringSpacing;
-            dot.style.left = (x - DOT_RADIUS) + 'px';
-            dot.style.top = (y - DOT_RADIUS) + 'px';
-            dot.textContent = pos.fret;
-            return dot;
+            // 此方法不再使用
         }
 
-        // 创建横按元素
         createBarreElement(barre, baseX, baseY, fretSpacing, stringSpacing, className) {
-            const barreDiv = document.createElement('div');
-            barreDiv.className = `barre ${className}`;
-            const startIdx = this.backendToDisplayIndex(barre.startString);
-            const endIdx = this.backendToDisplayIndex(barre.endString);
-            const idxMin = Math.min(startIdx, endIdx);
-            const idxMax = Math.max(startIdx, endIdx);
-            const yStart = baseY + idxMin * stringSpacing;
-            const yEnd = baseY + idxMax * stringSpacing;
-            const topY = Math.min(yStart, yEnd) - DOT_RADIUS;
-            const bottomY = Math.max(yStart, yEnd) + DOT_RADIUS;
-            const height = bottomY - topY;
-            const x = baseX + (barre.fret - 1) * fretSpacing;
-            barreDiv.style.left = (x - 4) + 'px';
-            barreDiv.style.top = topY + 'px';
-            barreDiv.style.height = height + 'px';
-            barreDiv.style.width = '8px';
-            barreDiv.style.backgroundColor = className.includes('correct') ? '#28a745' : '#dc3545';
-            barreDiv.style.opacity = '0.9';
-            barreDiv.style.borderRadius = '4px';
-            barreDiv.style.position = 'absolute';
-            return barreDiv;
+            // 此方法不再使用
         }
 
         // ---------- 统一绘制函数（由动画循环调用）----------
@@ -453,7 +520,7 @@
             }
         }
 
-        // ---------- WebSocket 结果处理（修改点：使用独立验证函数）----------
+        // ---------- WebSocket 结果处理（使用独立验证函数）----------
         handleDetectionResult = (data) => {
             const receiveTime = performance.now();
             if (this.lastFrameSendTime > 0) {
@@ -479,14 +546,14 @@
                     barre: data.barre || null
                 };
 
-                // 调用独立验证函数判断是否正确（纯视觉，未来可替换为融合）
+                // 调用独立验证函数判断是否正确
                 const isCorrect = window.validateVisual(
                     visualResult.positions,
                     visualResult.barre,
                     this.currentChord
                 );
 
-                // 准备用于 mini 指板显示的用户数据（保留 correct 标记，用于颜色区分）
+                // 准备用于 mini 指板显示的用户数据（保留 correct 标记）
                 const userPositions = visualResult.positions.map(pos => ({
                     ...pos,
                     correct: this.currentChord.positions.some(p => p.string === pos.string && p.fret === pos.fret)
@@ -512,7 +579,7 @@
             }
         }
 
-        // ---------- MediaPipe 结果回调（与您原有代码相同，但确保使用常量）----------
+        // ---------- MediaPipe 结果回调 ----------
         onHandResults(results) {
             const now = performance.now();
             if (!this.testMode || !this.sendingEnabled) return;

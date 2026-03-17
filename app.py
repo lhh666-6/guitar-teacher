@@ -4,13 +4,13 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 import cv2
 import numpy as np
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from flask_socketio import SocketIO
-
 from core.detector import GuitarFingeringRecognizer
 from api.chords import chords_bp
 import config
@@ -26,6 +26,32 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.SECRET_KEY
 CORS(app)
+
+# ---------- 数据库配置 ----------
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///training.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# 定义训练记录模型
+class TrainingRecord(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chord_name = db.Column(db.String(50), nullable=False)   # 和弦名称
+    correct = db.Column(db.Boolean, nullable=False)          # 是否正确
+    time_spent = db.Column(db.Float)                          # 用时（秒）
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'chord_name': self.chord_name,
+            'correct': self.correct,
+            'time_spent': self.time_spent,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+# 创建数据库表（如果不存在）
+with app.app_context():
+    db.create_all()
 
 # 注册蓝图
 app.register_blueprint(chords_bp, url_prefix='/api/chords')
@@ -63,7 +89,7 @@ recognizer = GuitarFingeringRecognizer(
 # 线程池，用于异步处理帧（与 eventlet 配合，不宜过大）
 executor = ThreadPoolExecutor(max_workers=2)
 
-# 全局演奏记录
+# 全局演奏记录（内存存储，与数据库无关）
 play_records = []
 records_lock = threading.Lock()
 MAX_RECORDS = 100
@@ -92,7 +118,7 @@ def _safe_emit(event, data, room=None):
     except Exception as e:
         logger.error(f"发送消息失败 (event={event}): {e}")
 
-# ---------- 新增：处理手部关键点 ----------
+# ---------- SocketIO 事件处理 ----------
 @socketio.on('hand_landmarks')
 def handle_hand_landmarks(data):
     """接收前端传来的手部关键点（21个归一化点）"""
@@ -107,7 +133,6 @@ def handle_hand_landmarks(data):
         return
 
     sid = request.sid
-    # 直接在主线程中处理（关键点计算非常快）
     try:
         result = recognizer.process_landmarks(landmarks, timestamp, img_width, img_height)
         _safe_emit('detection_result', result, room=sid)
@@ -115,7 +140,6 @@ def handle_hand_landmarks(data):
         logger.exception("处理关键点时发生异常")
         _safe_emit('detection_result', {'status': 'failed', 'error': '处理失败'})
 
-# ---------- 新增：处理缩略图（用于YOLO更新指板）----------
 @socketio.on('thumbnail')
 def handle_thumbnail(data):
     """接收前端发来的低分辨率缩略图，用于YOLO更新指板参数"""
@@ -129,14 +153,12 @@ def handle_thumbnail(data):
         logger.warning("缩略图解码失败")
         return
 
-    # 更新指板参数（非阻塞，但通常很快，直接运行）
     success = recognizer.update_fretboard(frame)
     if success:
         logger.info("指板参数更新成功")
     else:
         logger.warning("指板参数更新失败（可能未检测到琴枕/琴桥）")
 
-# ---------- 原有的 frame 事件（可选保留，作为降级）----------
 @socketio.on('frame')
 def handle_frame(data):
     """接收前端图像帧，提交到线程池处理（原有逻辑，可降级使用）"""
@@ -192,8 +214,8 @@ def process_and_emit(image_base64: str, sid: str):
 
 # ---------- HTTP 接口 ----------
 @app.route('/api/solo/save_record', methods=['POST'])
-def save_record():
-    """保存演奏记录"""
+def save_solo_record():  # 原名为 save_record，为避免冲突改为 save_solo_record
+    """保存演奏记录（内存存储）"""
     global play_records
     try:
         data = request.get_json()
@@ -207,6 +229,22 @@ def save_record():
     except Exception as e:
         logger.exception("保存记录失败")
         return jsonify({'status': 'failed', 'message': '保存失败，请稍后重试'}), 500
+
+@app.route('/api/save_record', methods=['POST'])
+def save_training_record():  # 函数名修改，解决冲突
+    """保存单次训练记录到数据库"""
+    data = request.get_json()
+    if not data or 'chord_name' not in data or 'correct' not in data:
+        return jsonify({'error': '缺少必要字段'}), 400
+
+    record = TrainingRecord(
+        chord_name=data['chord_name'],
+        correct=data['correct'],
+        time_spent=data.get('time_spent', 0.0)
+    )
+    db.session.add(record)
+    db.session.commit()
+    return jsonify({'status': 'ok', 'id': record.id})
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -238,6 +276,11 @@ def solo():
 def teach():
     return render_template('teach.html')
 
+@app.route('/history')
+def history():
+    records = TrainingRecord.query.order_by(TrainingRecord.created_at.desc()).limit(100).all()
+    return render_template('history.html', records=records)
+
 # ---------- 启动 ----------
 if __name__ == '__main__':
     logger.info(f"启动服务器，debug={config.DEBUG}")
@@ -247,4 +290,4 @@ if __name__ == '__main__':
         host='0.0.0.0',
         port=5000,
         use_reloader=False   # 关闭重载器以避免与 eventlet 冲突
-    ) 
+    )

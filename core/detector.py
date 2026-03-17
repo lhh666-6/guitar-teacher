@@ -196,6 +196,9 @@ class GuitarFingeringRecognizer:
         # 新增：用于指板参数的线程锁
         self.fretboard_lock = threading.RLock()
 
+        # ===== 新增：弦号映射（原始弦号 -> 显示弦号，1=底部细弦）=====
+        self.string_no_map = {}
+
     def _check_hand_model(self):
         if not os.path.exists(self.hand_model_path):
             logger.error("\n[错误] 找不到 hand_landmarker.task 模型文件")
@@ -363,14 +366,25 @@ class GuitarFingeringRecognizer:
                 fret_ratios[n] = self._get_fret_position_ratio(n)
             self.global_fret_ratios = fret_ratios
 
+            # ===== 新增：根据琴弦线的实际垂直位置建立弦号映射 =====
+            if self.string_lines:
+                # 计算每条弦线的中点 y 坐标
+                mid_y = [(p_nut[1] + p_bridge[1]) / 2 for _, p_nut, p_bridge in self.string_lines]
+                # 按 y 降序排序（y越大越靠下，对应细弦）
+                sorted_indices = np.argsort(mid_y)[::-1]  # 降序排列的索引
+                self.string_no_map = {}
+                for new_no, orig_idx in enumerate(sorted_indices, start=1):
+                    orig_no = self.string_lines[orig_idx][0]  # 原始弦号
+                    self.string_no_map[orig_no] = new_no
+                logger.info(f"弦号映射建立: {self.string_no_map}")
+            else:
+                self.string_no_map = {}
+
             logger.info("指板参数更新完成")
-            # 在 return True 之前添加
+            # 调试图像保存
             debug_img = frame.copy()
-            # 绘制琴枕框
             cv2.rectangle(debug_img, (int(x1), int(y1)), (int(x2), int(y2)), (0,255,0), 2)
-            # 绘制琴桥框
             cv2.rectangle(debug_img, (int(x1), int(y1)), (int(x2), int(y2)), (255,0,0), 2)
-            # 绘制琴弦线
             for i, (s, p_nut, p_bridge) in enumerate(self.string_lines):
                 cv2.line(debug_img, (int(p_nut[0]), int(p_nut[1])), (int(p_bridge[0]), int(p_bridge[1])), (0,255,255), 1)
             cv2.imwrite("fretboard_debug.jpg", debug_img)
@@ -535,10 +549,14 @@ class GuitarFingeringRecognizer:
                     min_idx = np.argmin(dists_to_strings)
                     min_string_dist = dists_to_strings[min_idx]
                     closest_string_no = min_idx + 1
+
+                    # ===== 新增：应用弦号映射 =====
+                    if self.string_no_map:
+                        new_string_no = self.string_no_map.get(closest_string_no, closest_string_no)
+                    else:
+                        new_string_no = closest_string_no
+                    # =============================
                 else:
-                    min_string_dist = float('inf')
-                    closest_string_no = None
-                if min_string_dist > string_thresh:
                     continue
 
                 # 品号历史平滑（品号逻辑值，与坐标系无关）
@@ -551,8 +569,8 @@ class GuitarFingeringRecognizer:
 
                 detail = {
                     'finger': finger_name,
-                    'string_start': int(closest_string_no),
-                    'string_end': int(closest_string_no),
+                    'string_start': int(new_string_no),      # 使用映射后弦号
+                    'string_end': int(new_string_no),
                     'fret': int(final_fret),
                     'tip_x': int(tip_px[0]),      # 使用原始像素坐标
                     'tip_y': int(tip_px[1]),
@@ -562,6 +580,11 @@ class GuitarFingeringRecognizer:
                 finger_details.append(detail)
 
             if barre_chord:
+                # ===== 新增：映射横按弦号 =====
+                if self.string_no_map:
+                    barre_start = self.string_no_map.get(barre_start, barre_start)
+                    barre_end = self.string_no_map.get(barre_end, barre_end)
+                # =============================
                 finger_details.append({
                     'finger': '食指',
                     'string_start': int(barre_start),
@@ -715,6 +738,19 @@ class GuitarFingeringRecognizer:
                         fret_ratios[n] = self._get_fret_position_ratio(n)
                     self.global_fret_ratios = fret_ratios
 
+                    # ===== 新增：根据琴弦线的实际垂直位置建立弦号映射 =====
+                    if self.string_lines:
+                        mid_y = [(p_nut[1] + p_bridge[1]) / 2 for _, p_nut, p_bridge in self.string_lines]
+                        sorted_indices = np.argsort(mid_y)[::-1]
+                        self.string_no_map = {}
+                        for new_no, orig_idx in enumerate(sorted_indices, start=1):
+                            orig_no = self.string_lines[orig_idx][0]
+                            self.string_no_map[orig_no] = new_no
+                        logger.info(f"传统模式弦号映射: {self.string_no_map}")
+                    else:
+                        self.string_no_map = {}
+                    # ===================================================
+
                     fretboard_detected = True
                     logger.info("传统模式：指板参数更新成功")
                 else:
@@ -848,7 +884,7 @@ class GuitarFingeringRecognizer:
             for d in finger_details:
                 new_d = {
                     'finger': d['finger'],
-                    'string_start': int(d['string_start']),
+                    'string_start': int(d['string_start']),  # 已经映射后的新弦号
                     'string_end': int(d['string_end']),
                     'fret': int(d['fret']),
                     'is_barre': bool(d['is_barre']),
@@ -878,6 +914,7 @@ class GuitarFingeringRecognizer:
             drawing_data['bridge_center'] = None
 
         return drawing_data
+
     def get_current_frame_details(self):
         return self.current_frame_details
 

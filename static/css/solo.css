@@ -404,3 +404,4 @@ body {
     gap: 10px !important;
     align-items: center !important;
 }
+.fret-label { display: none; }
