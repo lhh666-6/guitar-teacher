@@ -1,100 +1,161 @@
 /**
- * 语音指导模块 - 基于 Web Speech API
- * 提供调音、教学等场景的语音提示功能
- * 使用方法：VoiceGuide.speak(text, options)
+ * 语音指导模块 - 支持语音播报和语音识别
+ * 使用方法：
+ *   VoiceGuide.speak(text)                // 播报文本
+ *   VoiceGuide.toggleListening(callback)  // 切换语音识别状态，传入回调处理指令
+ *   VoiceGuide.stopListening()            // 停止监听
  */
 const VoiceGuide = (function() {
-    // 语音合成实例
-    let synth = window.speechSynthesis;
+    // ----- 语音播报部分 -----
+    let synthesis = window.speechSynthesis;
     let utterance = null;
 
-    // 默认配置
-    const defaults = {
+    // 默认播报配置
+    const speakDefaults = {
         lang: 'zh-CN',
-        pitch: 1.0,          // 音调 0~2
-        rate: 1.0,            // 语速 0.1~10
-        volume: 1.0,
-        onStart: null,
-        onEnd: null,
-        onError: null
+        pitch: 1.0,
+        rate: 1.0,
+        volume: 1.0
     };
 
-    // 防抖：避免连续重复朗读相同文本
+    // 防抖：避免短时间重复朗读相同文本
     let lastSpokenText = '';
     let lastSpokenTime = 0;
-    const DEBOUNCE_INTERVAL = 2000; // 2秒内不重复朗读相同内容
+    const DEBOUNCE_INTERVAL = 2000;
 
-    // 初始化检查
-    function checkSupport() {
+    function checkSpeechSupport() {
         if (!window.speechSynthesis) {
-            console.warn('当前浏览器不支持 Web Speech API，语音功能不可用');
+            console.warn('浏览器不支持 Web Speech API，语音播报不可用');
             return false;
         }
         return true;
     }
 
-    /**
-     * 核心朗读方法
-     * @param {string} text - 要朗读的文本
-     * @param {object} options - 覆盖默认配置
-     */
     function speak(text, options = {}) {
-        if (!checkSupport()) return;
+        if (!checkSpeechSupport()) return;
+        if (!text) return;
 
-        // 防抖处理：相同文本且间隔过短则不重复
+        // 防抖处理
         const now = Date.now();
         if (text === lastSpokenText && now - lastSpokenTime < DEBOUNCE_INTERVAL) {
             console.log(`[语音防抖] 忽略重复文本: "${text}"`);
             return;
         }
 
-        // 取消当前正在朗读的内容
-        if (synth.speaking) {
-            synth.cancel();
+        // 取消当前播报
+        if (synthesis.speaking) {
+            synthesis.cancel();
         }
 
-        const config = { ...defaults, ...options };
+        const config = { ...speakDefaults, ...options };
         utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = config.lang;
         utterance.pitch = config.pitch;
         utterance.rate = config.rate;
         utterance.volume = config.volume;
 
-        // 选择中文语音（优先）
-        const voices = synth.getVoices();
+        // 选择中文语音
+        const voices = synthesis.getVoices();
         const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('cmn'));
         if (zhVoice) utterance.voice = zhVoice;
 
-        utterance.onstart = config.onStart;
         utterance.onend = () => {
             lastSpokenText = text;
             lastSpokenTime = Date.now();
-            if (config.onEnd) config.onEnd();
         };
-        utterance.onerror = config.onError;
 
-        synth.speak(utterance);
+        synthesis.speak(utterance);
     }
 
-    /**
-     * 立即停止当前朗读
-     */
-    function stop() {
-        if (synth && synth.speaking) {
-            synth.cancel();
+    // ----- 语音识别部分 -----
+    let recognition = null;
+    let isListening = false;
+    let onCommandCallback = null;
+
+    function initRecognition(callback) {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            console.warn('浏览器不支持语音识别');
+            return false;
+        }
+        recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'zh-CN';
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            console.log('识别结果：', transcript);
+            if (onCommandCallback) {
+                onCommandCallback(transcript);
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error('语音识别错误', event.error);
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            updateUI(false);
+        };
+
+        return true;
+    }
+
+    function startListening(callback) {
+        if (!recognition) {
+            if (!initRecognition(callback)) return;
+        }
+        onCommandCallback = callback;
+        try {
+            recognition.start();
+            isListening = true;
+            updateUI(true);
+        } catch (e) {
+            console.error('启动语音识别失败', e);
         }
     }
 
-    // 获取 voices 的异步处理（部分浏览器需要）
-    if (checkSupport()) {
-        if (synth.getVoices().length === 0) {
-            synth.addEventListener('voiceschanged', () => {});
+    function stopListening() {
+        if (recognition && isListening) {
+            recognition.stop();
+            isListening = false;
+            updateUI(false);
         }
+    }
+
+    function toggleListening(callback) {
+        if (isListening) {
+            stopListening();
+        } else {
+            startListening(callback);
+        }
+    }
+
+    // 更新UI（如果页面有语音按钮）
+    function updateUI(listening) {
+        const btn = document.getElementById('voice-toggle');
+        const status = document.getElementById('voice-status');
+        if (btn) {
+            btn.textContent = listening ? '🔴 关闭语音' : '🎤 开启语音遥控';
+            btn.classList.toggle('listening', listening);
+        }
+        if (status) {
+            status.textContent = listening ? '聆听中...' : '';
+        }
+    }
+
+    // 预加载语音列表（部分浏览器需要）
+    if (checkSpeechSupport() && synthesis.getVoices().length === 0) {
+        synthesis.addEventListener('voiceschanged', () => {});
     }
 
     return {
         speak,
-        stop,
-        checkSupport
+        stopListening,
+        toggleListening
     };
 })();
+
+// 暴露全局变量
+window.VoiceGuide = VoiceGuide;
