@@ -5,19 +5,21 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from functools import wraps   # 添加这行
 
 import cv2
 import numpy as np
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from sqlalchemy import func, case
 
 from core.detector import GuitarFingeringRecognizer
 from api.chords import chords_bp
 import config
 from core import user_stats
 from core.llm_service import LLMService
-from models import db, TrainingRecord  # 从 models.py 导入
+from models import db, TrainingRecord
 
 # ---------- 日志配置 ----------
 logging.basicConfig(
@@ -34,16 +36,15 @@ CORS(app)
 # ---------- 数据库配置 ----------
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///training.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)  # 初始化 db，而非重新创建
+db.init_app(app)
 
-# 创建数据库表（如果不存在）
 with app.app_context():
     db.create_all()
 
 # 注册蓝图
 app.register_blueprint(chords_bp, url_prefix='/api/chords')
 
-# 初始化 SocketIO，启用 eventlet 异步模式
+# 初始化 SocketIO
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
@@ -73,17 +74,14 @@ recognizer = GuitarFingeringRecognizer(
     hand_model_path=config.HAND_MODEL_PATH
 )
 
-# 线程池，用于异步处理帧
 executor = ThreadPoolExecutor(max_workers=2)
 
-# 全局演奏记录（内存存储，与数据库无关）
 play_records = []
 records_lock = threading.Lock()
 MAX_RECORDS = 100
 
 # ---------- 工具函数 ----------
 def base64_to_cv2(image_base64: str):
-    """将 base64 图片数据转换为 OpenCV 图像 (BGR 格式)"""
     try:
         if ',' in image_base64:
             image_base64 = image_base64.split(',')[-1]
@@ -99,7 +97,6 @@ def base64_to_cv2(image_base64: str):
         return None
 
 def _safe_emit(event, data, room=None):
-    """安全发送消息，捕获可能的连接异常"""
     try:
         socketio.emit(event, data, room=room)
     except Exception as e:
@@ -108,7 +105,6 @@ def _safe_emit(event, data, room=None):
 # ---------- SocketIO 事件处理 ----------
 @socketio.on('hand_landmarks')
 def handle_hand_landmarks(data):
-    """接收前端传来的手部关键点（21个归一化点）"""
     landmarks = data.get('landmarks')
     timestamp = data.get('timestamp', time.time())
     img_width = data.get('img_width', 1280)
@@ -129,7 +125,6 @@ def handle_hand_landmarks(data):
 
 @socketio.on('thumbnail')
 def handle_thumbnail(data):
-    """接收前端发来的低分辨率缩略图，用于YOLO更新指板参数"""
     image_base64 = data.get('image')
     if not image_base64:
         logger.warning("收到空缩略图数据")
@@ -148,7 +143,6 @@ def handle_thumbnail(data):
 
 @socketio.on('frame')
 def handle_frame(data):
-    """接收前端图像帧，提交到线程池处理"""
     image_base64 = data.get('image')
     if not image_base64:
         logger.warning("收到空图像数据")
@@ -159,7 +153,6 @@ def handle_frame(data):
     executor.submit(process_and_emit, image_base64, sid)
 
 def process_and_emit(image_base64: str, sid: str):
-    """在线程池中执行推理并发送结果"""
     timings = {}
     t_start = time.perf_counter()
 
@@ -199,7 +192,6 @@ def process_and_emit(image_base64: str, sid: str):
 # ---------- HTTP 接口 ----------
 @app.route('/api/solo/save_record', methods=['POST'])
 def save_solo_record():
-    """保存演奏记录（内存存储）"""
     global play_records
     try:
         data = request.get_json()
@@ -216,7 +208,6 @@ def save_solo_record():
 
 @app.route('/api/save_record', methods=['POST'])
 def save_training_record():
-    """保存单次训练记录到数据库"""
     data = request.get_json()
     if not data or 'chord_name' not in data or 'correct' not in data:
         return jsonify({'error': '缺少必要字段'}), 400
@@ -232,7 +223,6 @@ def save_training_record():
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """健康检查接口"""
     return jsonify({
         "status": "ok",
         "message": "吉他AI服务运行正常",
@@ -263,14 +253,113 @@ def teach():
 @app.route('/history')
 def history():
     records = TrainingRecord.query.order_by(TrainingRecord.created_at.desc()).limit(100).all()
-    return render_template('history.html', records=records)
+    records_data = [{
+        'id': r.id,
+        'chord_name': r.chord_name,
+        'correct': r.correct,
+        'time_spent': float(r.time_spent) if r.time_spent else None,
+        'created_at': r.created_at.isoformat() if r.created_at else None
+    } for r in records]
+    return render_template('history.html', records=records_data)
+
+# ---------- 历史记录 API（优化版） ----------
+@app.route('/api/history/data')
+def history_data():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    chord = request.args.get('chord', None)
+    result = request.args.get('result', None)
+    start_date = request.args.get('start_date', None)
+    end_date = request.args.get('end_date', None)
+
+    query = TrainingRecord.query
+    if chord and chord != 'all':
+        query = query.filter(TrainingRecord.chord_name == chord)
+    if result == 'correct':
+        query = query.filter(TrainingRecord.correct == True)
+    elif result == 'wrong':
+        query = query.filter(TrainingRecord.correct == False)
+    if start_date:
+        query = query.filter(TrainingRecord.created_at >= start_date)
+    if end_date:
+        query = query.filter(TrainingRecord.created_at <= end_date + ' 23:59:59')
+
+    total = query.count()
+    records = query.order_by(TrainingRecord.created_at.desc()).offset((page-1)*per_page).limit(per_page).all()
+    records_data = [{
+        'id': r.id,
+        'chord_name': r.chord_name,
+        'correct': r.correct,
+        'time_spent': float(r.time_spent) if r.time_spent else None,
+        'created_at': r.created_at.isoformat() if r.created_at else None
+    } for r in records]
+
+    return jsonify({
+        'records': records_data,
+        'total': total,
+        'page': page,
+        'per_page': per_page
+    })
+
+def cache_result(ttl=5):
+    """简单的缓存装饰器，使用 functools.wraps 保留原函数名"""
+    def decorator(func):
+        cache = {}
+        @wraps(func)   # 关键：保留原始函数名，避免 Flask 端点冲突
+        def wrapper(*args, **kwargs):
+            key = str(args) + str(kwargs)
+            now = time.time()
+            if key in cache and now - cache[key]['time'] < ttl:
+                return cache[key]['value']
+            result = func(*args, **kwargs)
+            cache[key] = {'value': result, 'time': now}
+            return result
+        return wrapper
+    return decorator
+
+@app.route('/api/history/stats')
+@cache_result(ttl=5)
+def history_stats():
+    # 总次数和正确数
+    total = db.session.query(func.count(TrainingRecord.id)).scalar()
+    correct = db.session.query(func.sum(TrainingRecord.correct.cast(db.Integer))).scalar()
+    accuracy = (correct / total * 100) if total else 0
+
+    # 各和弦统计（GROUP BY）
+    chord_stats = db.session.query(
+        TrainingRecord.chord_name,
+        func.count(TrainingRecord.id).label('total'),
+        func.sum(TrainingRecord.correct.cast(db.Integer)).label('correct')
+    ).group_by(TrainingRecord.chord_name).all()
+
+    chords = []
+    accuracies = []
+    weak_chords = []
+    if chord_stats:
+        sorted_stats = sorted(chord_stats, key=lambda x: x.correct / x.total if x.total else 0)
+        weak_chords = [stat.chord_name for stat in sorted_stats[:3]]
+        for stat in chord_stats:
+            chords.append(stat.chord_name)
+            accuracies.append(round((stat.correct / stat.total) * 100, 1))
+
+    # 最近一次练习
+    last = TrainingRecord.query.order_by(TrainingRecord.created_at.desc()).first()
+    last_time = last.created_at.isoformat() if last else None
+
+    return jsonify({
+        'total_count': total,
+        'accuracy': accuracy,
+        'last_practice': last_time,
+        'weak_chords': weak_chords,
+        'chords': chords,
+        'accuracies': accuracies
+    })
 
 # ---------- 教学驾驶舱 API ----------
 llm_service = LLMService()
 
 @app.route('/api/teach/dashboard')
 def get_teach_dashboard():
-    """获取仪表盘所有数据"""
     overview = user_stats.get_overview()
     mastery = user_stats.get_chord_mastery()
     progress = user_stats.get_progress_trend()
@@ -284,7 +373,6 @@ def get_teach_dashboard():
 
 @app.route('/api/teach/generate_advice', methods=['POST'])
 def generate_advice():
-    """调用大模型生成教学建议"""
     overview = user_stats.get_overview()
     recent = user_stats.get_recent_records(limit=1)
     stats = {

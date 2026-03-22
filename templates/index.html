@@ -275,14 +275,14 @@
             }
         }
 
-        /* ========== 开场动画样式（与index背景相同） ========== */
+        /* ========== 开场动画样式（背景与index一致） ========== */
         .intro-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: #1a120b; /* 与 body 背景色一致 */
+            background-color: #1a120b;
             z-index: 10000;
             display: flex;
             flex-direction: column;
@@ -292,7 +292,6 @@
             will-change: background-color;
         }
 
-        /* 复制 body 的木质纹理和琴弦到开场容器，实现相同背景 */
         .intro-overlay::before {
             content: '';
             position: absolute;
@@ -323,6 +322,7 @@
             justify-content: center;
             align-items: center;
             z-index: 2;
+            perspective: 1000px;
         }
 
         .intro-content img {
@@ -336,6 +336,7 @@
             pointer-events: none;
             user-select: none;
             -webkit-user-drag: none;
+            transform-style: preserve-3d;
         }
 
         .intro-hint {
@@ -362,13 +363,10 @@
     </style>
 </head>
 <body>
-    <!-- 开场动画容器（背景与index一致） -->
+    <!-- 开场动画容器（只保留吉他图片） -->
     <div id="intro-overlay" class="intro-overlay">
         <div class="intro-content" id="intro-content">
-            <!-- 三张图片，请确保文件名正确且放入 /static/images/ 目录 -->
-            <img id="img-girl-alone" src="/static/images/girl-alone.png" alt="孤单小女孩" onerror="console.error('图片加载失败:', this.src)">
             <img id="img-guitar-notes" src="/static/images/guitar-notes.png" alt="乐符环绕吉他" onerror="console.error('图片加载失败:', this.src)">
-            <img id="img-girl-with-friends" src="/static/images/girl-with-friends.png" alt="被伙伴围绕的小女孩" onerror="console.error('图片加载失败:', this.src)">
         </div>
         <div class="intro-hint">✨ 即将进入</div>
     </div>
@@ -403,23 +401,20 @@
     <!-- 粒子动画脚本（如果存在） -->
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
-    <!-- 开场动画脚本（只播放一次，背景与index一致） -->
+    <!-- 开场动画脚本（单张吉他，伪3D，总时长3秒） -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             'use strict';
 
             const overlay = document.getElementById('intro-overlay');
             const content = document.getElementById('intro-content');
-            const img1 = document.getElementById('img-girl-alone');
-            const img2 = document.getElementById('img-guitar-notes');
-            const img3 = document.getElementById('img-girl-with-friends');
+            const guitar = document.getElementById('img-guitar-notes');
             const mainContent = document.querySelector('.main-content');
 
-            // 检查是否已播放过（使用 sessionStorage，当前标签页内有效）
+            // 检查是否已播放过
             const hasPlayed = sessionStorage.getItem('introPlayed');
 
             if (hasPlayed) {
-                // 已播放过，直接隐藏开场，显示主内容
                 console.log('⏩ 开场动画已播放过，跳过');
                 if (overlay) overlay.style.display = 'none';
                 if (mainContent) {
@@ -429,7 +424,7 @@
                 return;
             }
 
-            if (!overlay || !img1 || !img2 || !img3 || !mainContent) {
+            if (!overlay || !guitar || !mainContent) {
                 console.error('❌ 开场元素缺失，直接显示主内容');
                 if (overlay) overlay.style.display = 'none';
                 if (mainContent) {
@@ -439,15 +434,17 @@
                 return;
             }
 
-            // 输出图片路径以便调试
-            console.log('图片路径:', img1.src, img2.src, img3.src);
+            console.log('✅ 开场元素已找到，开始动画');
+            console.log('吉他图片路径:', guitar.src);
 
             // 初始状态
-            gsap.set([img1, img2, img3], {
+            gsap.set(guitar, {
                 opacity: 0,
                 scale: 0.8,
                 filter: 'blur(8px) brightness(0.6)',
-                rotation: -2
+                rotationY: -15,
+                rotationX: 5,
+                transformPerspective: 1000
             });
 
             // 创建时间线
@@ -456,118 +453,51 @@
                 onStart: () => console.log('🎬 时间线开始'),
                 onComplete: () => {
                     console.log('🎬 时间线完成');
-                    // 标记已播放
                     sessionStorage.setItem('introPlayed', 'true');
                 }
             });
 
-            // 场景1: 出现 (1.5秒)
-            tl.to(img1, {
+            // 吉他淡入 + 伪3D旋转到正常位置，持续2秒
+            tl.to(guitar, {
                 opacity: 1,
                 scale: 1,
-                rotation: 0,
                 filter: 'blur(0px) brightness(1)',
-                duration: 1.5,
-                ease: "power2.out",
-                onStart: () => console.log('🎬 [0s] 场景1出现')
-            })
-            // 场景1停留1秒
-            .to(img1, {
-                duration: 1,
-                ease: "none",
-                onStart: () => console.log('🎬 [1.5s] 场景1停留')
-            })
-            // 场景1淡出 + 场景2淡入（交叉）
-            .to(img1, {
-                opacity: 0,
-                scale: 0.6,
-                rotation: 3,
-                filter: 'blur(6px) brightness(0.5)',
-                duration: 1.2,
-                ease: "power2.in",
-                onStart: () => console.log('🎬 [2.5s] 场景1淡出')
-            }, "+=0")
-            .to(img2, {
-                opacity: 1,
-                scale: 1,
-                rotation: 0,
-                filter: 'blur(0px) brightness(1)',
-                duration: 1.5,
+                rotationY: 0,
+                rotationX: 0,
+                duration: 2,
                 ease: "elastic.out(1, 0.4)",
-                onStart: () => console.log('🎬 [2.5s] 场景2淡入')
-            }, "<")
-            // 场景2停留1秒
-            .to(img2, {
+                onStart: () => console.log('🎬 [0s] 吉他淡入并旋转')
+            })
+            // 停留1秒
+            .to(guitar, {
                 duration: 1,
                 ease: "none",
-                onStart: () => console.log('🎬 [4.0s] 场景2停留')
+                onStart: () => console.log('🎬 [2s] 停留1秒')
             })
-            // 场景2淡出 + 场景3淡入
-            .to(img2, {
-                opacity: 0,
-                scale: 0.7,
-                rotation: -2,
-                filter: 'blur(5px) brightness(0.5)',
-                duration: 1.2,
-                ease: "power2.in",
-                onStart: () => console.log('🎬 [5.0s] 场景2淡出')
-            }, "+=0")
-            .to(img3, {
-                opacity: 1,
-                scale: 1,
-                rotation: 0,
-                filter: 'blur(0px) brightness(1)',
-                duration: 1.8,
-                ease: "back.out(1.2)",
-                onStart: () => {
-                    console.log('🎬 [5.0s] 场景3淡入');
-                    // 永久光晕
-                    gsap.to(img3, {
-                        filter: 'drop-shadow(0 0 30px rgba(255,215,0,0.8)) brightness(1.1)',
-                        duration: 1.5,
-                        yoyo: true,
-                        repeat: -1,
-                        ease: "sine.inOut"
-                    });
-                },
-                onComplete: () => {
-                    console.log('⏳ [6.8s] 场景3完全显示，2秒后自动进入主页');
-                    // 场景3开始呼吸
-                    gsap.to(img3, {
-                        scale: 1.02,
-                        duration: 2,
-                        ease: "sine.inOut",
-                        yoyo: true,
-                        repeat: -1
-                    });
-                    // 延迟2秒后进入主页
-                    gsap.delayedCall(2, () => {
-                        if (overlay.style.display === 'none') return;
-                        console.log('🚪 自动进入主页');
-                        tl.pause();
-                        gsap.killTweensOf([img1, img2, img3]);
-                        gsap.to(overlay, {
-                            opacity: 0,
-                            duration: 1.2,
-                            ease: "power2.inOut",
-                            onComplete: () => {
-                                overlay.style.display = 'none';
-                                mainContent.style.visibility = 'visible';
-                                gsap.fromTo(mainContent,
-                                    { y: 20, opacity: 0 },
-                                    { y: 0, opacity: 1, duration: 1.2, ease: "power2.out", clearProps: "y" }
-                                );
-                                console.log('🏠 主界面已显示');
-                            }
-                        });
-                    });
-                }
-            }, "<");
+            // 动画结束后自动进入主页（不淡出，直接进入）
+            .call(() => {
+                console.log('🚪 3秒到，自动进入主页');
+                gsap.killTweensOf(guitar);
+                gsap.to(overlay, {
+                    opacity: 0,
+                    duration: 1.2,
+                    ease: "power2.inOut",
+                    onComplete: () => {
+                        overlay.style.display = 'none';
+                        mainContent.style.visibility = 'visible';
+                        gsap.fromTo(mainContent,
+                            { y: 20, opacity: 0 },
+                            { y: 0, opacity: 1, duration: 1.2, ease: "power2.out", clearProps: "y" }
+                        );
+                        console.log('🏠 主界面已显示');
+                    }
+                });
+            }, "+=0");
 
             // 悬停加速
             content.addEventListener('mouseenter', () => {
                 tl.timeScale(2);
-                gsap.to([img1, img2, img3], {
+                gsap.to(guitar, {
                     filter: 'drop-shadow(0 0 40px rgba(255,215,0,0.9)) brightness(1.2)',
                     duration: 0.4,
                     overwrite: true
@@ -576,7 +506,7 @@
             });
             content.addEventListener('mouseleave', () => {
                 tl.timeScale(1);
-                gsap.to([img1, img2, img3], {
+                gsap.to(guitar, {
                     filter: 'drop-shadow(0 0 20px rgba(255,215,0,0.3)) brightness(1)',
                     duration: 0.6,
                     overwrite: true
@@ -584,12 +514,12 @@
                 console.log('🐭 悬停恢复: 1x');
             });
 
-            // 强制超时：15秒后强制进入
+            // 强制超时：5秒后强制进入（比总时长多2秒）
             setTimeout(() => {
                 if (overlay.style.display !== 'none') {
-                    console.warn('⚠️ 强制超时：15秒已过，强制进入主页');
+                    console.warn('⚠️ 强制超时：5秒已过，强制进入主页');
                     tl.pause();
-                    gsap.killTweensOf([img1, img2, img3]);
+                    gsap.killTweensOf(guitar);
                     gsap.to(overlay, {
                         opacity: 0,
                         duration: 1.2,
@@ -601,12 +531,11 @@
                                 { y: 20, opacity: 0 },
                                 { y: 0, opacity: 1, duration: 1.2, ease: "power2.out", clearProps: "y" }
                             );
-                            // 即使超时也标记已播放，避免再次播放
                             sessionStorage.setItem('introPlayed', 'true');
                         }
                     });
                 }
-            }, 15000);
+            }, 5000);
 
             console.log('🎬 动画序列已启动');
         });
