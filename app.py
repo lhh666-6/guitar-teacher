@@ -4,6 +4,7 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -14,6 +15,9 @@ from flask_socketio import SocketIO
 from core.detector import GuitarFingeringRecognizer
 from api.chords import chords_bp
 import config
+from core import user_stats
+from core.llm_service import LLMService
+from models import db, TrainingRecord  # 从 models.py 导入
 
 # ---------- 日志配置 ----------
 logging.basicConfig(
@@ -27,17 +31,26 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = config.SECRET_KEY
 CORS(app)
 
+# ---------- 数据库配置 ----------
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///training.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)  # 初始化 db，而非重新创建
+
+# 创建数据库表（如果不存在）
+with app.app_context():
+    db.create_all()
+
 # 注册蓝图
 app.register_blueprint(chords_bp, url_prefix='/api/chords')
 
-# 初始化 SocketIO，启用 eventlet 异步模式，并设置相关参数
+# 初始化 SocketIO，启用 eventlet 异步模式
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode='eventlet',                     # 使用 eventlet 提升性能
-    max_http_buffer_size=10 * 1024 * 1024,     # 10 MB，防止大帧被截断
-    ping_timeout=60,                            # 默认60秒，可适当调整
-    ping_interval=25                             # 默认25秒
+    async_mode='eventlet',
+    max_http_buffer_size=10 * 1024 * 1024,
+    ping_timeout=60,
+    ping_interval=25
 )
 
 # ---------- 模型文件检查 ----------
@@ -60,10 +73,10 @@ recognizer = GuitarFingeringRecognizer(
     hand_model_path=config.HAND_MODEL_PATH
 )
 
-# 线程池，用于异步处理帧（与 eventlet 配合，不宜过大）
+# 线程池，用于异步处理帧
 executor = ThreadPoolExecutor(max_workers=2)
 
-# 全局演奏记录
+# 全局演奏记录（内存存储，与数据库无关）
 play_records = []
 records_lock = threading.Lock()
 MAX_RECORDS = 100
@@ -92,13 +105,13 @@ def _safe_emit(event, data, room=None):
     except Exception as e:
         logger.error(f"发送消息失败 (event={event}): {e}")
 
-# ---------- 新增：处理手部关键点 ----------
+# ---------- SocketIO 事件处理 ----------
 @socketio.on('hand_landmarks')
 def handle_hand_landmarks(data):
     """接收前端传来的手部关键点（21个归一化点）"""
-    landmarks = data.get('landmarks')  # 期望格式: [[x1,y1], [x2,y2], ...]
+    landmarks = data.get('landmarks')
     timestamp = data.get('timestamp', time.time())
-    img_width = data.get('img_width', 1280)   # 前端告知图像宽高（用于坐标换算）
+    img_width = data.get('img_width', 1280)
     img_height = data.get('img_height', 720)
 
     if not landmarks or len(landmarks) != 21:
@@ -107,7 +120,6 @@ def handle_hand_landmarks(data):
         return
 
     sid = request.sid
-    # 直接在主线程中处理（关键点计算非常快）
     try:
         result = recognizer.process_landmarks(landmarks, timestamp, img_width, img_height)
         _safe_emit('detection_result', result, room=sid)
@@ -115,7 +127,6 @@ def handle_hand_landmarks(data):
         logger.exception("处理关键点时发生异常")
         _safe_emit('detection_result', {'status': 'failed', 'error': '处理失败'})
 
-# ---------- 新增：处理缩略图（用于YOLO更新指板）----------
 @socketio.on('thumbnail')
 def handle_thumbnail(data):
     """接收前端发来的低分辨率缩略图，用于YOLO更新指板参数"""
@@ -129,17 +140,15 @@ def handle_thumbnail(data):
         logger.warning("缩略图解码失败")
         return
 
-    # 更新指板参数（非阻塞，但通常很快，直接运行）
     success = recognizer.update_fretboard(frame)
     if success:
         logger.info("指板参数更新成功")
     else:
         logger.warning("指板参数更新失败（可能未检测到琴枕/琴桥）")
 
-# ---------- 原有的 frame 事件（可选保留，作为降级）----------
 @socketio.on('frame')
 def handle_frame(data):
-    """接收前端图像帧，提交到线程池处理（原有逻辑，可降级使用）"""
+    """接收前端图像帧，提交到线程池处理"""
     image_base64 = data.get('image')
     if not image_base64:
         logger.warning("收到空图像数据")
@@ -150,12 +159,11 @@ def handle_frame(data):
     executor.submit(process_and_emit, image_base64, sid)
 
 def process_and_emit(image_base64: str, sid: str):
-    """在线程池中执行推理并发送结果（包含详细计时）"""
+    """在线程池中执行推理并发送结果"""
     timings = {}
     t_start = time.perf_counter()
 
     try:
-        # ----- 1. 图像解码阶段 -----
         t_decode = time.perf_counter()
         frame = base64_to_cv2(image_base64)
         if frame is None:
@@ -166,13 +174,11 @@ def process_and_emit(image_base64: str, sid: str):
             return
         timings['decode'] = (time.perf_counter() - t_decode) * 1000
 
-        # ----- 2. 推理阶段 -----
         t_infer = time.perf_counter()
         timestamp = time.time()
         processed_frame, result = recognizer.process_frame(frame, timestamp)
         timings['inference'] = (time.perf_counter() - t_infer) * 1000
 
-        # ----- 3. 发送结果 -----
         t_emit = time.perf_counter()
         _safe_emit('detection_result', result, room=sid)
         timings['emit'] = (time.perf_counter() - t_emit) * 1000
@@ -192,8 +198,8 @@ def process_and_emit(image_base64: str, sid: str):
 
 # ---------- HTTP 接口 ----------
 @app.route('/api/solo/save_record', methods=['POST'])
-def save_record():
-    """保存演奏记录"""
+def save_solo_record():
+    """保存演奏记录（内存存储）"""
     global play_records
     try:
         data = request.get_json()
@@ -207,6 +213,22 @@ def save_record():
     except Exception as e:
         logger.exception("保存记录失败")
         return jsonify({'status': 'failed', 'message': '保存失败，请稍后重试'}), 500
+
+@app.route('/api/save_record', methods=['POST'])
+def save_training_record():
+    """保存单次训练记录到数据库"""
+    data = request.get_json()
+    if not data or 'chord_name' not in data or 'correct' not in data:
+        return jsonify({'error': '缺少必要字段'}), 400
+
+    record = TrainingRecord(
+        chord_name=data['chord_name'],
+        correct=data['correct'],
+        time_spent=data.get('time_spent', 0.0)
+    )
+    db.session.add(record)
+    db.session.commit()
+    return jsonify({'status': 'ok', 'id': record.id})
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -238,6 +260,43 @@ def solo():
 def teach():
     return render_template('teach.html')
 
+@app.route('/history')
+def history():
+    records = TrainingRecord.query.order_by(TrainingRecord.created_at.desc()).limit(100).all()
+    return render_template('history.html', records=records)
+
+# ---------- 教学驾驶舱 API ----------
+llm_service = LLMService()
+
+@app.route('/api/teach/dashboard')
+def get_teach_dashboard():
+    """获取仪表盘所有数据"""
+    overview = user_stats.get_overview()
+    mastery = user_stats.get_chord_mastery()
+    progress = user_stats.get_progress_trend()
+    recent = user_stats.get_recent_records()
+    return jsonify({
+        'overview': overview,
+        'mastery': mastery,
+        'progress': progress,
+        'recent_records': recent
+    })
+
+@app.route('/api/teach/generate_advice', methods=['POST'])
+def generate_advice():
+    """调用大模型生成教学建议"""
+    overview = user_stats.get_overview()
+    recent = user_stats.get_recent_records(limit=1)
+    stats = {
+        'overview': overview,
+        'recent_records': recent
+    }
+    advice = llm_service.generate_advice(stats)
+    if advice:
+        return jsonify({'advice': advice})
+    else:
+        return jsonify({'advice': '暂时无法生成建议，请稍后再试。'})
+
 # ---------- 启动 ----------
 if __name__ == '__main__':
     logger.info(f"启动服务器，debug={config.DEBUG}")
@@ -246,5 +305,5 @@ if __name__ == '__main__':
         debug=config.DEBUG,
         host='0.0.0.0',
         port=5000,
-        use_reloader=False   # 关闭重载器以避免与 eventlet 冲突
-    ) 
+        use_reloader=False
+    )

@@ -39,10 +39,10 @@ const MAX_RECORDS = 100;
 
 // -------------------- 和弦库数据（备用，当后端加载失败时使用）--------------------
 const DEFAULT_CHORDS = [
-    { name: 'C', desc: '大三和弦 (明亮)', positions: [{string:2, fret:1}, {string:4, fret:2}, {string:5, fret:3}, {string:6, fret:3}], barre: null },
-    { name: 'Dm', desc: '小三和弦 (柔和)', positions: [{string:1, fret:1}, {string:2, fret:3}, {string:3, fret:2}, {string:4, fret:2}], barre: null },
-    { name: 'Em', desc: '小三和弦 (忧郁)', positions: [{string:4, fret:2}, {string:5, fret:2}], barre: null },
-    { name: 'F', desc: '大横按和弦', positions: [{string:2, fret:1}, {string:3, fret:2}, {string:4, fret:3}], barre: {fret:1, startString:6, endString:1} },
-    { name: 'G', desc: '大三和弦', positions: [{string:1, fret:3}, {string:5, fret:2}, {string:6, fret:3}], barre: null },
-    { name: 'Am', desc: '小三和弦', positions: [{string:2, fret:1}, {string:3, fret:2}, {string:4, fret:2}], barre: null }
+    { name: 'C', desc: '大三和弦 (明亮)', difficulty: 1, positions: [{string:2, fret:1}, {string:4, fret:2}, {string:5, fret:3}, {string:6, fret:3}], barre: null },
+    { name: 'Dm', desc: '小三和弦 (柔和)', difficulty: 2, positions: [{string:1, fret:1}, {string:2, fret:3}, {string:3, fret:2}, {string:4, fret:2}], barre: null },
+    { name: 'Em', desc: '小三和弦 (忧郁)', difficulty: 1, positions: [{string:4, fret:2}, {string:5, fret:2}], barre: null },
+    { name: 'F', desc: '大横按和弦', difficulty: 3, positions: [{string:2, fret:1}, {string:3, fret:2}, {string:4, fret:3}], barre: {fret:1, startString:6, endString:1} },
+    { name: 'G', desc: '大三和弦', difficulty: 2, positions: [{string:1, fret:3}, {string:5, fret:2}, {string:6, fret:3}], barre: null },
+    { name: 'Am', desc: '小三和弦', difficulty: 1, positions: [{string:2, fret:1}, {string:3, fret:2}, {string:4, fret:2}], barre: null }
 ];

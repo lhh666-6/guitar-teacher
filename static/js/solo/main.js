@@ -99,7 +99,9 @@
                 currentTimeDisplay: document.getElementById('currentTimeDisplay'),
                 fretboardMini: document.getElementById('fretboardMini'),
                 trainLayout: document.querySelector('.train-layout'),
-                videoContainer: document.querySelector('.camera-container')
+                videoContainer: document.querySelector('.camera-container'),
+                // 新增：难度徽章
+                difficultyBadge: document.getElementById('difficultyBadge')
             };
 
             // 叠加画布（若不存在则创建）
@@ -139,6 +141,15 @@
             }
         }
 
+        // 辅助方法：根据难度返回星号字符串（难度1-5）
+        getStars(difficulty) {
+            const fullStar = '★';
+            // 如果想显示空心星表示剩余难度（例如难度3显示为★★★☆☆），可改用下面注释的代码
+            // const emptyStar = '☆';
+            // return fullStar.repeat(difficulty) + emptyStar.repeat(5 - difficulty);
+            return fullStar.repeat(difficulty);
+        }
+
         async loadChords() {
             try {
                 const response = await fetch('/api/chords/');
@@ -150,7 +161,8 @@
                     description: chord.desc,
                     detail: chord.desc,
                     positions: chord.positions,
-                    barre: chord.barre
+                    barre: chord.barre,
+                    difficulty: chord.difficulty || 1
                 }));
             } catch (err) {
                 console.warn('加载和弦失败，使用默认数据', err);
@@ -160,25 +172,32 @@
                     description: chord.desc,
                     detail: chord.desc,
                     positions: chord.positions,
-                    barre: chord.barre
+                    barre: chord.barre,
+                    difficulty: chord.difficulty || 1
                 }));
             }
+
+            // 清空并重新渲染下拉框
+            const select = this.elements.chordSelect;
+            select.innerHTML = '';
 
             this.chords.forEach(chord => {
                 const option = document.createElement('option');
                 option.value = chord.id;
-                option.textContent = chord.name;
-                this.elements.chordSelect.appendChild(option);
+                // 调用类内的 getStars 方法
+                const stars = this.getStars(chord.difficulty || 1);
+                option.textContent = `${chord.name} ${stars}`;
+                select.appendChild(option);
             });
 
             if (this.chords.length > 0) {
-                this.elements.chordSelect.value = this.chords[0].id;
-                this.elements.chordSelect.dispatchEvent(new Event('change'));
+                select.value = this.chords[0].id;
+                select.dispatchEvent(new Event('change'));
             }
-        }
-
+        }     
+        // 将后端弦号转换为显示索引（顶部为6弦，底部为1弦）
         backendToDisplayIndex(backendString) {
-            return STRING_COUNT - 1;
+            return STRING_COUNT - backendString; // 例如 6弦 -> 0, 1弦 -> 5
         }
 
         updateStats() {
@@ -197,10 +216,18 @@
                 const item = document.createElement('div');
                 item.className = 'test-item';
 
+                // 和弦名称
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'test-item-name';
                 nameSpan.textContent = chord.name;
 
+                // 新增：难度徽章
+                const diffSpan = document.createElement('span');
+                diffSpan.className = 'test-item-difficulty';
+                const difficulty = chord.difficulty || 1;
+                diffSpan.textContent = `难度 ${difficulty}`;
+
+                // 状态显示
                 const statusSpan = document.createElement('span');
                 statusSpan.className = 'test-item-status';
 
@@ -216,6 +243,7 @@
                 }
 
                 item.appendChild(nameSpan);
+                item.appendChild(diffSpan);
                 item.appendChild(statusSpan);
                 div.appendChild(item);
             });
@@ -278,6 +306,12 @@
                 this.elements.chordDetailContent.textContent = chord.detail;
                 this.renderStandardDots(chord);
 
+                // 新增：更新难度徽章
+                if (this.elements.difficultyBadge) {
+                    const difficulty = chord.difficulty || 1;
+                    this.elements.difficultyBadge.textContent = '难度' + difficulty;
+                }
+
                 this.recordedForCurrentChord = false;
                 this.chordStartTime = Date.now();
                 this.updateProgress();
@@ -307,6 +341,18 @@
             this.updateStats();
             this.recordedForCurrentChord = true;
             this.renderTestList();
+
+            // 保存正确记录
+            fetch('/api/save_record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chord_name: this.currentChord.name,
+                    correct: true,
+                    time_spent: elapsed
+                })
+            }).catch(err => console.error('保存记录失败:', err));
+
             this.moveToNextTest();
         }
 
@@ -317,6 +363,18 @@
             this.updateStats();
             this.recordedForCurrentChord = true;
             this.renderTestList();
+
+            // 保存错误记录（不计时）
+            fetch('/api/save_record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chord_name: this.currentChord.name,
+                    correct: false,
+                    time_spent: 0.0
+                })
+            }).catch(err => console.error('保存记录失败:', err));
+
             this.moveToNextTest();
         }
 
@@ -338,7 +396,7 @@
             const innerHeight = containerHeight - topPadding - bottomPadding;
 
             const stringSpacing = innerHeight / (STRING_COUNT - 1);
-            const fretSpacing = innerWidth / (FRET_COUNT - 1);
+            const fretSpacing = innerWidth / (FRET_COUNT - 1);  // FRET_COUNT 应为 5
 
             const baseY = topPadding;
             const baseX = leftPadding;
@@ -367,73 +425,104 @@
                 el.style.left = (x - 15) + 'px';
             });
 
-            // 标准横按
-            if (chord && chord.barre) {
-                const barre = chord.barre;
-                const barreDiv = this.createBarreElement(barre, baseX, baseY, fretSpacing, stringSpacing, 'standard');
-                container.appendChild(barreDiv);
-            }
-
-            // 标准按点
+            // ---------- 按品数排序分配列 ----------
+            const allPositions = [];
             if (chord && chord.positions) {
                 chord.positions.forEach(pos => {
-                    const dot = this.createDotElement(pos, baseX, baseY, fretSpacing, stringSpacing, 'standard');
-                    container.appendChild(dot);
+                    allPositions.push({
+                        ...pos,
+                        type: 'standard',
+                        correct: false
+                    });
+                });
+            }
+            userPositions.forEach(up => {
+                allPositions.push({
+                    string: up.string,
+                    fret: up.fret,
+                    type: 'user',
+                    correct: up.correct
+                });
+            });
+
+            const allBarres = [];
+            if (chord && chord.barre) {
+                allBarres.push({
+                    ...chord.barre,
+                    type: 'standard',
+                    correct: false
+                });
+            }
+            if (userBarre) {
+                allBarres.push({
+                    fret: userBarre.fret,
+                    startString: userBarre.startString,
+                    endString: userBarre.endString,
+                    type: 'user',
+                    correct: userBarre.correct
                 });
             }
 
-            // 用户横按
-            if (userBarre) {
-                const barreDiv = this.createBarreElement(userBarre, baseX, baseY, fretSpacing, stringSpacing, userBarre.correct ? 'user-correct' : 'user-wrong');
-                container.appendChild(barreDiv);
-            }
+            const allFrets = new Set();
+            allPositions.forEach(p => allFrets.add(p.fret));
+            allBarres.forEach(b => allFrets.add(b.fret));
+            const uniqueFrets = Array.from(allFrets).sort((a, b) => a - b);
+            const validFrets = uniqueFrets.slice(0, FRET_COUNT);
+            const fretToCol = {};
+            validFrets.forEach((fret, idx) => {
+                fretToCol[fret] = idx;
+            });
 
-            // 用户按点
-            userPositions.forEach(up => {
-                const dot = this.createDotElement(up, baseX, baseY, fretSpacing, stringSpacing, up.correct ? 'user-correct' : 'user-wrong');
+            // 绘制按点
+            allPositions.forEach(p => {
+                if (!(p.fret in fretToCol)) return;
+                const colIndex = fretToCol[p.fret];
+                const idx = this.backendToDisplayIndex(p.string);
+                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
+                const y = baseY + idx * stringSpacing;
+
+                const dot = document.createElement('div');
+                dot.className = `dot ${p.type === 'standard' ? 'standard' : (p.correct ? 'user-correct' : 'user-wrong')}`;
+                dot.style.left = (x - DOT_RADIUS) + 'px';
+                dot.style.top = (y - DOT_RADIUS) + 'px';
+                dot.textContent = p.fret;
                 container.appendChild(dot);
+            });
+
+            // 绘制横按
+            allBarres.forEach(b => {
+                if (!(b.fret in fretToCol)) return;
+                const colIndex = fretToCol[b.fret];
+                const startIdx = this.backendToDisplayIndex(b.startString);
+                const endIdx = this.backendToDisplayIndex(b.endString);
+                const idxMin = Math.min(startIdx, endIdx);
+                const idxMax = Math.max(startIdx, endIdx);
+                const yStart = baseY + idxMin * stringSpacing;
+                const yEnd = baseY + idxMax * stringSpacing;
+                const topY = Math.min(yStart, yEnd) - DOT_RADIUS;
+                const bottomY = Math.max(yStart, yEnd) + DOT_RADIUS;
+                const height = bottomY - topY;
+                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
+
+                const barreDiv = document.createElement('div');
+                barreDiv.className = `barre ${b.type === 'standard' ? 'standard' : (b.correct ? 'user-correct' : 'user-wrong')}`;
+                barreDiv.style.left = (x - 4) + 'px';
+                barreDiv.style.top = topY + 'px';
+                barreDiv.style.height = height + 'px';
+                barreDiv.style.width = '8px';
+                barreDiv.style.opacity = '0.9';
+                barreDiv.style.borderRadius = '4px';
+                barreDiv.style.position = 'absolute';
+                container.appendChild(barreDiv);
             });
         }
 
-        // 创建单个按点元素
-        createDotElement(pos, baseX, baseY, fretSpacing, stringSpacing, className) {
-            const dot = document.createElement('div');
-            dot.className = `dot ${className}`;
-            const idx = this.backendToDisplayIndex(pos.string);
-            const x = baseX + (pos.fret - 1) * fretSpacing;
-            const y = baseY + idx * stringSpacing;
-            dot.style.left = (x - DOT_RADIUS) + 'px';
-            dot.style.top = (y - DOT_RADIUS) + 'px';
-            dot.textContent = pos.fret;
-            return dot;
-        }
+        // 保留原方法空定义
+        createDotElement(pos, baseX, baseY, fretSpacing, stringSpacing, className) {}
 
-        // 创建横按元素
-        createBarreElement(barre, baseX, baseY, fretSpacing, stringSpacing, className) {
-            const barreDiv = document.createElement('div');
-            barreDiv.className = `barre ${className}`;
-            const startIdx = this.backendToDisplayIndex(barre.startString);
-            const endIdx = this.backendToDisplayIndex(barre.endString);
-            const idxMin = Math.min(startIdx, endIdx);
-            const idxMax = Math.max(startIdx, endIdx);
-            const yStart = baseY + idxMin * stringSpacing;
-            const yEnd = baseY + idxMax * stringSpacing;
-            const topY = Math.min(yStart, yEnd) - DOT_RADIUS;
-            const bottomY = Math.max(yStart, yEnd) + DOT_RADIUS;
-            const height = bottomY - topY;
-            const x = baseX + (barre.fret - 1) * fretSpacing;
-            barreDiv.style.left = (x - 4) + 'px';
-            barreDiv.style.top = topY + 'px';
-            barreDiv.style.height = height + 'px';
-            barreDiv.style.width = '8px';
-            barreDiv.style.backgroundColor = className.includes('correct') ? '#28a745' : '#dc3545';
-            barreDiv.style.opacity = '0.9';
-            barreDiv.style.borderRadius = '4px';
-            barreDiv.style.position = 'absolute';
-            return barreDiv;
-        }
+        createBarreElement(barre, baseX, baseY, fretSpacing, stringSpacing, className) {}
 
-        // ---------- 统一绘制函数（由动画循环调用）----------
+        // ---------- 统一绘制函数 ----------
         drawAll() {
             if (!this.overlayCanvas) return;
             const ctx = this.overlayCtx;
@@ -442,18 +531,16 @@
 
             ctx.clearRect(0, 0, w, h);
 
-            // 绘制缓存的后端数据（琴弦、品丝、按弦点）
             if (this.cachedDrawingData) {
                 drawOverlay(ctx, w, h, this.cachedDrawingData);
             }
 
-            // 绘制实时手部关键点
             if (this.latestLocalLandmarks) {
                 drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
             }
         }
 
-        // ---------- WebSocket 结果处理（修改点：使用独立验证函数）----------
+        // ---------- WebSocket 结果处理 ----------
         handleDetectionResult = (data) => {
             const receiveTime = performance.now();
             if (this.lastFrameSendTime > 0) {
@@ -464,7 +551,6 @@
             console.log('收到检测结果:', data);
 
             if (data.drawing_data) {
-                // 缓存最新的绘图数据
                 this.cachedDrawingData = data.drawing_data;
             }
 
@@ -473,20 +559,17 @@
             if (data.status === 'success') {
                 const processStart = performance.now();
 
-                // 准备视觉结果
                 const visualResult = {
                     positions: data.positions || [],
                     barre: data.barre || null
                 };
 
-                // 调用独立验证函数判断是否正确（纯视觉，未来可替换为融合）
                 const isCorrect = window.validateVisual(
                     visualResult.positions,
                     visualResult.barre,
                     this.currentChord
                 );
 
-                // 准备用于 mini 指板显示的用户数据（保留 correct 标记，用于颜色区分）
                 const userPositions = visualResult.positions.map(pos => ({
                     ...pos,
                     correct: this.currentChord.positions.some(p => p.string === pos.string && p.fret === pos.fret)
@@ -507,23 +590,20 @@
                     this.recordCorrect();
                 }
 
-                // 更新 mini 指板显示
                 this.renderStandardDots(this.currentChord, userPositions, userBarre);
             }
         }
 
-        // ---------- MediaPipe 结果回调（与您原有代码相同，但确保使用常量）----------
+        // ---------- MediaPipe 结果回调 ----------
         onHandResults(results) {
             const now = performance.now();
             if (!this.testMode || !this.sendingEnabled) return;
 
-            // 节流：30fps
             if (now - this.lastLandmarkSendTime < LANDMARK_SEND_INTERVAL) {
                 return;
             }
             this.lastLandmarkSendTime = now;
 
-            // 选择最左边的手
             let targetHandIndex = -1;
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 let minAvgX = Infinity;
@@ -552,7 +632,6 @@
                 return;
             }
 
-            // 应用 OneEuroFilter 平滑
             const smoothed = [];
             for (let i = 0; i < landmarks.length; i++) {
                 const lm = landmarks[i];
@@ -571,7 +650,6 @@
 
             this.latestLocalLandmarks = smoothed;
 
-            // 发送关键点到后端
             this.lastFrameSendTime = now;
             this.socket.emit('hand_landmarks', {
                 landmarks: smoothed.map(p => [p.x, p.y]),
@@ -580,7 +658,6 @@
                 img_height: this.elements.cameraFeed.videoHeight
             });
 
-            // 定时发送缩略图
             if (now - this.lastThumbnailTime > THUMBNAIL_INTERVAL) {
                 this.sendThumbnail();
                 this.lastThumbnailTime = now;
@@ -605,14 +682,11 @@
         }
 
         // ===== 音频预留 =====
-        sendAudio() {
-            // 暂未实现
-        }
+        sendAudio() {}
 
-        // ---------- 摄像头开关（动态加载 MediaPipe）----------
+        // ---------- 摄像头开关 ----------
         async toggleCamera() {
             if (this.cameraStream) {
-                // 关闭摄像头
                 this.sendingEnabled = false;
                 if (this.animationFrameId) {
                     cancelAnimationFrame(this.animationFrameId);
@@ -646,13 +720,10 @@
                 this.cachedDrawingData = null;
             } else {
                 try {
-                    // 动态加载 MediaPipe
                     if (typeof Hands === 'undefined') {
-                        console.warn('MediaPipe Hands 库未加载，请检查脚本引入');
-                        alert('MediaPipe 库加载失败，将使用降级模式');
+                        console.warn('MediaPipe Hands 库未加载，将使用降级模式');
                         this.useMediaPipe = false;
                     } else {
-                        console.log('MediaPipe 库已找到，开始初始化...');
                         if (!this.hands) {
                             this.hands = new Hands({
                                 locateFile: (file) => `https://fastly.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -665,12 +736,10 @@
                             });
                             this.hands.onResults((results) => this.onHandResults(results));
                             await new Promise(resolve => setTimeout(resolve, 1000));
-                            console.log('MediaPipe Hands 模型初始化完成');
                             this.useMediaPipe = true;
                         }
                     }
 
-                    // 请求摄像头
                     this.cameraStream = await navigator.mediaDevices.getUserMedia({
                         video: { width: 1920, height: 1080 }
                     });
@@ -704,7 +773,6 @@
                     });
 
                     if (this.useMediaPipe && this.hands) {
-                        console.log('启动 MediaPipe 相机');
                         this.camera = new Camera(this.elements.cameraFeed, {
                             onFrame: async () => {
                                 await this.hands.send({ image: this.elements.cameraFeed });
@@ -830,6 +898,11 @@
                     this.elements.chordDescription.textContent = this.currentChord.description;
                     this.elements.chordDetailContent.textContent = this.currentChord.detail;
                     this.renderStandardDots(this.currentChord);
+                    // 更新难度徽章
+                    if (this.elements.difficultyBadge) {
+                        const difficulty = this.currentChord.difficulty || 1;
+                        this.elements.difficultyBadge.textContent = '难度' + difficulty;
+                    }
                 }
             });
 

@@ -68,3 +68,8 @@ SECRET_KEY = 'dev-secret-key'                           # Flask密钥，任意�
 # config.py 末尾添加
 # 缩略图尺寸（必须与前端 constants.js 中的值一致）
 THUMBNAIL_WIDTH = 960
+# 大模型配置（火山方舟）
+VOLCANO_API_KEY = 'your-api-key'          # 替换为实际密钥
+VOLCANO_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'  # 示例地址
+LLM_MODEL = 'your-model-id'                # 替换为部署的模型ID
+ENABLE_LLM = True                          # 是否启用大模型

@@ -460,10 +460,13 @@
         </div>
 
         <!-- 中间指板 -->
-        <div class="center-panel">
-            <h4 id="currentChordName" style="color: #ffd966;">未选择和弦</h4>
-            <p id="chordDescription" style="color: #f5e6d3;"></p>
-            <div class="fretboard-mini" id="fretboardMini">
+            <div class="center-panel">
+                <div style="display: flex; align-items: center; gap: 10px; justify-content: center;">
+                    <h4 id="currentChordName" style="color: #ffd966; margin: 0;">未选择和弦</h4>
+                    <span class="difficulty-badge" id="difficultyBadge"></span>
+                </div>
+                <p id="chordDescription" style="color: #f5e6d3;"></p>
+                <div class="fretboard-mini" id="fretboardMini">
                 <!-- 品柱 (共5条) -->
                 <div class="fret-mini" data-fret="1"></div>
                 <div class="fret-mini" data-fret="2"></div>

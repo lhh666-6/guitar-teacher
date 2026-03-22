@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>训练历史 - 吉他教学系统</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f2e9;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #5a3e2b;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background: #8b6b4f;
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .correct {
+            color: green;
+            font-weight: bold;
+        }
+        .wrong {
+            color: red;
+            font-weight: bold;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #8b6b4f;
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            transition: background 0.2s;
+        }
+        .back-link:hover {
+            background: #5a3e2b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 训练历史记录</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>和弦</th>
+                    <th>结果</th>
+                    <th>用时(秒)</th>
+                    <th>时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.chord_name }}</td>
+                    <td class="{% if r.correct %}correct{% else %}wrong{% endif %}">
+                        {% if r.correct %}✓ 正确{% else %}✗ 错误{% endif %}
+                    </td>
+                    <td>{{ '%.2f'|format(r.time_spent) if r.time_spent else '--' }}</td>
+                    <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="/" class="back-link">← 返回首页</a>
+    </div>
+</body>
+</html>  
