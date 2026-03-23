@@ -418,3 +418,65 @@ body {
         padding: 15px;
     }
 }
+/* ========== 开场动画 ========== */
+.intro-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #000;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 1s ease;
+    pointer-events: auto;
+}
+
+.intro-content {
+    display: flex;
+    gap: 40px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.intro-guitar, .intro-girl {
+    font-size: 150px;
+    line-height: 1;
+    filter: drop-shadow(0 0 20px rgba(255,215,0,0.5));
+    transition: transform 0.2s;
+}
+
+.intro-guitar {
+    opacity: 0;
+    transform: scale(0.5) rotate(-10deg);
+}
+
+.intro-girl {
+    opacity: 0;
+    transform: scale(0.5);
+}
+
+.intro-hint {
+    margin-top: 40px;
+    color: rgba(255,255,255,0.6);
+    font-size: 16px;
+    letter-spacing: 2px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+}
+
+/* 主内容入场 */
+.main-content {
+    position: relative;
+    z-index: 1;
+    transition: opacity 1s ease, visibility 1s ease;
+}
