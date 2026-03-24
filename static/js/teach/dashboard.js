@@ -1,19 +1,8 @@
 /**
- * 教学仪表盘主逻辑
+ * 教学仪表盘主逻辑（双图表同时展示）
  */
 document.addEventListener('DOMContentLoaded', async () => {
-    // 加载初始数据
     await loadDashboardData();
-
-    // 图表选项卡切换
-    const tabs = document.querySelectorAll('.tab-btn');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            switchChart(tab.dataset.chart);
-        });
-    });
 
     // 生成智能指导按钮
     document.getElementById('generate-advice-btn').addEventListener('click', generateAdvice);
@@ -32,8 +21,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// 存储当前图表类型和所有数据
-let currentChart = 'mastery';
 let dashboardData = null;
 
 async function loadDashboardData() {
@@ -42,7 +29,7 @@ async function loadDashboardData() {
         const data = await response.json();
         dashboardData = data;
 
-        // 更新左侧概览
+        // 更新顶部指标
         document.getElementById('total-duration').textContent = data.overview.total_duration;
         document.getElementById('total-sessions').textContent = data.overview.total_sessions;
         document.getElementById('avg-accuracy').textContent = data.overview.avg_accuracy;
@@ -59,21 +46,15 @@ async function loadDashboardData() {
             </tr>
         `).join('');
 
-        // 默认显示掌握度图表
-        switchChart('mastery');
+        // 同时渲染两个图表
+        if (data.mastery && data.mastery.chords.length) {
+            Charts.renderMastery('radar-chart', data.mastery);
+        }
+        if (data.progress && data.progress.dates.length) {
+            Charts.renderProgress('progress-chart', data.progress);
+        }
     } catch (e) {
         console.error('加载数据失败', e);
-    }
-}
-
-function switchChart(type) {
-    currentChart = type;
-    if (!dashboardData) return;
-
-    if (type === 'mastery') {
-        Charts.renderMastery('chart-container', dashboardData.mastery);
-    } else if (type === 'progress') {
-        Charts.renderProgress('chart-container', dashboardData.progress);
     }
 }
 
@@ -100,22 +81,22 @@ async function generateAdvice() {
 function handleVoiceCommand(command) {
     console.log('语音指令：', command);
     if (command.includes('掌握度')) {
-        switchChart('mastery');
-        // 激活对应选项卡
-        document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
-        document.querySelector('[data-chart="mastery"]').classList.add('active');
+        // 如果用户想单独聚焦雷达图，可以高亮对应的图表卡片（简单滚动）
+        document.getElementById('radar-chart').scrollIntoView({ behavior: 'smooth' });
+        VoiceGuide.speak('已为您展示和弦掌握度雷达图');
     } else if (command.includes('进步') || command.includes('曲线')) {
-        switchChart('progress');
-        document.querySelector('[data-chart="progress"]').classList.add('active');
+        document.getElementById('progress-chart').scrollIntoView({ behavior: 'smooth' });
+        VoiceGuide.speak('已为您展示进步趋势曲线');
     } else if (command.includes('朗读') || command.includes('读一下')) {
         const adviceText = document.querySelector('.advice-text').innerText;
         if (adviceText && adviceText !== '点击“生成智能指导”获取个性化建议') {
             VoiceGuide.speak(adviceText);
+        } else {
+            VoiceGuide.speak('请先生成智能指导');
         }
     } else if (command.includes('新建议') || command.includes('生成')) {
         generateAdvice();
     } else if (command.includes('练习')) {
-        // 简单提取和弦名，例如“练习 C 和弦”
         const match = command.match(/练习\s*([A-G][#b]?m?)/);
         if (match) {
             const chord = match[1];

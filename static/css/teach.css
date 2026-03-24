@@ -1,178 +1,289 @@
-/* teach.css - 教学驾驶舱专用样式，完全适配木色主题 */
-
-/* 主布局 */
-.teach-container {
-    display: flex;
-    gap: 20px;
-    min-height: calc(100vh - 120px);
-    position: relative;
-    z-index: 10;
-    animation: slideUp 1s ease;
+:root {
+    --bg-dark: #2a2418;
+    --card-bg: rgba(44, 38, 28, 0.85);
+    --accent-gold: #ffd966;
+    --accent-green: #6fbf4c;
+    --accent-blue: #4a90e2;
+    --text-light: #f5e7d3;
+    --border-glow: rgba(255, 217, 102, 0.3);
 }
 
-/* 左侧面板 */
-.teach-left-panel {
-    flex: 1;
-    max-width: 280px;
+body {
+    background: var(--bg-dark);
+    color: var(--text-light);
+    font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+}
+
+.teach-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 24px 32px;
+}
+
+/* 指标卡片 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 28px;
+    margin-bottom: 40px;
+}
+.stat-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(8px);
+    border-radius: 28px;
+    padding: 24px 20px;
+    text-align: center;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid var(--border-glow);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+}
+.stat-value {
+    font-size: 2.6rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: var(--accent-gold);
+}
+.stat-label {
+    font-size: 0.95rem;
+    opacity: 0.8;
+}
+.stat-icon {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    font-size: 1.6rem;
+    opacity: 0.4;
+}
+.unit {
+    font-size: 0.8rem;
+}
+
+/* 主区域双栏 */
+.main-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 32px;
+    margin-bottom: 40px;
+}
+
+/* 左侧控制区 */
+.control-panel {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
 }
-
-/* 右侧主内容区 */
-.teach-main-panel {
-    flex: 3;
-    overflow-y: auto;
-}
-
-/* 用户卡片 */
-.user-card {
-    background: rgba(0,0,0,0.2);
-    border-radius: 16px;
-    padding: 15px;
-    border: 1px solid rgba(255,215,140,0.2);
-    color: #f5e6d3;
-}
-.user-card h3 {
-    margin: 0 0 10px 0;
-    color: #ffd966;
-    font-size: 1.2rem;
-}
-.user-card p {
-    margin: 8px 0;
-    font-size: 0.95rem;
-}
-.user-card span {
-    color: #ffd966;
-    font-weight: 600;
-}
-
-/* 语音控制区域 */
 .voice-control {
-    background: rgba(0,0,0,0.2);
-    border-radius: 16px;
-    padding: 15px;
-    border: 1px solid rgba(255,215,140,0.2);
+    background: var(--card-bg);
+    border-radius: 28px;
+    padding: 24px;
+    border: 1px solid var(--border-glow);
 }
-#voice-toggle {
-    width: 100%;
-    margin-bottom: 10px;
-}
-#voice-toggle.listening {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-}
-#voice-status {
-    text-align: center;
-    color: #ffd966;
-    font-size: 0.9rem;
-    min-height: 24px;
-}
-.voice-hint {
-    margin-top: 10px;
-    font-size: 0.85rem;
-    color: #ecd9b4;
-    border-top: 1px dashed rgba(255,215,140,0.3);
-    padding-top: 10px;
-}
-.voice-hint p {
-    margin: 5px 0;
-    color: #ffd966;
-}
-.voice-hint ul {
-    margin: 5px 0 0 20px;
-    padding-left: 0;
-}
-.voice-hint li {
-    margin: 4px 0;
-    list-style-type: disc;
-}
-
-/* 图表选项卡 */
-.chart-tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
-}
-.tab-btn {
-    padding: 8px 16px;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,215,140,0.3);
-    border-radius: 30px;
-    color: #ecd9b4;
+.btn-primary, .btn-success {
+    border: none;
+    border-radius: 44px;
+    padding: 14px 20px;
+    font-weight: bold;
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9rem;
+    transition: all 0.2s;
+    font-size: 1rem;
 }
-.tab-btn.active {
-    background: #8b6b4f;
-    border-color: #ffd966;
+.btn-primary {
+    background: var(--accent-blue);
     color: white;
 }
-.tab-btn:hover {
-    background: rgba(140, 90, 40, 0.6);
-    transform: translateY(-1px);
+.btn-primary:hover {
+    background: #3a7bc9;
+    transform: scale(1.02);
+}
+.btn-success {
+    background: var(--accent-green);
+    color: #1e2a0e;
+}
+.btn-success:hover {
+    background: #5fa63f;
+}
+.btn-block {
+    width: 100%;
+}
+.voice-hint {
+    margin-top: 18px;
+    font-size: 0.9rem;
+    border-top: 1px solid rgba(255,217,102,0.2);
+    padding-top: 14px;
+}
+.voice-hint ul {
+    padding-left: 20px;
+    margin: 8px 0 0;
 }
 
-/* 图表容器 */
-#chart-container {
+/* 右侧双图表区 */
+.charts-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+}
+.chart-card {
+    background: var(--card-bg);
+    border-radius: 28px;
+    padding: 24px;
+    border: 1px solid var(--border-glow);
+    transition: all 0.2s;
+}
+.chart-header {
+    margin-bottom: 18px;
+    border-left: 4px solid var(--accent-gold);
+    padding-left: 14px;
+}
+.chart-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+.chart-sub {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+.chart-container {
+    height: 300px;
     width: 100%;
-    height: 350px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 16px;
-    padding: 10px;
-    margin-bottom: 25px;
-    border: 1px solid rgba(255,215,140,0.2);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
 }
 
 /* 智能指导卡片 */
 .advice-section {
-    margin-bottom: 25px;
+    margin-bottom: 40px;
+    background: var(--card-bg);
+    border-radius: 28px;
+    padding: 24px;
+    border: 1px solid var(--border-glow);
+}
+.advice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.advice-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+.btn-icon {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--accent-gold);
+    transition: transform 0.1s;
+}
+.btn-icon:hover {
+    transform: scale(1.1);
 }
 .advice-card {
     background: rgba(0,0,0,0.3);
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 20px;
-    border: 1px solid rgba(255,215,140,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 15px;
+    min-height: 90px;
 }
 .advice-text {
     margin: 0;
-    color: #f5e6d3;
-    font-size: 1rem;
     line-height: 1.5;
-    flex: 1;
+    font-size: 1rem;
 }
 
-/* 最近练习记录表格 */
-.recent-records .table {
+/* 最近记录表格 */
+.recent-records {
+    background: var(--card-bg);
+    border-radius: 28px;
+    padding: 24px;
+    border: 1px solid var(--border-glow);
+}
+.section-title {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+.table-wrapper {
+    overflow-x: auto;
+}
+.table {
     width: 100%;
     border-collapse: collapse;
-    background: rgba(0,0,0,0.2);
-    border-radius: 16px;
-    overflow: hidden;
-    border: 1px solid rgba(255,215,140,0.2);
 }
-.recent-records th {
-    background: rgba(101, 67, 33, 0.7);
-    color: #ffd966;
-    font-weight: 600;
-    padding: 12px;
+.table th, .table td {
+    padding: 14px 12px;
     text-align: left;
+    border-bottom: 1px solid rgba(255,217,102,0.2);
 }
-.recent-records td {
-    padding: 10px 12px;
-    border-bottom: 1px solid rgba(255,215,140,0.1);
-    color: #f5e6d3;
+.table th {
+    color: var(--accent-gold);
+    font-weight: 600;
+    font-size: 0.95rem;
 }
-.recent-records tr:last-child td {
-    border-bottom: none;
+.table td {
+    font-size: 0.95rem;
 }
-.recent-records tr:hover td {
-    background: rgba(255,215,140,0.1);
+
+/* ========== 移动端响应式（保持不变） ========== */
+@media (max-width: 900px) {
+    .teach-container {
+        padding: 16px 20px;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+    .main-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .charts-area {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .chart-container {
+        height: 260px;
+    }
+    .control-panel {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+    .voice-control {
+        flex: 2;
+        min-width: 200px;
+    }
+    .btn-block {
+        flex: 1;
+    }
+    .stat-value {
+        font-size: 2rem;
+    }
+}
+@media (max-width: 600px) {
+    .teach-container {
+        padding: 12px;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .control-panel {
+        flex-direction: column;
+    }
+    .voice-control {
+        width: 100%;
+    }
+    .stat-value {
+        font-size: 1.8rem;
+    }
+    .chart-container {
+        height: 220px;
+    }
+    .table th, .table td {
+        padding: 8px 6px;
+        font-size: 0.85rem;
+    }
 }
