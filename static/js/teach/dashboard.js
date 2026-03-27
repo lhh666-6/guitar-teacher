@@ -15,10 +15,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // 语音遥控
-    document.getElementById('voice-toggle').addEventListener('click', () => {
-        VoiceGuide.toggleListening(handleVoiceCommand);
-    });
+    // 语音遥控按钮（可选，新版 VoiceGuide 自动监听唤醒词）
+    const voiceToggleBtn = document.getElementById('voice-toggle');
+    if (voiceToggleBtn) {
+        voiceToggleBtn.addEventListener('click', () => {
+            if (window.VoiceGuide && window.VoiceGuide.wakeUp) {
+                VoiceGuide.wakeUp();
+            }
+        });
+    }
 });
 
 let dashboardData = null;
@@ -78,33 +83,46 @@ async function generateAdvice() {
     }
 }
 
-function handleVoiceCommand(command) {
-    console.log('语音指令：', command);
-    if (command.includes('掌握度')) {
-        // 如果用户想单独聚焦雷达图，可以高亮对应的图表卡片（简单滚动）
-        document.getElementById('radar-chart').scrollIntoView({ behavior: 'smooth' });
-        VoiceGuide.speak('已为您展示和弦掌握度雷达图');
-    } else if (command.includes('进步') || command.includes('曲线')) {
-        document.getElementById('progress-chart').scrollIntoView({ behavior: 'smooth' });
-        VoiceGuide.speak('已为您展示进步趋势曲线');
-    } else if (command.includes('朗读') || command.includes('读一下')) {
+// ========== 全局语音控制器适配 ==========
+if (window.VoiceGuide) {
+    // 注册 UI 动作
+    VoiceGuide.registerAction('show_radar', () => {
+        if (window.radarChart) {
+            document.getElementById('radar-chart').scrollIntoView({ behavior: 'smooth' });
+            VoiceGuide.speak('已显示和弦掌握度');
+        }
+    });
+    VoiceGuide.registerAction('show_progress', () => {
+        if (window.progressChart) {
+            document.getElementById('progress-chart').scrollIntoView({ behavior: 'smooth' });
+            VoiceGuide.speak('已显示进步趋势');
+        }
+    });
+    VoiceGuide.registerAction('read_advice', () => {
         const adviceText = document.querySelector('.advice-text').innerText;
         if (adviceText && adviceText !== '点击“生成智能指导”获取个性化建议') {
             VoiceGuide.speak(adviceText);
         } else {
             VoiceGuide.speak('请先生成智能指导');
         }
-    } else if (command.includes('新建议') || command.includes('生成')) {
+    });
+    VoiceGuide.registerAction('generate_advice', () => {
         generateAdvice();
-    } else if (command.includes('练习')) {
-        const match = command.match(/练习\s*([A-G][#b]?m?)/);
-        if (match) {
-            const chord = match[1];
-            window.location.href = `/solo?chord=${chord}`;
+    });
+    VoiceGuide.registerAction('goto_solo', (params) => {
+        if (params.chord) {
+            window.location.href = `/solo?chord=${encodeURIComponent(params.chord)}`;
         } else {
             VoiceGuide.speak('请指定要练习的和弦，比如“练习 C 和弦”');
         }
-    } else {
-        VoiceGuide.speak('抱歉，我没有听清指令');
-    }
+    });
+
+    // 注册页面指令（驾驶舱特有）
+    VoiceGuide.registerPageCommands('/teach', [
+        { patterns: ['显示掌握度', '掌握度'], action: 'show_radar' },
+        { patterns: ['显示进步曲线', '进步曲线'], action: 'show_progress' },
+        { patterns: ['朗读指导'], action: 'read_advice' },
+        { patterns: ['生成新建议', '生成指导'], action: 'generate_advice' },
+        { patterns: [/练习\s*([A-G#b]+)/, '开始练习'], action: 'goto_solo', extract: (match) => ({ chord: match[1] }) }
+    ]);
 }

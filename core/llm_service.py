@@ -1,4 +1,3 @@
-# core/llm_service.py
 import requests
 import json
 import logging
@@ -29,7 +28,6 @@ class SimpleCache:
         if key in self.cache:
             value, timestamp = self.cache[key]
             if time.time() - timestamp < self.ttl:
-                # 移动到末尾表示最近使用
                 self.cache.move_to_end(key)
                 return value
             else:
@@ -62,6 +60,15 @@ class Conversation:
     def clear(self):
         self.messages = [{"role": "system", "content": self.system_prompt}]
 
+    def set_system_prompt(self, new_prompt: str):
+        """动态修改 system prompt"""
+        self.system_prompt = new_prompt
+        for i, msg in enumerate(self.messages):
+            if msg["role"] == "system":
+                self.messages[i]["content"] = new_prompt
+                return
+        self.messages.insert(0, {"role": "system", "content": new_prompt})
+
 
 class LLMService:
     def __init__(self, enable_cache=True, cache_max_size=100, cache_ttl=3600):
@@ -72,14 +79,11 @@ class LLMService:
         self.timeout = 30
         self.enable_cache = enable_cache
         self.cache = SimpleCache(max_size=cache_max_size, ttl=cache_ttl) if enable_cache else None
-        # 存储活跃对话（可选，这里简单示范用字典，实际可改用 Redis）
         self.conversations: Dict[str, Conversation] = {}
 
-        # 从 config 加载配置
         self._load_config()
 
     def _load_config(self):
-        """从配置文件加载参数，如果没有则从环境变量读取"""
         try:
             from config import VOLCANO_API_KEY, VOLCANO_ENDPOINT, LLM_MODEL
             self.api_key = VOLCANO_API_KEY
@@ -101,7 +105,6 @@ class LLMService:
         })
 
     def _call_api(self, messages: List[Dict], temperature=0.7, max_tokens=500, stream=False):
-        """调用火山方舟 API，支持流式和非流式"""
         payload = {
             "model": self.model,
             "messages": messages,
@@ -124,8 +127,6 @@ class LLMService:
             return None
 
     def generate(self, prompt, system_prompt="你是一个专业的吉他教练。", temperature=0.7, max_tokens=500):
-        """非流式生成文本（带缓存）"""
-        # 检查缓存
         if self.enable_cache:
             cached = self.cache.get(prompt, system_prompt, temperature, max_tokens)
             if cached is not None:
@@ -139,17 +140,12 @@ class LLMService:
         result = self._call_api(messages, temperature, max_tokens, stream=False)
         if result and "choices" in result:
             content = result["choices"][0]["message"]["content"]
-            # 存入缓存
             if self.enable_cache:
                 self.cache.set(prompt, system_prompt, temperature, max_tokens, content)
             return content
         return None
 
     def generate_stream(self, prompt, system_prompt="你是一个专业的吉他教练。", temperature=0.7, max_tokens=500) -> Generator[str, None, None]:
-        """
-        流式生成文本，返回生成器，逐块返回文本片段
-        适用于 SSE 或 Socket.IO 推送
-        """
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
@@ -174,21 +170,15 @@ class LLMService:
                     except json.JSONDecodeError:
                         continue
 
-    # ========== 多轮对话相关 ==========
     def get_conversation(self, session_id: str) -> Conversation:
-        """获取或创建会话"""
         if session_id not in self.conversations:
             self.conversations[session_id] = Conversation()
         return self.conversations[session_id]
 
     def chat(self, session_id: str, user_message: str, temperature=0.7, max_tokens=500) -> str:
-        """
-        多轮对话（非流式），自动维护历史
-        """
         conv = self.get_conversation(session_id)
         conv.add_user_message(user_message)
 
-        # 调用 API
         result = self._call_api(conv.get_messages(), temperature, max_tokens, stream=False)
         if result and "choices" in result:
             reply = result["choices"][0]["message"]["content"]
@@ -197,9 +187,6 @@ class LLMService:
         return "抱歉，我暂时无法回答。"
 
     def chat_stream(self, session_id: str, user_message: str, temperature=0.7, max_tokens=500) -> Generator[str, None, None]:
-        """
-        多轮对话流式输出
-        """
         conv = self.get_conversation(session_id)
         conv.add_user_message(user_message)
 
@@ -226,13 +213,9 @@ class LLMService:
                     except json.JSONDecodeError:
                         continue
 
-        # 将完整回复保存到对话历史
         conv.add_assistant_message("".join(full_reply))
 
-    # ========== 教学建议专用方法（带缓存） ==========
     def generate_advice(self, user_stats: Dict) -> Optional[str]:
-        """根据用户统计数据生成教学建议，带缓存"""
-        # 构建 prompt（与之前相同）
         overview = user_stats.get('overview', {})
         total_sessions = overview.get('total_sessions', 0)
         avg_accuracy = overview.get('avg_accuracy', 0)
@@ -259,5 +242,4 @@ class LLMService:
 
 建议格式：以“1.”、“2.”、“3.”开头。
         """
-        # 使用通用 generate 方法（会使用缓存）
         return self.generate(prompt, system_prompt="你是一位鼓励型的吉他教练，给出具体可行的建议。")
