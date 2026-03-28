@@ -20,6 +20,7 @@
             --border-radius: 50px;
             --panel-radius: 20px;
         }
+        
 
         * {
             margin: 0;
@@ -1027,5 +1028,75 @@
             drawTrendChart();
         })();
     </script>
+    <script>
+    // ========== 语音指令适配 ==========
+    if (window.VoiceGuide) {
+        // 注册动作回调
+        VoiceGuide.registerAction('select_string', (params) => {
+            const btn = document.querySelector(`.string-btn[data-string="${params.string}"]`);
+            if (btn) btn.click();
+        });
+        VoiceGuide.registerAction('start_tuning', () => {
+            const startBtn = document.getElementById('start-tuning');
+            if (startBtn && startBtn.textContent === '开始调这根弦') startBtn.click();
+        });
+        VoiceGuide.registerAction('stop_tuning', () => {
+            const stopBtn = document.getElementById('start-tuning');
+            if (stopBtn && stopBtn.textContent === '停止调音') stopBtn.click();
+        });
+        VoiceGuide.registerAction('auto_mode', (params) => {
+            const autoBtn = document.getElementById('auto-mode-btn');
+            if (autoBtn) {
+                const isActive = autoBtn.classList.contains('active');
+                if (params.enable && !isActive) autoBtn.click();
+                else if (!params.enable && isActive) autoBtn.click();
+            }
+        });
+
+        // 注册页面指令
+        VoiceGuide.registerPageCommands('/tuning', [
+            { patterns: [/调([一二三四五六1-6])弦/], action: 'select_string', extract: match => ({ string: {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6}[match[1]] }) },
+            { patterns: ['开始调音'], action: 'start_tuning' },
+            { patterns: ['停止调音'], action: 'stop_tuning' },
+            { patterns: ['打开自动模式', '开启自动模式'], action: 'auto_mode', extract: () => ({ enable: true }) },
+            { patterns: ['关闭自动模式'], action: 'auto_mode', extract: () => ({ enable: false }) }
+        ]);
+    }
+</script>
+<script>
+    // 语音指令适配
+    if (window.VoiceGuide) {
+        VoiceGuide.registerAction('select_string', (params) => {
+            const btn = document.querySelector(`.string-btn[data-string="${params.string}"]`);
+            if (btn) btn.click();
+        });
+        VoiceGuide.registerAction('start_tuning', () => {
+            const startBtn = document.getElementById('start-tuning');
+            if (startBtn && startBtn.textContent === '开始调这根弦') startBtn.click();
+        });
+        VoiceGuide.registerAction('stop_tuning', () => {
+            const stopBtn = document.getElementById('start-tuning');
+            if (stopBtn && stopBtn.textContent === '停止调音') stopBtn.click();
+        });
+        VoiceGuide.registerAction('auto_mode', (params) => {
+            const autoBtn = document.getElementById('auto-mode-btn');
+            if (autoBtn) {
+                const isActive = autoBtn.classList.contains('active');
+                if (params.enable && !isActive) autoBtn.click();
+                else if (!params.enable && isActive) autoBtn.click();
+            }
+        });
+
+        VoiceGuide.registerPageCommands('/tuning', [
+            { patterns: [/调([一二三四五六1-6])弦/], action: 'select_string', extract: match => ({ string: {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6}[match[1]] }) },
+            { patterns: ['开始调音'], action: 'start_tuning' },
+            { patterns: ['停止调音'], action: 'stop_tuning' },
+            { patterns: ['打开自动模式', '开启自动模式'], action: 'auto_mode', extract: () => ({ enable: true }) },
+            { patterns: ['关闭自动模式'], action: 'auto_mode', extract: () => ({ enable: false }) }
+        ]);
+    }
+</script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="/static/js/voice_guide.js"></script>
 </body>
 </html>

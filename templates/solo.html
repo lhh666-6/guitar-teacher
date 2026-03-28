@@ -582,5 +582,17 @@
             // 我们不去覆盖原有toggleCamera，只添加新功能
         })();
     </script>
+    <script>
+    if (window.VoiceGuide) {
+        VoiceGuide.registerPageCommands('/solo', []);
+    }
+</script>
+<script>
+    if (window.VoiceGuide) {
+        VoiceGuide.registerPageCommands('/solo', []);
+    }
+</script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="/static/js/voice_guide.js"></script>
 </body>
 </html>

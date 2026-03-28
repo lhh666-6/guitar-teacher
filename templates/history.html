@@ -491,5 +491,12 @@
     }
     init();
 </script>
+<script>
+    if (window.VoiceGuide) {
+        VoiceGuide.registerPageCommands('/history', []);
+    }
+</script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="/static/js/voice_guide.js"></script>
 </body>
 </html>

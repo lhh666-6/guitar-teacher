@@ -3,7 +3,8 @@
 # python version = 3.11.15
 Flask==2.3.3
 Flask-CORS==4.0.0
-Flask-SocketIO==5.3.4
+Flask-SocketIO==5.3.6
+Flask-SQLAlchemy==3.1.1
 eventlet==0.33.3
 opencv-python==4.8.1.78
 numpy==1.24.3
@@ -12,6 +13,8 @@ torch==2.0.1
 torchvision==0.15.2
 protobuf==3.20.3
 ultralytics
+
+#######################################
 #######################################
 # # 基础 Web 框架
 # Flask==2.3.3

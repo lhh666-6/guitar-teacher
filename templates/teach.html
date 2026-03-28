@@ -2,15 +2,13 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>吉他教学 - 智能驾驶舱</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/teach.css">
-    <!-- ECharts CDN -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 </head>
 <body>
-    <!-- 粒子背景（复用首页效果） -->
     <div id="particles"></div>
 
     <nav class="top-nav">
@@ -22,57 +20,85 @@
     </nav>
 
     <div class="teach-container">
-        <!-- 左侧面板：用户概览 + 语音控制 -->
-        <aside class="teach-left-panel card">
-            <div class="user-card">
-                <h3>👤 吉他手</h3>
-                <p>总练习时长：<span id="total-duration">0</span> 分钟</p>
-                <p>总练习次数：<span id="total-sessions">0</span></p>
-                <p>平均正确率：<span id="avg-accuracy">0</span>%</p>
-                <p>薄弱和弦 TOP3：<span id="weak-chords">—</span></p>
+        <!-- 顶部指标卡片区 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="total-duration">0</div>
+                <div class="stat-label">练习总时长 <span class="unit">(分钟)</span></div>
+                <div class="stat-icon">⏱️</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-sessions">0</div>
+                <div class="stat-label">练习次数</div>
+                <div class="stat-icon">🎸</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avg-accuracy">0</div>
+                <div class="stat-label">平均正确率</div>
+                <div class="stat-icon">📊</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="weak-chords">—</div>
+                <div class="stat-label">薄弱和弦 TOP3</div>
+                <div class="stat-icon">⚠️</div>
+            </div>
+        </div>
 
-            <div class="voice-control">
-                <button id="voice-toggle" class="btn btn-primary">🎤 开启语音遥控</button>
-                <p id="voice-status" class="status-text"></p>
-                <div class="voice-hint">
-                    <p>可用指令：</p>
-                    <ul>
-                        <li>“显示掌握度”</li>
-                        <li>“显示进步曲线”</li>
-                        <li>“朗读指导”</li>
-                        <li>“生成新建议”</li>
-                        <li>“开始练习 C 和弦”</li>
-                    </ul>
+        <!-- 主内容区域：左侧控制区 + 右侧双图表 -->
+        <div class="main-grid">
+            <!-- 左侧控制面板 -->
+            <aside class="control-panel">
+                <div class="voice-control card">
+                    <button id="voice-toggle" class="btn btn-primary">🎤 开启语音遥控</button>
+                    <p id="voice-status" class="status-text"></p>
+                    <div class="voice-hint">
+                        <p>🎙️ 试试说：</p>
+                        <ul>
+                            <li>“显示掌握度”</li>
+                            <li>“显示进步曲线”</li>
+                            <li>“朗读指导”</li>
+                            <li>“生成新建议”</li>
+                            <li>“开始练习 C 和弦”</li>
+                        </ul>
+                    </div>
+                </div>
+                <button id="generate-advice-btn" class="btn btn-success btn-block">✨ 生成智能指导</button>
+            </aside>
+
+            <!-- 右侧双图表区 -->
+            <div class="charts-area">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>🎯 和弦掌握度</h3>
+                        <span class="chart-sub">雷达图展示各和弦熟练程度</span>
+                    </div>
+                    <div id="radar-chart" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>📈 进步趋势</h3>
+                        <span class="chart-sub">最近30天正确率变化</span>
+                    </div>
+                    <div id="progress-chart" class="chart-container"></div>
                 </div>
             </div>
+        </div>
 
-            <button id="generate-advice-btn" class="btn btn-success" style="width:100%;">✨ 生成智能指导</button>
-        </aside>
-
-        <!-- 右侧主内容区：图表 + 指导卡片 + 最近记录 -->
-        <main class="teach-main-panel card">
-            <!-- 图表选项卡（仅保留两个） -->
-            <div class="chart-tabs">
-                <button class="tab-btn active" data-chart="mastery">掌握度雷达图</button>
-                <button class="tab-btn" data-chart="progress">进步曲线</button>
+        <!-- 智能指导卡片（独立成块） -->
+        <div class="advice-section card">
+            <div class="advice-header">
+                <h3>💡 智能指导</h3>
+                <button id="speak-advice-btn" class="btn-icon" title="朗读指导">🔊</button>
             </div>
+            <div id="advice-card" class="advice-card">
+                <p class="advice-text">点击“生成智能指导”获取个性化建议</p>
+            </div>
+        </div>
 
-            <!-- 图表容器 -->
-            <div id="chart-container"></div>
-
-            <!-- 智能指导卡片区域 -->
-            <section class="advice-section">
-                <h3 class="section-title">💡 智能指导</h3>
-                <div id="advice-card" class="advice-card">
-                    <p class="advice-text">点击“生成智能指导”获取个性化建议</p>
-                    <button id="speak-advice-btn" class="btn btn-icon">🔊 朗读</button>
-                </div>
-            </section>
-
-            <!-- 最近练习记录 -->
-            <section class="recent-records">
-                <h3 class="section-title">📋 最近练习记录</h3>
+        <!-- 最近练习记录 -->
+        <section class="recent-records card">
+            <h3 class="section-title">📋 最近练习记录</h3>
+            <div class="table-wrapper">
                 <table class="table" id="records-table">
                     <thead>
                         <tr>
@@ -84,10 +110,10 @@
                     </thead>
                     <tbody></tbody>
                 </table>
-            </section>
-        </main>
+            </div>
+        </section>
     </div>
-
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="/static/js/voice_guide.js"></script>
     <script src="/static/js/teach/charts.js"></script>
     <script src="/static/js/teach/dashboard.js"></script>

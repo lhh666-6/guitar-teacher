@@ -391,8 +391,8 @@
                 </div>
                 <div class="mode-card" onclick="window.location.href='/teach'" role="button" tabindex="0">
                     <div class="mode-icon">📚</div>
-                    <h3 class="mode-name">教学模式</h3>
-                    <p class="mode-desc">摄像头实时滤镜，AI语音交互，手部动作分析，自动生成教学建议</p>
+                    <h3 class="mode-name">教学驾驶舱</h3>
+                    <p class="mode-desc">练习统计看板，和弦掌握度雷达图，进步趋势曲线，AI智能指导</p>
                 </div>
             </div>
         </div>
@@ -552,5 +552,17 @@
             });
         });
     </script>
+    <script>
+    if (window.VoiceGuide) {
+        VoiceGuide.registerPageCommands('/', []);
+    }
+</script>
+<script>
+    if (window.VoiceGuide) {
+        VoiceGuide.registerPageCommands('/', []);
+    }
+</script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="/static/js/voice_guide.js"></script>
 </body>
 </html>

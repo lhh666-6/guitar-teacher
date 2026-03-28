@@ -3,13 +3,15 @@ import logging
 import os
 import threading
 import time
+import io
+import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from functools import wraps   # 添加这行
+from functools import wraps
 
 import cv2
 import numpy as np
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_file
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from sqlalchemy import func, case
@@ -20,6 +22,7 @@ import config
 from core import user_stats
 from core.llm_service import LLMService
 from models import db, TrainingRecord
+from core.tts_service import VolcTTS
 
 # ---------- 日志配置 ----------
 logging.basicConfig(
@@ -30,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 # ---------- 初始化应用 ----------
 app = Flask(__name__)
-app.config['SECRET_KEY'] = config.SECRET_KEY
 CORS(app)
 
 # ---------- 数据库配置 ----------
@@ -79,6 +81,9 @@ executor = ThreadPoolExecutor(max_workers=2)
 play_records = []
 records_lock = threading.Lock()
 MAX_RECORDS = 100
+
+# ---------- TTS 服务 (Edge TTS，无需配置) ----------
+tts_service = VolcTTS()   # 使用默认音色 zh-CN-XiaoxiaoNeural 和缓存目录 tts_cache
 
 # ---------- 工具函数 ----------
 def base64_to_cv2(image_base64: str):
@@ -262,7 +267,7 @@ def history():
     } for r in records]
     return render_template('history.html', records=records_data)
 
-# ---------- 历史记录 API（优化版） ----------
+# ---------- 历史记录 API ----------
 @app.route('/api/history/data')
 def history_data():
     page = request.args.get('page', 1, type=int)
@@ -302,10 +307,9 @@ def history_data():
     })
 
 def cache_result(ttl=5):
-    """简单的缓存装饰器，使用 functools.wraps 保留原函数名"""
     def decorator(func):
         cache = {}
-        @wraps(func)   # 关键：保留原始函数名，避免 Flask 端点冲突
+        @wraps(func)
         def wrapper(*args, **kwargs):
             key = str(args) + str(kwargs)
             now = time.time()
@@ -320,12 +324,10 @@ def cache_result(ttl=5):
 @app.route('/api/history/stats')
 @cache_result(ttl=5)
 def history_stats():
-    # 总次数和正确数
     total = db.session.query(func.count(TrainingRecord.id)).scalar()
     correct = db.session.query(func.sum(TrainingRecord.correct.cast(db.Integer))).scalar()
     accuracy = (correct / total * 100) if total else 0
 
-    # 各和弦统计（GROUP BY）
     chord_stats = db.session.query(
         TrainingRecord.chord_name,
         func.count(TrainingRecord.id).label('total'),
@@ -342,7 +344,6 @@ def history_stats():
             chords.append(stat.chord_name)
             accuracies.append(round((stat.correct / stat.total) * 100, 1))
 
-    # 最近一次练习
     last = TrainingRecord.query.order_by(TrainingRecord.created_at.desc()).first()
     last_time = last.created_at.isoformat() if last else None
 
@@ -384,6 +385,115 @@ def generate_advice():
         return jsonify({'advice': advice})
     else:
         return jsonify({'advice': '暂时无法生成建议，请稍后再试。'})
+
+# ---------- TTS 路由 ----------
+@app.route('/api/tts/speak', methods=['POST'])
+def tts_speak():
+    start_time = time.time()
+    data = request.get_json()
+    text = data.get('text', '').strip()
+    if not text:
+        logger.warning("[TTS] 请求文本为空")
+        return jsonify({'error': 'no text'}), 400
+    emotion = data.get('emotion')
+    logger.info(f"[TTS] 收到合成请求: text='{text}', emotion={emotion}")
+
+    audio_bytes = tts_service.synthesize(text, emotion=emotion)
+    elapsed = (time.time() - start_time) * 1000
+    if audio_bytes:
+        logger.info(f"[TTS] 合成成功, 耗时={elapsed:.1f}ms, 音频大小={len(audio_bytes)} bytes")
+        return send_file(io.BytesIO(audio_bytes), mimetype='audio/mpeg')
+    else:
+        logger.error(f"[TTS] 合成失败, 耗时={elapsed:.1f}ms")
+        return jsonify({'error': 'synthesis failed'}), 500
+
+# ---------- 语音指令处理 ----------
+TEACH_COMMANDS = [
+    {'patterns': ['显示掌握度', '掌握度'], 'action': 'show_radar', 'text': '已显示和弦掌握度'},
+    {'patterns': ['显示进步曲线', '进步曲线'], 'action': 'show_progress', 'text': '已显示进步趋势'},
+    {'patterns': ['朗读指导'], 'action': 'read_advice', 'text': None},
+    {'patterns': ['生成新建议', '生成指导'], 'action': 'generate_advice', 'text': '正在生成新建议'},
+    {'patterns': [r'练习\s*([A-G#b]+)'], 'action': 'goto_solo', 'text': None, 'extract': lambda m: {'chord': m[1]}},
+]
+
+TUNING_COMMANDS = [
+    {'patterns': [r'调([一二三四五六1-6])弦'], 'action': 'select_string', 'text': None,
+     'extract': lambda m: {'string': {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6}.get(m[1])}},
+    {'patterns': ['开始调音'], 'action': 'start_tuning', 'text': '开始调音'},
+    {'patterns': ['停止调音'], 'action': 'stop_tuning', 'text': '停止调音'},
+    {'patterns': ['打开自动模式', '开启自动模式'], 'action': 'auto_mode', 'text': '自动模式已开启', 'extract': lambda m: {'enable': True}},
+    {'patterns': ['关闭自动模式'], 'action': 'auto_mode', 'text': '自动模式已关闭', 'extract': lambda m: {'enable': False}},
+]
+
+def match_command(command, commands):
+    for cmd in commands:
+        for pattern in cmd['patterns']:
+            if isinstance(pattern, str):
+                if pattern in command:
+                    result = {'action': cmd['action'], 'text': cmd.get('text')}
+                    if 'extract' in cmd:
+                        result.update(cmd['extract']({}))
+                    return result
+            elif isinstance(pattern, re.Pattern):
+                match = pattern.search(command)
+                if match:
+                    result = {'action': cmd['action'], 'text': cmd.get('text')}
+                    if 'extract' in cmd:
+                        result.update(cmd['extract'](match))
+                    return result
+    return None
+
+def process_teach_command(command):
+    return match_command(command, TEACH_COMMANDS)
+
+def process_tuning_command(command):
+    return match_command(command, TUNING_COMMANDS)
+
+def process_solo_command(command):
+    return None
+
+def process_general_command(command, session_id):
+    try:
+        conv = llm_service.get_conversation(session_id)
+        original_prompt = conv.system_prompt
+        conv.set_system_prompt("你是一个吉他教学助手。用户提问时，请用最简洁的语言回答，不超过30字，直接给出建议，不要啰嗦，不要解释背景。")
+        reply = llm_service.chat(session_id, command)
+        conv.set_system_prompt(original_prompt)
+        return {'text': reply}
+    except Exception as e:
+        logger.error(f"LLM 问答失败: {e}")
+        return {'text': '抱歉，我暂时无法回答。'}
+
+@socketio.on('voice_command')
+def handle_voice_command(data):
+    sid = request.sid
+    command = data.get('command', '').strip()
+    page = data.get('page', '/')
+    session_id = data.get('session_id', sid)
+
+    if not command:
+        return
+
+    if page.startswith('/teach'):
+        result = process_teach_command(command)
+    elif page.startswith('/tuning'):
+        result = process_tuning_command(command)
+    elif page.startswith('/solo'):
+        result = process_solo_command(command)
+    else:
+        result = None
+
+    if result is None:
+        result = process_general_command(command, session_id)
+
+    if result and result.get('text'):
+        audio = tts_service.synthesize(result['text'])
+        if audio:
+            result['audio_base64'] = base64.b64encode(audio).decode()
+        else:
+            result['fallback'] = True
+
+    socketio.emit('voice_response', result, room=sid)
 
 # ---------- 启动 ----------
 if __name__ == '__main__':
