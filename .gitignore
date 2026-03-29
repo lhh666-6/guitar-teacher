@@ -210,3 +210,12 @@ __marimo__/
 
 # 忽略vscode配置文件
 .vscode/
+
+# 忽略AI-上下文相关文件
+PROJECT_CONTEXT.md
+
+# 
+yolo_demo.py
+requirements_LJL.txt
+智能吉他教学系统开发文档.*
+tts_cache/*.mp3
