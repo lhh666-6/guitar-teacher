@@ -418,14 +418,6 @@
             gap: 10px !important;
             align-items: center !important;
         }
-
-        /* 新增控制按钮组 */
-        .layout-controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
     </style>
 </head>
 <body>
@@ -446,11 +438,6 @@
                     <button class="btn-custom btn-sm" id="toggleCamera">开启</button>
                 </div>
             </div>
-            <!-- 新增布局控制按钮组 -->
-            <div class="layout-controls">
-                <button class="btn-custom btn-sm" id="toggleTestMode">🎛️ 测试模式</button>
-                <button class="btn-custom btn-sm" id="toggleVideoExpand">🔍 视频放大</button>
-            </div>
             <div class="stat-panel">
                 <h5 style="color:#ffd966;">📊 本次测试统计</h5>
                 <p style="color:#f5e6d3;">正确: <span id="statCorrect">0</span></p>
@@ -460,13 +447,13 @@
         </div>
 
         <!-- 中间指板 -->
-            <div class="center-panel">
-                <div style="display: flex; align-items: center; gap: 10px; justify-content: center;">
-                    <h4 id="currentChordName" style="color: #ffd966; margin: 0;">未选择和弦</h4>
-                    <span class="difficulty-badge" id="difficultyBadge"></span>
-                </div>
-                <p id="chordDescription" style="color: #f5e6d3;"></p>
-                <div class="fretboard-mini" id="fretboardMini">
+        <div class="center-panel">
+            <div style="display: flex; align-items: center; gap: 10px; justify-content: center;">
+                <h4 id="currentChordName" style="color: #ffd966; margin: 0;">未选择和弦</h4>
+                <span class="difficulty-badge" id="difficultyBadge"></span>
+            </div>
+            <p id="chordDescription" style="color: #f5e6d3;"></p>
+            <div class="fretboard-mini" id="fretboardMini">
                 <!-- 品柱 (共5条) -->
                 <div class="fret-mini" data-fret="1"></div>
                 <div class="fret-mini" data-fret="2"></div>
@@ -549,50 +536,20 @@
     <script src="/static/js/solo/constants.js"></script>
     <script src="/static/js/solo/filters.js"></script>
     <script src="/static/js/solo/ui_helpers.js"></script>
-    <script src="/static/js/solo/chord_validator.js"></script>   <!-- 新增 -->
+    <script src="/static/js/solo/chord_validator.js"></script>
     <script src="/static/js/solo/main.js"></script>
 
-    <!-- 新增布局切换脚本 (不影响原有功能) -->
     <script>
-        (function() {
-            const layout = document.getElementById('trainLayout');
-            const cameraContainer = document.getElementById('cameraContainer');
-            const toggleTestModeBtn = document.getElementById('toggleTestMode');
-            const toggleVideoExpandBtn = document.getElementById('toggleVideoExpand');
-
-            // 测试模式切换
-            toggleTestModeBtn.addEventListener('click', function() {
-                layout.classList.toggle('test-mode');
-                // 如果同时开启了视频放大，则先关闭（避免冲突）
-                if (cameraContainer.classList.contains('video-expanded')) {
-                    cameraContainer.classList.remove('video-expanded');
-                }
-            });
-
-            // 视频放大模式切换
-            toggleVideoExpandBtn.addEventListener('click', function() {
-                cameraContainer.classList.toggle('video-expanded');
-                // 如果视频放大开启，自动移除测试模式（为了更好的显示效果）
-                if (cameraContainer.classList.contains('video-expanded')) {
-                    layout.classList.remove('test-mode');
-                }
-            });
-
-            // 原有摄像头开关逻辑可能已经存在，但为了确保状态同步，这里保留原有按钮功能
-            // 我们不去覆盖原有toggleCamera，只添加新功能
-        })();
+    if (window.VoiceGuide) {
+        VoiceGuide.registerPageCommands('/solo', []);
+    }
     </script>
     <script>
     if (window.VoiceGuide) {
         VoiceGuide.registerPageCommands('/solo', []);
     }
-</script>
-<script>
-    if (window.VoiceGuide) {
-        VoiceGuide.registerPageCommands('/solo', []);
-    }
-</script>
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-<script src="/static/js/voice_guide.js"></script>
+    </script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/voice_guide.js"></script>
 </body>
 </html>

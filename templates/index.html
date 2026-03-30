@@ -7,7 +7,7 @@
     <!-- 引入 GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <style>
-        /* ========== 原有完整样式（保持不变） ========== */
+        /* ========== 全局样式 ========== */
         * {
             margin: 0;
             padding: 0;
@@ -56,11 +56,8 @@
             pointer-events: none;
         }
 
-        .history-link {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 10;
+        /* 公用按钮样式 */
+        .nav-btn {
             display: inline-flex;
             align-items: center;
             padding: 8px 16px;
@@ -74,13 +71,30 @@
             text-decoration: none;
             transition: all 0.3s ease;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
         }
 
-        .history-link:hover {
+        .nav-btn:hover {
             background: rgba(50, 35, 25, 0.8);
             border-color: #e3a72e;
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(200, 130, 30, 0.4);
+        }
+
+        /* 左上角按钮 */
+        .top-left-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+        }
+
+        /* 右上角按钮 */
+        .top-right-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
         }
 
         .container {
@@ -228,9 +242,16 @@
         }
 
         @media (max-width: 768px) {
-            .history-link {
+            .top-left-btn, .top-right-btn {
                 top: 10px;
+            }
+            .top-left-btn {
                 left: 10px;
+            }
+            .top-right-btn {
+                right: 10px;
+            }
+            .nav-btn {
                 padding: 6px 12px;
                 font-size: 14px;
             }
@@ -371,10 +392,17 @@
         <div class="intro-hint">✨ 即将进入</div>
     </div>
 
-    <!-- 主内容（原有界面，仅在非登录直接访问时显示） -->
+    <!-- 主内容 -->
     <div class="main-content">
         <canvas id="particles-js"></canvas>
-        <a href="/history" class="history-link" title="训练历史记录">📊 历史</a>
+        <!-- 左上角历史按钮 -->
+        <div class="top-left-btn">
+            <a href="/history" class="nav-btn" title="训练历史记录">📊 历史</a>
+        </div>
+        <!-- 右上角用户状态按钮 -->
+        <div class="top-right-btn">
+            <div id="user-status" class="nav-btn" style="cursor: pointer;">加载中...</div>
+        </div>
         <div class="container">
             <h1 class="title">智能吉他和弦教学系统</h1>
             <div class="title-notation"></div>
@@ -401,12 +429,47 @@
     <!-- 粒子动画脚本 -->
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
-    <!-- 开场动画脚本（支持登录后跳转） -->
+    <!-- 用户状态管理脚本 -->
+    <script>
+        async function loadUserStatus() {
+            const userStatusDiv = document.getElementById('user-status');
+            if (!userStatusDiv) return;
+
+            try {
+                const res = await fetch('/api/current_user');
+                const data = await res.json();
+                if (data.logged_in) {
+                    const displayName = data.nickname || data.email;
+                    userStatusDiv.textContent = `👤 ${displayName}`;
+                    userStatusDiv.onclick = () => {
+                        if (confirm('是否退出登录？')) {
+                            fetch('/api/logout', { method: 'POST' }).then(() => {
+                                window.location.reload();
+                            });
+                        }
+                    };
+                } else {
+                    userStatusDiv.textContent = '🔑 登录';
+                    userStatusDiv.onclick = () => {
+                        window.location.href = '/login';
+                    };
+                }
+            } catch (err) {
+                console.error('获取用户状态失败', err);
+                userStatusDiv.textContent = '🔑 登录';
+                userStatusDiv.onclick = () => {
+                    window.location.href = '/login';
+                };
+            }
+        }
+        loadUserStatus();
+    </script>
+
+    <!-- 开场动画脚本 -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             'use strict';
 
-            // 获取后端传入的跳转目标（如果有）
             const redirectAfter = '{{ redirect_after_intro | default("") }}';
             console.log('🎯 redirectAfter =', redirectAfter);
 
@@ -415,8 +478,6 @@
             const guitar = document.getElementById('img-guitar-notes');
             const mainContent = document.querySelector('.main-content');
 
-            // 如果没有传入跳转目标（直接访问首页），且已经播放过动画，则跳过动画直接显示主内容
-            // 注意：登录后每次都会传入 redirectAfter，因此不会跳过
             if (!redirectAfter) {
                 const hasPlayed = sessionStorage.getItem('introPlayed');
                 if (hasPlayed) {
@@ -441,9 +502,7 @@
             }
 
             console.log('✅ 开场元素已找到，开始动画');
-            console.log('吉他图片路径:', guitar.src);
 
-            // 初始状态
             gsap.set(guitar, {
                 opacity: 0,
                 scale: 0.8,
@@ -453,20 +512,17 @@
                 transformPerspective: 1000
             });
 
-            // 创建时间线
             const tl = gsap.timeline({
                 smoothChildTiming: true,
                 onStart: () => console.log('🎬 时间线开始'),
                 onComplete: () => {
                     console.log('🎬 时间线完成');
-                    // 只有非跳转模式才记录 sessionStorage（避免登录后重复播放被跳过）
                     if (!redirectAfter) {
                         sessionStorage.setItem('introPlayed', 'true');
                     }
                 }
             });
 
-            // 吉他淡入 + 伪3D旋转到正常位置，持续2秒
             tl.to(guitar, {
                 opacity: 1,
                 scale: 1,
@@ -477,17 +533,14 @@
                 ease: "elastic.out(1, 0.4)",
                 onStart: () => console.log('🎬 [0s] 吉他淡入并旋转')
             })
-            // 停留1秒
             .to(guitar, {
                 duration: 1,
                 ease: "none",
                 onStart: () => console.log('🎬 [2s] 停留1秒')
             })
-            // 动画结束后处理
             .call(() => {
                 console.log('🚪 动画结束，redirectAfter =', redirectAfter);
                 if (redirectAfter) {
-                    // 登录后模式：淡出动画层，然后跳转到指定页面
                     gsap.to(overlay, {
                         opacity: 0,
                         duration: 1.2,
@@ -497,7 +550,6 @@
                         }
                     });
                 } else {
-                    // 未登录模式（或直接访问首页）：显示主内容（三个模式卡片）
                     gsap.killTweensOf(guitar);
                     gsap.to(overlay, {
                         opacity: 0,
@@ -516,7 +568,6 @@
                 }
             }, "+=0");
 
-            // 悬停加速
             content.addEventListener('mouseenter', () => {
                 tl.timeScale(2);
                 gsap.to(guitar, {
@@ -536,7 +587,6 @@
                 console.log('🐭 悬停恢复: 1x');
             });
 
-            // 强制超时：5秒后强制处理（防止卡死）
             setTimeout(() => {
                 if (overlay.style.display !== 'none') {
                     console.warn('⚠️ 强制超时：5秒已过，强制处理');
@@ -578,9 +628,9 @@
         });
     </script>
     <script>
-    if (window.VoiceGuide) {
-        VoiceGuide.registerPageCommands('/', []);
-    }
+        if (window.VoiceGuide) {
+            VoiceGuide.registerPageCommands('/', []);
+        }
     </script>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="/static/js/voice_guide.js"></script>

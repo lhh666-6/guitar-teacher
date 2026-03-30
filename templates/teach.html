@@ -7,6 +7,140 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/teach.css">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        /* 精致小巧的按钮组 */
+        .chart-toggle-group {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .chart-toggle-btn {
+            background: rgba(101, 67, 33, 0.65);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 215, 140, 0.4);
+            padding: 5px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #ecd9b4;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1;
+        }
+        .chart-toggle-btn i {
+            font-style: normal;
+            font-size: 14px;
+        }
+        .chart-toggle-btn:hover {
+            background: rgba(255, 215, 140, 0.25);
+            transform: translateY(-1px);
+            border-color: #ffd966;
+        }
+        .chart-toggle-btn.active {
+            background: rgba(255, 215, 140, 0.7);
+            color: #2c1a0e;
+            border-color: #ffd966;
+            box-shadow: 0 0 8px rgba(255, 215, 140, 0.4);
+        }
+
+        /* 右侧区域初始无内容，只有按钮 */
+        .right-chart-area {
+            min-height: 450px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        /* ========== 全屏模态框样式 ========== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-container {
+            width: 90%;
+            max-width: 1200px;
+            background: rgba(101, 67, 33, 0.4);
+            backdrop-filter: blur(16px);
+            border-radius: 36px;
+            border: 1px solid rgba(255, 215, 140, 0.5);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            padding: 20px;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-container {
+            transform: scale(1);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 215, 140, 0.3);
+        }
+        .modal-header h3 {
+            margin: 0;
+            color: #ffd966;
+            font-size: 1.4rem;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #ecd9b4;
+            cursor: pointer;
+            transition: transform 0.2s;
+            line-height: 1;
+        }
+        .modal-close:hover {
+            transform: scale(1.1);
+            color: #ffd966;
+        }
+        .modal-chart-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: rgba(0,0,0,0.2);
+            border-radius: 24px;
+            overflow: hidden;
+        }
+        .modal-chart-container .chart-box {
+            width: 100%;
+            height: 100%;
+        }
+        @media (max-width: 768px) {
+            .modal-container {
+                width: 95%;
+                padding: 16px;
+            }
+            .modal-header h3 {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
 </head>
 <body>
     <div id="particles"></div>
@@ -44,9 +178,8 @@
             </div>
         </div>
 
-        <!-- 主内容区域：左侧控制区 + 右侧双图表 -->
+        <!-- 主区域：左侧控制区 + 右侧按钮区（不再显示图表容器） -->
         <div class="main-grid">
-            <!-- 左侧控制面板 -->
             <aside class="control-panel">
                 <div class="voice-control card">
                     <button id="voice-toggle" class="btn btn-primary">🎤 开启语音遥控</button>
@@ -65,26 +198,16 @@
                 <button id="generate-advice-btn" class="btn btn-success btn-block">✨ 生成智能指导</button>
             </aside>
 
-            <!-- 右侧双图表区 -->
-            <div class="charts-area">
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3>🎯 和弦掌握度</h3>
-                        <span class="chart-sub">雷达图展示各和弦熟练程度</span>
-                    </div>
-                    <div id="radar-chart" class="chart-container"></div>
-                </div>
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3>📈 进步趋势</h3>
-                        <span class="chart-sub">最近30天正确率变化</span>
-                    </div>
-                    <div id="progress-chart" class="chart-container"></div>
+            <!-- 右侧只有两个按钮，没有图表容器 -->
+            <div class="right-chart-area" id="rightChartArea">
+                <div class="chart-toggle-group">
+                    <button class="chart-toggle-btn" data-chart="radar">🎯 和弦掌握度</button>
+                    <button class="chart-toggle-btn" data-chart="progress">📈 进步趋势</button>
                 </div>
             </div>
         </div>
 
-        <!-- 智能指导卡片（独立成块） -->
+        <!-- 智能指导卡片 -->
         <div class="advice-section card">
             <div class="advice-header">
                 <h3>💡 智能指导</h3>
@@ -113,6 +236,20 @@
             </div>
         </section>
     </div>
+
+    <!-- 模态框结构 -->
+    <div id="chartModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="modalTitle">和弦掌握度</h3>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            <div id="modalChartContainer" class="modal-chart-container">
+                <div id="modalChartBox" class="chart-box"></div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="/static/js/voice_guide.js"></script>
     <script src="/static/js/teach/charts.js"></script>

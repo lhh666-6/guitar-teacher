@@ -254,34 +254,27 @@ def health_check():
         }
     })
 
-# ---------- 页面路由 ----------
+# ---------- 页面路由（修改后） ----------
 @app.route('/')
 def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('intro'))
-    else :
-        return redirect(url_for('login_page'))
-
-@app.route('/intro')
-@login_required
-def intro():
-    # 渲染原有的 index.html，并告诉它动画结束后跳转到 /teach
-    return render_template('index.html', redirect_after_intro='/teach')
+    # 直接显示首页（开场动画+三个卡片），不进行任何重定向
+    return render_template('index.html')
 
 @app.route('/login')
 def login_page():
+    # 如果已登录，重定向到首页
     if current_user.is_authenticated:
-        return redirect(url_for('intro'))
+        return redirect(url_for('index'))
     return render_template('login.html')
 
 @app.route('/tuning')
-@login_required
 def tuning():
+    # 未登录也可以使用调音器
     return render_template('tuning.html')
 
 @app.route('/solo')
-@login_required
 def solo():
+    # 未登录也可以使用 SOLO 模式
     return render_template('solo.html')
 
 @app.route('/teach')

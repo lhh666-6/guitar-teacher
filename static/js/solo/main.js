@@ -277,18 +277,10 @@
             }
             this.testMode = false;
             this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
-            if (this.elements.trainLayout) {
-                this.elements.trainLayout.classList.remove('test-mode');
-            }
+            
+            // 恢复：退出视频全屏（移除放大类）
             if (this.elements.videoContainer) {
                 this.elements.videoContainer.classList.remove('video-expanded');
-            }
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
             }
         }
 
@@ -712,9 +704,6 @@
                 }
                 this.testMode = false;
                 this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
-                if (this.elements.trainLayout) {
-                    this.elements.trainLayout.classList.remove('test-mode');
-                }
                 this.filters = [];
                 this.latestLocalLandmarks = null;
                 this.cachedDrawingData = null;
@@ -840,22 +829,11 @@
                 }
             }, 100);
 
-            if (this.elements.trainLayout) {
-                this.elements.trainLayout.classList.add('test-mode');
-            }
             this.renderTestList();
-
+            
+            // 恢复：开始测试时视频全屏（添加放大类）
             if (this.elements.videoContainer) {
                 this.elements.videoContainer.classList.add('video-expanded');
-            }
-
-            const layout = this.elements.trainLayout;
-            if (layout.requestFullscreen) {
-                layout.requestFullscreen();
-            } else if (layout.webkitRequestFullscreen) {
-                layout.webkitRequestFullscreen();
-            } else if (layout.msRequestFullscreen) {
-                layout.msRequestFullscreen();
             }
         }
 

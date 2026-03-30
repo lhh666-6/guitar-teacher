@@ -1,10 +1,8 @@
-/**
- * 图表渲染模块
- */
 const Charts = {
-    // 雷达图配置（掌握度）
-    renderMastery: (containerId, data) => {
-        const chart = echarts.init(document.getElementById(containerId));
+    // 通用渲染到元素
+    renderMasteryInElement: (element, data) => {
+        if (element._chart) element._chart.dispose();
+        const chart = echarts.init(element);
         const option = {
             title: { text: '和弦掌握度', left: 'center', textStyle: { color: '#ffd966' } },
             radar: {
@@ -27,12 +25,13 @@ const Charts = {
             }]
         };
         chart.setOption(option);
+        element._chart = chart;
         return chart;
     },
 
-    // 进步曲线（折线图）
-    renderProgress: (containerId, data) => {
-        const chart = echarts.init(document.getElementById(containerId));
+    renderProgressInElement: (element, data) => {
+        if (element._chart) element._chart.dispose();
+        const chart = echarts.init(element);
         const option = {
             title: { text: '最近练习正确率趋势', left: 'center', textStyle: { color: '#ffd966' } },
             xAxis: {
@@ -63,9 +62,19 @@ const Charts = {
             grid: { containLabel: true, left: '10%', right: '8%', bottom: '8%' }
         };
         chart.setOption(option);
+        element._chart = chart;
         return chart;
+    },
+
+    // 保留原有方法（兼容旧调用）
+    renderMastery: (containerId, data) => {
+        const element = document.getElementById(containerId);
+        return Charts.renderMasteryInElement(element, data);
+    },
+    renderProgress: (containerId, data) => {
+        const element = document.getElementById(containerId);
+        return Charts.renderProgressInElement(element, data);
     }
 };
 
-// 暴露全局变量
 window.Charts = Charts;
