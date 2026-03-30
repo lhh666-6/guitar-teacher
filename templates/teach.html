@@ -13,7 +13,7 @@
             display: flex;
             justify-content: center;
             gap: 16px;
-            margin-bottom: 28px;
+            margin-bottom: 10px; /* 缩小 */
         }
         .chart-toggle-btn {
             background: rgba(101, 67, 33, 0.65);
@@ -48,16 +48,16 @@
             box-shadow: 0 0 8px rgba(255, 215, 140, 0.4);
         }
 
-        /* 右侧区域初始无内容，只有按钮 */
         .right-chart-area {
-            min-height: 450px;
+            min-height: 360px; /* 大幅缩小高度 */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
+            gap: 8px; /* 缩小间距 */
         }
 
-        /* ========== 全屏模态框样式 ========== */
+        /* 全屏模态框样式 */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -131,6 +131,128 @@
             width: 100%;
             height: 100%;
         }
+
+        /* 推荐列表卡片 - 紧凑样式 */
+        .recommend-section {
+            width: 100%;
+            margin-top: 0; /* 缩小 */
+            background: rgba(101, 67, 33, 0.65);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 8px 12px; /* 缩小上下内边距 */
+            border: 1px solid rgba(255, 215, 140, 0.3);
+        }
+        .recommend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 4px; /* 缩小 */
+            padding-bottom: 4px; /* 缩小 */
+            border-bottom: 1px solid rgba(255, 215, 140, 0.3);
+        }
+        .recommend-header h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #ffd966;
+        }
+        .refresh-recommend {
+            background: none;
+            border: none;
+            color: #ecd9b4;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: transform 0.2s;
+        }
+        .refresh-recommend:hover {
+            transform: rotate(180deg);
+            color: #ffd966;
+        }
+        .recommend-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .recommend-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0; /* 缩小 */
+            border-bottom: 1px solid rgba(255, 215, 140, 0.2);
+        }
+        .recommend-item:last-child {
+            border-bottom: none;
+        }
+        .chord-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #f5e6d3;
+        }
+        .add-btn {
+            background: rgba(255, 215, 140, 0.2);
+            border: 1px solid rgba(255, 215, 140, 0.4);
+            padding: 3px 10px;
+            border-radius: 18px;
+            font-size: 0.7rem;
+            color: #ecd9b4;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .add-btn:hover {
+            background: rgba(255, 215, 140, 0.4);
+            transform: translateY(-1px);
+        }
+        .add-btn.added {
+            background: rgba(100, 200, 100, 0.3);
+            border-color: #6fbf4c;
+            color: #6fbf4c;
+            cursor: default;
+        }
+        .add-btn.added:hover {
+            transform: none;
+        }
+
+        /* ========== 核心：全局超级紧凑布局 ========== */
+        .teach-container {
+            gap: 12px !important; /* 整体容器间距缩小 */
+        }
+        .stats-grid {
+            margin-bottom: 12px !important; /* 顶部卡片底部间距缩小 */
+        }
+        .main-grid {
+            margin-bottom: 12px !important; /* 主区域底部间距大幅缩小 */
+        }
+        .advice-section {
+            margin-top: 0 !important;
+            margin-bottom: 12px !important; /* 智能指导底部间距缩小 */
+        }
+        .control-panel {
+            margin-bottom: 0 !important;
+        }
+        .recent-records {
+            margin-top: 0 !important; /* 记录表格顶部间距缩小 */
+        }
+
+        /* 智能指导卡片紧凑 */
+        .advice-header {
+            margin-bottom: 8px;
+        }
+        .advice-card {
+            padding: 10px 14px;
+        }
+        .advice-text {
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        /* 表格区域紧凑 */
+        .recent-records .section-title {
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+        .table th, .table td {
+            padding: 8px 10px; /* 表格行高缩小 */
+        }
+
         @media (max-width: 768px) {
             .modal-container {
                 width: 95%;
@@ -138,6 +260,23 @@
             }
             .modal-header h3 {
                 font-size: 1.2rem;
+            }
+            .recommend-section {
+                padding: 8px 10px;
+                margin-top: 0;
+            }
+            .recommend-item {
+                padding: 3px 0;
+            }
+            .add-btn {
+                padding: 2px 8px;
+            }
+            /* 移动端进一步紧凑 */
+            .main-grid {
+                margin-bottom: 10px !important;
+            }
+            .right-chart-area {
+                min-height: 320px;
             }
         }
     </style>
@@ -178,8 +317,9 @@
             </div>
         </div>
 
-        <!-- 主区域：左侧控制区 + 右侧按钮区（不再显示图表容器） -->
+        <!-- 主区域：左侧控制区 + 右侧动态图表区（包含按钮和推荐列表） -->
         <div class="main-grid">
+            <!-- 左侧控制面板 -->
             <aside class="control-panel">
                 <div class="voice-control card">
                     <button id="voice-toggle" class="btn btn-primary">🎤 开启语音遥控</button>
@@ -198,11 +338,20 @@
                 <button id="generate-advice-btn" class="btn btn-success btn-block">✨ 生成智能指导</button>
             </aside>
 
-            <!-- 右侧只有两个按钮，没有图表容器 -->
+            <!-- 右侧区域：按钮和推荐列表（紧凑布局） -->
             <div class="right-chart-area" id="rightChartArea">
                 <div class="chart-toggle-group">
                     <button class="chart-toggle-btn" data-chart="radar">🎯 和弦掌握度</button>
                     <button class="chart-toggle-btn" data-chart="progress">📈 进步趋势</button>
+                </div>
+                
+                <!-- 推荐列表卡片 -->
+                <div class="recommend-section">
+                    <div class="recommend-header">
+                        <h4>✨ AI 推荐练习和弦</h4>
+                        <button class="refresh-recommend" id="refreshRecommendBtn" title="换一批">🔄</button>
+                    </div>
+                    <div class="recommend-list" id="recommendList"></div>
                 </div>
             </div>
         </div>

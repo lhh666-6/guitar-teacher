@@ -417,6 +417,23 @@ def generate_advice():
         return jsonify({'advice': advice})
     else:
         return jsonify({'advice': '暂时无法生成建议，请稍后再试。'})
+    
+@app.route('/api/teach/recommend_chords', methods=['POST'])
+@login_required
+def recommend_chords():
+    """AI 生成推荐和弦列表（3~5个）"""
+    overview = user_stats.get_overview()
+    recent = user_stats.get_recent_records(limit=1)
+    stats = {
+        'overview': overview,
+        'recent_records': recent
+    }
+    chords = llm_service.generate_chord_recommendations(stats)
+    if chords:
+        return jsonify({'chords': chords})
+    else:
+        # 降级：返回默认推荐
+        return jsonify({'chords': ['C', 'G', 'Am', 'Em', 'D']})
 
 # ---------- TTS 路由 ----------
 @app.route('/api/tts/speak', methods=['POST'])

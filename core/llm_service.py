@@ -214,7 +214,64 @@ class LLMService:
                         continue
 
         conv.add_assistant_message("".join(full_reply))
+    # 在 LLMService 类中添加以下方法（放在 generate_advice 方法附近即可）
 
+    def generate_chord_recommendations(self, user_stats: Dict) -> Optional[List[str]]:
+        """
+        根据用户练习数据生成推荐和弦列表（3~5个）
+        返回格式：['C', 'G', 'Am', ...]
+        """
+        overview = user_stats.get('overview', {})
+        total_sessions = overview.get('total_sessions', 0)
+        avg_accuracy = overview.get('avg_accuracy', 0)
+        weak_chords = overview.get('weak_chords', [])
+        weak_chords_str = ', '.join(weak_chords) if weak_chords else '无'
+
+        recent_records = user_stats.get('recent_records', [])
+        latest_practice = "无"
+        if recent_records and isinstance(recent_records, list):
+            last = recent_records[0]
+            if isinstance(last, dict):
+                chord = last.get('chord', '未知')
+                acc = last.get('accuracy', 0)
+                latest_practice = f"{chord}和弦 (正确率{acc}%)"
+            else:
+                latest_practice = str(last)
+
+        prompt = f"""
+    根据以下用户的吉他练习数据，推荐 3 到 5 个和弦，供用户下次练习。推荐的和弦应具有针对性，例如：
+    - 重点练习薄弱和弦
+    - 适当增加难度，挑战新和弦
+    - 巩固已掌握但还不够熟练的和弦
+
+    请直接返回和弦名称列表，格式为 JSON 数组，例如：["C", "G", "Am", "Em", "F"]
+    不要包含其他文字，只返回 JSON 数组。
+
+    用户数据：
+    - 总练习次数：{total_sessions}
+    - 平均正确率：{avg_accuracy}%
+    - 薄弱和弦：{weak_chords_str}
+    - 最近一次练习：{latest_practice}
+        """
+        result = self.generate(prompt, system_prompt="你是一个专业的吉他教练，根据数据生成推荐和弦列表。")
+        if not result:
+            return None
+        # 尝试解析 JSON
+        import json
+        try:
+            # 提取可能包含在 markdown 代码块中的 JSON
+            import re
+            json_match = re.search(r'\[.*?\]', result, re.DOTALL)
+            if json_match:
+                chords = json.loads(json_match.group())
+                if isinstance(chords, list) and all(isinstance(c, str) for c in chords):
+                    return chords[:5]  # 限制最多5个
+        except:
+            # 如果解析失败，返回一个默认列表
+            logger.warning("解析推荐和弦失败，使用默认列表")
+            return ['C', 'G', 'Am', 'Em', 'D']
+        return None
+   
     def generate_advice(self, user_stats: Dict) -> Optional[str]:
         overview = user_stats.get('overview', {})
         total_sessions = overview.get('total_sessions', 0)

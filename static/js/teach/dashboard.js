@@ -2,6 +2,10 @@ let dashboardData = null;
 let currentChartType = null;
 let modalChartInstance = null;
 
+// 推荐列表相关变量
+let currentRecommendations = [];
+let addedChords = new Set(); // 已加入的和弦，用于界面状态
+
 document.addEventListener('DOMContentLoaded', async () => {
     await loadDashboardData();
 
@@ -38,6 +42,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target === modal) closeModal();
     });
 
+    // 加载已加入的和弦列表（从localStorage）
+    loadAddedChords();
+
+    // 加载推荐列表
+    await loadRecommendations();
+
+    // 绑定刷新按钮
+    const refreshBtn = document.getElementById('refreshRecommendBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '⏳';
+            await loadRecommendations(true);
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '🔄';
+        });
+    }
+
     // 暴露给语音控制
     window.showChartModal = showChartModal;
 });
@@ -48,13 +70,11 @@ async function loadDashboardData() {
         const data = await response.json();
         dashboardData = data;
 
-        // 更新顶部指标
         document.getElementById('total-duration').textContent = data.overview.total_duration;
         document.getElementById('total-sessions').textContent = data.overview.total_sessions;
         document.getElementById('avg-accuracy').textContent = data.overview.avg_accuracy;
         document.getElementById('weak-chords').textContent = data.overview.weak_chords.join('、');
 
-        // 更新最近记录表格
         const tbody = document.querySelector('#records-table tbody');
         tbody.innerHTML = data.recent_records.map(r => `
             <tr>
@@ -89,13 +109,102 @@ async function generateAdvice() {
     }
 }
 
+// ========== 推荐列表相关 ==========
+
+// 从localStorage加载已加入的和弦
+function loadAddedChords() {
+    const stored = localStorage.getItem('pendingSoloChords');
+    if (stored) {
+        try {
+            const chords = JSON.parse(stored);
+            addedChords = new Set(chords);
+        } catch(e) {}
+    }
+}
+
+// 保存已加入的和弦到localStorage
+function saveAddedChords() {
+    localStorage.setItem('pendingSoloChords', JSON.stringify(Array.from(addedChords)));
+}
+
+// 获取推荐列表（模拟 AI 生成，实际可对接后端 API）
+async function fetchRecommendations() {
+    // 模拟后端返回，实际应调用 /api/teach/recommend_chords
+    // 这里使用常见和弦库，随机取 3~5 个，并去重
+    const commonChords = ['C', 'G', 'D', 'Am', 'Em', 'F', 'Bm', 'A', 'E', 'Dm', 'F#m', 'B'];
+    const count = Math.floor(Math.random() * 3) + 3; // 3~5
+    // 随机抽取不重复的和弦
+    const shuffled = [...commonChords];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, count);
+}
+
+async function loadRecommendations(refresh = false) {
+    try {
+        // 可调用真实 API，这里先使用模拟
+        // const response = await fetch('/api/teach/recommend_chords');
+        // const data = await response.json();
+        // currentRecommendations = data.chords;
+        currentRecommendations = await fetchRecommendations();
+        renderRecommendations();
+    } catch (e) {
+        console.error('获取推荐失败', e);
+        // 降级使用静态列表
+        currentRecommendations = ['C', 'G', 'Am'];
+        renderRecommendations();
+    }
+}
+
+function renderRecommendations() {
+    const container = document.getElementById('recommendList');
+    if (!container) return;
+    if (!currentRecommendations || currentRecommendations.length === 0) {
+        container.innerHTML = '<div class="recommend-item">暂无推荐，点击刷新</div>';
+        return;
+    }
+    container.innerHTML = currentRecommendations.map(chord => {
+        const isAdded = addedChords.has(chord);
+        return `
+            <div class="recommend-item" data-chord="${chord}">
+                <span class="chord-name">${chord}</span>
+                <button class="add-btn ${isAdded ? 'added' : ''}" data-chord="${chord}" ${isAdded ? 'disabled' : ''}>
+                    ${isAdded ? '✓ 已加入' : '+ 加入训练列表'}
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    // 绑定按钮事件
+    document.querySelectorAll('.add-btn').forEach(btn => {
+        if (btn.disabled) return;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const chord = btn.getAttribute('data-chord');
+            if (chord && !addedChords.has(chord)) {
+                addedChords.add(chord);
+                saveAddedChords();
+                // 更新按钮样式
+                btn.classList.add('added');
+                btn.textContent = '✓ 已加入';
+                btn.disabled = true;
+                // 可选：提示
+                // VoiceGuide.speak(`已将${chord}和弦加入训练列表`);
+            }
+        });
+    });
+}
+
+// ========== 模态框图表 ==========
+
 function showChartModal(type) {
     if (!dashboardData) {
         console.warn('数据未加载完成');
         return;
     }
 
-    // 更新按钮激活样式
     const radarBtn = document.querySelector('[data-chart="radar"]');
     const progressBtn = document.querySelector('[data-chart="progress"]');
     radarBtn.classList.toggle('active', type === 'radar');
@@ -104,14 +213,12 @@ function showChartModal(type) {
     const modalTitle = document.getElementById('modalTitle');
     const modalChartBox = document.getElementById('modalChartBox');
 
-    // 清空容器（如果之前有图表则销毁）
     if (modalChartInstance) {
         modalChartInstance.dispose();
         modalChartInstance = null;
     }
-    modalChartBox.innerHTML = ''; // 清空内部可能残留的 canvas
+    modalChartBox.innerHTML = '';
 
-    // 根据类型渲染图表到模态框
     if (type === 'radar') {
         if (dashboardData.mastery && dashboardData.mastery.chords.length) {
             modalTitle.textContent = '🎯 和弦掌握度';
@@ -128,30 +235,25 @@ function showChartModal(type) {
         }
     }
 
-    // 显示模态框
     const modal = document.getElementById('chartModal');
     modal.classList.add('active');
 
-    // 监听窗口缩放，重新调整图表尺寸
     const resizeHandler = () => {
         if (modalChartInstance && modalChartInstance.resize) {
             modalChartInstance.resize();
         }
     };
     window.addEventListener('resize', resizeHandler);
-    // 保存以便关闭时移除
     modal._resizeHandler = resizeHandler;
 }
 
 function closeModal() {
     const modal = document.getElementById('chartModal');
     modal.classList.remove('active');
-    // 移除 resize 监听
     if (modal._resizeHandler) {
         window.removeEventListener('resize', modal._resizeHandler);
         delete modal._resizeHandler;
     }
-    // 可选：销毁图表实例以释放资源
     if (modalChartInstance) {
         modalChartInstance.dispose();
         modalChartInstance = null;
