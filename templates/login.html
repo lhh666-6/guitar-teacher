@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 / 注册 - 智能吉他教学</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+    <div class="glass-card">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="login">登录</button>
+            <button class="tab-btn" data-tab="register">注册</button>
+        </div>
+        <form id="login-form">
+            <input type="email" id="login-email" placeholder="邮箱" required>
+            <input type="password" id="login-password" placeholder="密码" required>
+            <button type="submit">登录</button>
+            <div class="message"></div>
+        </form>
+        <form id="register-form" style="display: none;">
+            <input type="email" id="reg-email" placeholder="邮箱" required>
+            <input type="password" id="reg-password" placeholder="密码 (至少6位)" required>
+            <input type="password" id="reg-confirm" placeholder="确认密码" required>
+            <button type="submit">注册</button>
+            <div class="message"></div>
+        </form>
+    </div>
+    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+</html>

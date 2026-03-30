@@ -7,7 +7,7 @@
     <!-- 引入 GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <style>
-        /* ========== 原有完整样式 ========== */
+        /* ========== 原有完整样式（保持不变） ========== */
         * {
             margin: 0;
             padding: 0;
@@ -275,7 +275,7 @@
             }
         }
 
-        /* ========== 开场动画样式（背景与index一致） ========== */
+        /* ========== 开场动画样式 ========== */
         .intro-overlay {
             position: fixed;
             top: 0;
@@ -363,7 +363,7 @@
     </style>
 </head>
 <body>
-    <!-- 开场动画容器（只保留吉他图片） -->
+    <!-- 开场动画容器 -->
     <div id="intro-overlay" class="intro-overlay">
         <div class="intro-content" id="intro-content">
             <img id="img-guitar-notes" src="/static/images/guitar-notes.png" alt="乐符环绕吉他" onerror="console.error('图片加载失败:', this.src)">
@@ -371,7 +371,7 @@
         <div class="intro-hint">✨ 即将进入</div>
     </div>
 
-    <!-- 主内容（原有界面） -->
+    <!-- 主内容（原有界面，仅在非登录直接访问时显示） -->
     <div class="main-content">
         <canvas id="particles-js"></canvas>
         <a href="/history" class="history-link" title="训练历史记录">📊 历史</a>
@@ -398,30 +398,36 @@
         </div>
     </div>
 
-    <!-- 粒子动画脚本（如果存在） -->
+    <!-- 粒子动画脚本 -->
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
-    <!-- 开场动画脚本（单张吉他，伪3D，总时长3秒） -->
+    <!-- 开场动画脚本（支持登录后跳转） -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             'use strict';
+
+            // 获取后端传入的跳转目标（如果有）
+            const redirectAfter = '{{ redirect_after_intro | default("") }}';
+            console.log('🎯 redirectAfter =', redirectAfter);
 
             const overlay = document.getElementById('intro-overlay');
             const content = document.getElementById('intro-content');
             const guitar = document.getElementById('img-guitar-notes');
             const mainContent = document.querySelector('.main-content');
 
-            // 检查是否已播放过
-            const hasPlayed = sessionStorage.getItem('introPlayed');
-
-            if (hasPlayed) {
-                console.log('⏩ 开场动画已播放过，跳过');
-                if (overlay) overlay.style.display = 'none';
-                if (mainContent) {
-                    mainContent.style.visibility = 'visible';
-                    mainContent.style.opacity = '1';
+            // 如果没有传入跳转目标（直接访问首页），且已经播放过动画，则跳过动画直接显示主内容
+            // 注意：登录后每次都会传入 redirectAfter，因此不会跳过
+            if (!redirectAfter) {
+                const hasPlayed = sessionStorage.getItem('introPlayed');
+                if (hasPlayed) {
+                    console.log('⏩ 开场动画已播放过，跳过');
+                    if (overlay) overlay.style.display = 'none';
+                    if (mainContent) {
+                        mainContent.style.visibility = 'visible';
+                        mainContent.style.opacity = '1';
+                    }
+                    return;
                 }
-                return;
             }
 
             if (!overlay || !guitar || !mainContent) {
@@ -453,7 +459,10 @@
                 onStart: () => console.log('🎬 时间线开始'),
                 onComplete: () => {
                     console.log('🎬 时间线完成');
-                    sessionStorage.setItem('introPlayed', 'true');
+                    // 只有非跳转模式才记录 sessionStorage（避免登录后重复播放被跳过）
+                    if (!redirectAfter) {
+                        sessionStorage.setItem('introPlayed', 'true');
+                    }
                 }
             });
 
@@ -474,24 +483,37 @@
                 ease: "none",
                 onStart: () => console.log('🎬 [2s] 停留1秒')
             })
-            // 动画结束后自动进入主页（不淡出，直接进入）
+            // 动画结束后处理
             .call(() => {
-                console.log('🚪 3秒到，自动进入主页');
-                gsap.killTweensOf(guitar);
-                gsap.to(overlay, {
-                    opacity: 0,
-                    duration: 1.2,
-                    ease: "power2.inOut",
-                    onComplete: () => {
-                        overlay.style.display = 'none';
-                        mainContent.style.visibility = 'visible';
-                        gsap.fromTo(mainContent,
-                            { y: 20, opacity: 0 },
-                            { y: 0, opacity: 1, duration: 1.2, ease: "power2.out", clearProps: "y" }
-                        );
-                        console.log('🏠 主界面已显示');
-                    }
-                });
+                console.log('🚪 动画结束，redirectAfter =', redirectAfter);
+                if (redirectAfter) {
+                    // 登录后模式：淡出动画层，然后跳转到指定页面
+                    gsap.to(overlay, {
+                        opacity: 0,
+                        duration: 1.2,
+                        ease: "power2.inOut",
+                        onComplete: () => {
+                            window.location.href = redirectAfter;
+                        }
+                    });
+                } else {
+                    // 未登录模式（或直接访问首页）：显示主内容（三个模式卡片）
+                    gsap.killTweensOf(guitar);
+                    gsap.to(overlay, {
+                        opacity: 0,
+                        duration: 1.2,
+                        ease: "power2.inOut",
+                        onComplete: () => {
+                            overlay.style.display = 'none';
+                            mainContent.style.visibility = 'visible';
+                            gsap.fromTo(mainContent,
+                                { y: 20, opacity: 0 },
+                                { y: 0, opacity: 1, duration: 1.2, ease: "power2.out", clearProps: "y" }
+                            );
+                            console.log('🏠 主界面已显示');
+                        }
+                    });
+                }
             }, "+=0");
 
             // 悬停加速
@@ -514,26 +536,29 @@
                 console.log('🐭 悬停恢复: 1x');
             });
 
-            // 强制超时：5秒后强制进入（比总时长多2秒）
+            // 强制超时：5秒后强制处理（防止卡死）
             setTimeout(() => {
                 if (overlay.style.display !== 'none') {
-                    console.warn('⚠️ 强制超时：5秒已过，强制进入主页');
+                    console.warn('⚠️ 强制超时：5秒已过，强制处理');
                     tl.pause();
                     gsap.killTweensOf(guitar);
-                    gsap.to(overlay, {
-                        opacity: 0,
-                        duration: 1.2,
-                        ease: "power2.inOut",
-                        onComplete: () => {
-                            overlay.style.display = 'none';
-                            mainContent.style.visibility = 'visible';
-                            gsap.fromTo(mainContent,
-                                { y: 20, opacity: 0 },
-                                { y: 0, opacity: 1, duration: 1.2, ease: "power2.out", clearProps: "y" }
-                            );
-                            sessionStorage.setItem('introPlayed', 'true');
-                        }
-                    });
+                    if (redirectAfter) {
+                        window.location.href = redirectAfter;
+                    } else {
+                        gsap.to(overlay, {
+                            opacity: 0,
+                            duration: 0.5,
+                            onComplete: () => {
+                                overlay.style.display = 'none';
+                                mainContent.style.visibility = 'visible';
+                                gsap.fromTo(mainContent,
+                                    { y: 20, opacity: 0 },
+                                    { y: 0, opacity: 1, duration: 0.8, ease: "power2.out", clearProps: "y" }
+                                );
+                                if (!redirectAfter) sessionStorage.setItem('introPlayed', 'true');
+                            }
+                        });
+                    }
                 }
             }, 5000);
 
@@ -556,13 +581,8 @@
     if (window.VoiceGuide) {
         VoiceGuide.registerPageCommands('/', []);
     }
-</script>
-<script>
-    if (window.VoiceGuide) {
-        VoiceGuide.registerPageCommands('/', []);
-    }
-</script>
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-<script src="/static/js/voice_guide.js"></script>
+    </script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/voice_guide.js"></script>
 </body>
 </html>

@@ -12,7 +12,7 @@ SQLAlchemy==2.0.23
 opencv-python==4.9.0.80
 numpy==1.24.3
 mediapipe==0.10.9
-ultralytics==8.2.0
+ultralytics>=8.0.0
 
 # HTTP 请求
 requests==2.31.0
@@ -23,6 +23,8 @@ python-dotenv==1.0.0
 
 # TTS 服务（Edge TTS）
 edge-tts
+flask-login==0.6.2
+email-validator==2.1.0
 
 # ========== PyTorch（可选，YOLO 模型需要） ==========
 # 如果您的 YOLO 模型无法加载，请根据 CUDA 版本安装 PyTorch。

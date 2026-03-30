@@ -11,9 +11,10 @@ from functools import wraps
 
 import cv2
 import numpy as np
-from flask import Flask, jsonify, request, render_template, send_file
+from flask import Flask, jsonify, request, render_template, send_file, session, redirect, url_for
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from flask_login import LoginManager, login_required, current_user
 from sqlalchemy import func, case
 
 from core.detector import GuitarFingeringRecognizer
@@ -21,8 +22,9 @@ from api.chords import chords_bp
 import config
 from core import user_stats
 from core.llm_service import LLMService
-from models import db, TrainingRecord
+from models import db, TrainingRecord, User
 from core.tts_service import VolcTTS
+from api.auth import auth_bp
 
 # ---------- 日志配置 ----------
 logging.basicConfig(
@@ -33,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 # ---------- 初始化应用 ----------
 app = Flask(__name__)
+app.config.from_object(config)
 CORS(app)
 
 # ---------- 数据库配置 ----------
@@ -43,8 +46,20 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+# ---------- 初始化 Flask-Login ----------
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login_page'   # 未登录时重定向的路由端点
+login_manager.login_message = '请先登录以访问此页面'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 # 注册蓝图
 app.register_blueprint(chords_bp, url_prefix='/api/chords')
+app.register_blueprint(auth_bp)
 
 # 初始化 SocketIO
 socketio = SocketIO(
@@ -196,6 +211,7 @@ def process_and_emit(image_base64: str, sid: str):
 
 # ---------- HTTP 接口 ----------
 @app.route('/api/solo/save_record', methods=['POST'])
+@login_required
 def save_solo_record():
     global play_records
     try:
@@ -212,6 +228,7 @@ def save_solo_record():
         return jsonify({'status': 'failed', 'message': '保存失败，请稍后重试'}), 500
 
 @app.route('/api/save_record', methods=['POST'])
+@login_required
 def save_training_record():
     data = request.get_json()
     if not data or 'chord_name' not in data or 'correct' not in data:
@@ -239,23 +256,41 @@ def health_check():
 
 # ---------- 页面路由 ----------
 @app.route('/')
-@app.route('/index.html')
 def index():
-    return render_template('index.html')
+    if current_user.is_authenticated:
+        return redirect(url_for('intro'))
+    else :
+        return redirect(url_for('login_page'))
+
+@app.route('/intro')
+@login_required
+def intro():
+    # 渲染原有的 index.html，并告诉它动画结束后跳转到 /teach
+    return render_template('index.html', redirect_after_intro='/teach')
+
+@app.route('/login')
+def login_page():
+    if current_user.is_authenticated:
+        return redirect(url_for('intro'))
+    return render_template('login.html')
 
 @app.route('/tuning')
+@login_required
 def tuning():
     return render_template('tuning.html')
 
 @app.route('/solo')
+@login_required
 def solo():
     return render_template('solo.html')
 
 @app.route('/teach')
+@login_required
 def teach():
     return render_template('teach.html')
 
 @app.route('/history')
+@login_required
 def history():
     records = TrainingRecord.query.order_by(TrainingRecord.created_at.desc()).limit(100).all()
     records_data = [{
@@ -269,6 +304,7 @@ def history():
 
 # ---------- 历史记录 API ----------
 @app.route('/api/history/data')
+@login_required
 def history_data():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
@@ -323,6 +359,7 @@ def cache_result(ttl=5):
 
 @app.route('/api/history/stats')
 @cache_result(ttl=5)
+@login_required
 def history_stats():
     total = db.session.query(func.count(TrainingRecord.id)).scalar()
     correct = db.session.query(func.sum(TrainingRecord.correct.cast(db.Integer))).scalar()
@@ -360,6 +397,7 @@ def history_stats():
 llm_service = LLMService()
 
 @app.route('/api/teach/dashboard')
+@login_required
 def get_teach_dashboard():
     overview = user_stats.get_overview()
     mastery = user_stats.get_chord_mastery()
@@ -373,6 +411,7 @@ def get_teach_dashboard():
     })
 
 @app.route('/api/teach/generate_advice', methods=['POST'])
+@login_required
 def generate_advice():
     overview = user_stats.get_overview()
     recent = user_stats.get_recent_records(limit=1)
