@@ -194,41 +194,7 @@
                 select.value = this.chords[0].id;
                 select.dispatchEvent(new Event('change'));
             }
-
-            // 新增：加载待训练的和弦（从localStorage）
-            this.loadPendingChords();
-        }
-
-        // 新增：从localStorage加载待训练和弦，并添加到测试列表
-        loadPendingChords() {
-            const stored = localStorage.getItem('pendingSoloChords');
-            if (stored) {
-                try {
-                    const chords = JSON.parse(stored);
-                    if (Array.isArray(chords) && chords.length > 0) {
-                        // 将和弦名称转换为对应的和弦对象ID，并加入testList
-                        chords.forEach(chordName => {
-                            const matchedChord = this.chords.find(c => c.name === chordName);
-                            if (matchedChord && !this.testList.includes(matchedChord.id)) {
-                                this.testList.push(matchedChord.id);
-                            }
-                        });
-                        // 清空localStorage
-                        localStorage.removeItem('pendingSoloChords');
-                        // 刷新测试列表UI
-                        this.renderTestList();
-                        this.updateProgress();
-                        // 可选提示
-                        if (chords.length > 0) {
-                            console.log(`已自动添加 ${chords.length} 个推荐和弦到测试列表`);
-                        }
-                    }
-                } catch(e) {
-                    console.error('解析待训练和弦失败', e);
-                }
-            }
-        }
-
+        }     
         // 将后端弦号转换为显示索引（顶部为6弦，底部为1弦）
         backendToDisplayIndex(backendString) {
             return STRING_COUNT - backendString; // 例如 6弦 -> 0, 1弦 -> 5
@@ -311,10 +277,18 @@
             }
             this.testMode = false;
             this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
-            
-            // 恢复：退出视频全屏（移除放大类）
+            if (this.elements.trainLayout) {
+                this.elements.trainLayout.classList.remove('test-mode');
+            }
             if (this.elements.videoContainer) {
                 this.elements.videoContainer.classList.remove('video-expanded');
+            }
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
             }
         }
 
@@ -738,6 +712,9 @@
                 }
                 this.testMode = false;
                 this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+                if (this.elements.trainLayout) {
+                    this.elements.trainLayout.classList.remove('test-mode');
+                }
                 this.filters = [];
                 this.latestLocalLandmarks = null;
                 this.cachedDrawingData = null;
@@ -863,11 +840,22 @@
                 }
             }, 100);
 
+            if (this.elements.trainLayout) {
+                this.elements.trainLayout.classList.add('test-mode');
+            }
             this.renderTestList();
-            
-            // 恢复：开始测试时视频全屏（添加放大类）
+
             if (this.elements.videoContainer) {
                 this.elements.videoContainer.classList.add('video-expanded');
+            }
+
+            const layout = this.elements.trainLayout;
+            if (layout.requestFullscreen) {
+                layout.requestFullscreen();
+            } else if (layout.webkitRequestFullscreen) {
+                layout.webkitRequestFullscreen();
+            } else if (layout.msRequestFullscreen) {
+                layout.msRequestFullscreen();
             }
         }
 

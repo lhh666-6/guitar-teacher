@@ -254,7 +254,7 @@ def health_check():
         }
     })
 
-# ---------- 页面路由（修改后） ----------
+# ---------- 页面路由（已添加登录保护） ----------
 @app.route('/')
 def index():
     # 直接显示首页（开场动画+三个卡片），不进行任何重定向
@@ -268,13 +268,13 @@ def login_page():
     return render_template('login.html')
 
 @app.route('/tuning')
+@login_required          # 添加登录保护
 def tuning():
-    # 未登录也可以使用调音器
     return render_template('tuning.html')
 
 @app.route('/solo')
+@login_required          # 添加登录保护
 def solo():
-    # 未登录也可以使用 SOLO 模式
     return render_template('solo.html')
 
 @app.route('/teach')

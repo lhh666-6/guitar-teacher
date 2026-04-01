@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>智能吉他教学系统 · 音乐家风格</title>
     <!-- 引入 GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -311,6 +311,8 @@
             align-items: center;
             pointer-events: auto;
             will-change: background-color;
+            cursor: pointer;
+            transition: opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
         .intro-overlay::before {
@@ -344,6 +346,7 @@
             align-items: center;
             z-index: 2;
             perspective: 1000px;
+            transform-style: preserve-3d;
         }
 
         .intro-content img {
@@ -352,6 +355,7 @@
             height: 100%;
             object-fit: contain;
             filter: drop-shadow(0 0 20px rgba(255,215,0,0.3));
+            /* 初始透明，动画会将其变为可见 */
             opacity: 0;
             will-change: transform, opacity, filter;
             pointer-events: none;
@@ -362,18 +366,34 @@
 
         .intro-hint {
             margin-top: 30px;
-            color: rgba(255,255,255,0.5);
-            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+            font-size: 1.2rem;
             letter-spacing: 3px;
             text-transform: uppercase;
-            animation: subtlePulse 3s infinite;
+            font-weight: 500;
+            background: rgba(0,0,0,0.4);
+            padding: 8px 24px;
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(227, 167, 46, 0.5);
+            transition: all 0.2s ease;
+            animation: gentlePulse 1.8s infinite;
             z-index: 2;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        
+        .intro-hint:hover {
+            background: rgba(227, 167, 46, 0.3);
+            border-color: #e3a72e;
+            transform: scale(1.02);
+            letter-spacing: 5px;
         }
 
-        @keyframes subtlePulse {
-            0% { opacity: 0.3; }
-            50% { opacity: 0.8; }
-            100% { opacity: 0.3; }
+        @keyframes gentlePulse {
+            0% { opacity: 0.5; transform: scale(0.98); box-shadow: 0 0 0 0 rgba(227, 167, 46, 0.3);}
+            50% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 8px rgba(227, 167, 46, 0);}
+            100% { opacity: 0.5; transform: scale(0.98); box-shadow: 0 0 0 0 rgba(227, 167, 46, 0);}
         }
 
         .main-content {
@@ -381,15 +401,19 @@
             visibility: hidden;
             transition: opacity 1.2s cubic-bezier(0.23, 1, 0.32, 1), visibility 1.2s;
         }
+        
+        .intro-clickable {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <!-- 开场动画容器 -->
-    <div id="intro-overlay" class="intro-overlay">
+    <div id="intro-overlay" class="intro-overlay intro-clickable">
         <div class="intro-content" id="intro-content">
-            <img id="img-guitar-notes" src="/static/images/guitar-notes.png" alt="乐符环绕吉他" onerror="console.error('图片加载失败:', this.src)">
+            <img id="img-guitar-notes" src="/static/images/guitar-notes.png" alt="乐符环绕吉他">
         </div>
-        <div class="intro-hint">✨ 即将进入</div>
+        <div class="intro-hint" id="intro-hint">🎸 点击进入音乐之旅 🎸</div>
     </div>
 
     <!-- 主内容 -->
@@ -426,7 +450,7 @@
         </div>
     </div>
 
-    <!-- 粒子动画脚本 -->
+    <!-- 粒子动画脚本（如果有） -->
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
     <!-- 用户状态管理脚本 -->
@@ -465,34 +489,20 @@
         loadUserStatus();
     </script>
 
-    <!-- 开场动画脚本 -->
+    <!-- 开场动画：点击进入 + 只播放一次，并确保图片可见 -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             'use strict';
 
             const redirectAfter = '{{ redirect_after_intro | default("") }}';
-            console.log('🎯 redirectAfter =', redirectAfter);
-
             const overlay = document.getElementById('intro-overlay');
-            const content = document.getElementById('intro-content');
-            const guitar = document.getElementById('img-guitar-notes');
+            const guitarImg = document.getElementById('img-guitar-notes');
             const mainContent = document.querySelector('.main-content');
+            const hintBtn = document.getElementById('intro-hint');
 
-            if (!redirectAfter) {
-                const hasPlayed = sessionStorage.getItem('introPlayed');
-                if (hasPlayed) {
-                    console.log('⏩ 开场动画已播放过，跳过');
-                    if (overlay) overlay.style.display = 'none';
-                    if (mainContent) {
-                        mainContent.style.visibility = 'visible';
-                        mainContent.style.opacity = '1';
-                    }
-                    return;
-                }
-            }
-
-            if (!overlay || !guitar || !mainContent) {
-                console.error('❌ 开场元素缺失，直接显示主内容');
+            // 关键元素缺失则直接显示主内容
+            if (!overlay || !guitarImg || !mainContent) {
+                console.warn('❌ 开场元素缺失，直接显示主内容');
                 if (overlay) overlay.style.display = 'none';
                 if (mainContent) {
                     mainContent.style.visibility = 'visible';
@@ -501,118 +511,174 @@
                 return;
             }
 
-            console.log('✅ 开场元素已找到，开始动画');
+            // 监听图片加载状态
+            guitarImg.onload = () => console.log('✅ 图片加载成功:', guitarImg.src);
+            guitarImg.onerror = () => console.error('❌ 图片加载失败:', guitarImg.src);
 
-            gsap.set(guitar, {
-                opacity: 0,
-                scale: 0.8,
-                filter: 'blur(8px) brightness(0.6)',
-                rotationY: -15,
-                rotationX: 5,
-                transformPerspective: 1000
-            });
-
-            const tl = gsap.timeline({
-                smoothChildTiming: true,
-                onStart: () => console.log('🎬 时间线开始'),
-                onComplete: () => {
-                    console.log('🎬 时间线完成');
-                    if (!redirectAfter) {
-                        sessionStorage.setItem('introPlayed', 'true');
-                    }
-                }
-            });
-
-            tl.to(guitar, {
-                opacity: 1,
-                scale: 1,
-                filter: 'blur(0px) brightness(1)',
-                rotationY: 0,
-                rotationX: 0,
-                duration: 2,
-                ease: "elastic.out(1, 0.4)",
-                onStart: () => console.log('🎬 [0s] 吉他淡入并旋转')
-            })
-            .to(guitar, {
-                duration: 1,
-                ease: "none",
-                onStart: () => console.log('🎬 [2s] 停留1秒')
-            })
-            .call(() => {
-                console.log('🚪 动画结束，redirectAfter =', redirectAfter);
-                if (redirectAfter) {
-                    gsap.to(overlay, {
-                        opacity: 0,
-                        duration: 1.2,
-                        ease: "power2.inOut",
-                        onComplete: () => {
-                            window.location.href = redirectAfter;
-                        }
-                    });
-                } else {
-                    gsap.killTweensOf(guitar);
-                    gsap.to(overlay, {
-                        opacity: 0,
-                        duration: 1.2,
-                        ease: "power2.inOut",
-                        onComplete: () => {
-                            overlay.style.display = 'none';
-                            mainContent.style.visibility = 'visible';
-                            gsap.fromTo(mainContent,
-                                { y: 20, opacity: 0 },
-                                { y: 0, opacity: 1, duration: 1.2, ease: "power2.out", clearProps: "y" }
-                            );
-                            console.log('🏠 主界面已显示');
-                        }
-                    });
-                }
-            }, "+=0");
-
-            content.addEventListener('mouseenter', () => {
-                tl.timeScale(2);
-                gsap.to(guitar, {
-                    filter: 'drop-shadow(0 0 40px rgba(255,215,0,0.9)) brightness(1.2)',
-                    duration: 0.4,
-                    overwrite: true
+            // 有重定向参数（如登录后跳转）：自动播放动画并跳转，不受“只播放一次”限制
+            if (redirectAfter) {
+                console.log('🚀 检测到重定向参数，自动跳转');
+                overlay.style.pointerEvents = 'auto';
+                gsap.set(guitarImg, {
+                    opacity: 0,
+                    scale: 0.8,
+                    filter: 'blur(8px) brightness(0.6)',
+                    rotationY: -15,
+                    rotationX: 5,
+                    transformPerspective: 1000
                 });
-                console.log('🐭 悬停加速: 2x');
-            });
-            content.addEventListener('mouseleave', () => {
-                tl.timeScale(1);
-                gsap.to(guitar, {
-                    filter: 'drop-shadow(0 0 20px rgba(255,215,0,0.3)) brightness(1)',
-                    duration: 0.6,
-                    overwrite: true
-                });
-                console.log('🐭 悬停恢复: 1x');
-            });
-
-            setTimeout(() => {
-                if (overlay.style.display !== 'none') {
-                    console.warn('⚠️ 强制超时：5秒已过，强制处理');
-                    tl.pause();
-                    gsap.killTweensOf(guitar);
-                    if (redirectAfter) {
-                        window.location.href = redirectAfter;
-                    } else {
+                const autoTl = gsap.timeline({
+                    onComplete: () => {
                         gsap.to(overlay, {
                             opacity: 0,
-                            duration: 0.5,
+                            duration: 1.0,
+                            ease: "power2.inOut",
                             onComplete: () => {
-                                overlay.style.display = 'none';
-                                mainContent.style.visibility = 'visible';
-                                gsap.fromTo(mainContent,
-                                    { y: 20, opacity: 0 },
-                                    { y: 0, opacity: 1, duration: 0.8, ease: "power2.out", clearProps: "y" }
-                                );
-                                if (!redirectAfter) sessionStorage.setItem('introPlayed', 'true');
+                                window.location.href = redirectAfter;
                             }
                         });
                     }
-                }
-            }, 5000);
+                });
+                autoTl.to(guitarImg, {
+                    opacity: 1,
+                    scale: 1,
+                    filter: 'blur(0px) brightness(1)',
+                    rotationY: 0,
+                    rotationX: 0,
+                    duration: 1.5,
+                    ease: "elastic.out(1, 0.5)",
+                })
+                .to(guitarImg, {
+                    duration: 1.2,
+                    ease: "none"
+                })
+                .to(guitarImg, {
+                    duration: 0.6,
+                    scale: 1.1,
+                    opacity: 0.9,
+                    filter: 'blur(3px) brightness(1.2)',
+                    ease: "power2.in"
+                });
+                overlay.style.cursor = 'default';
+                overlay.style.pointerEvents = 'none';
+                return;
+            }
 
-            console.log('🎬 动画序列已启动');
+            // 普通主页：检查是否已经播放过开场动画（只播放一次）
+            const hasPlayed = sessionStorage.getItem('introPlayed');
+            if (hasPlayed) {
+                console.log('⏩ 开场动画已播放过，跳过');
+                overlay.style.display = 'none';
+                mainContent.style.visibility = 'visible';
+                mainContent.style.opacity = '1';
+                return;
+            }
+
+            // 未播放过：显示开场动画，等待点击进入
+            console.log('🎬 首次进入，展示开场动画，等待点击');
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+            overlay.style.pointerEvents = 'auto';
+            mainContent.style.visibility = 'hidden';
+            mainContent.style.opacity = '0';
+
+            // 初始设置吉他样式（确保初始透明，动画后会变可见）
+            gsap.set(guitarImg, {
+                opacity: 0,
+                scale: 0.75,
+                filter: 'blur(10px) brightness(0.65)',
+                rotationY: -20,
+                rotationX: 8,
+                transformPerspective: 1200
+            });
+
+            // 循环呼吸动画（将opacity变为1，并带有动效）
+            const idleTl = gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 1, ease: "sine.inOut" });
+            idleTl.to(guitarImg, {
+                duration: 3,
+                opacity: 1,          // 关键：让图片完全可见
+                scale: 1.02,
+                filter: 'blur(0px) brightness(1.05) drop-shadow(0 0 30px rgba(255,200,50,0.6))',
+                rotationY: -5,
+                rotationX: 3,
+                ease: "sine.inOut"
+            }, 0)
+            .to(guitarImg, {
+                duration: 3,
+                opacity: 0.95,       // 保持高可见
+                scale: 0.98,
+                filter: 'blur(0px) brightness(0.98) drop-shadow(0 0 15px rgba(255,180,30,0.4))',
+                rotationY: 5,
+                rotationX: -2,
+                ease: "sine.inOut"
+            }, 3);
+
+            // 提示文字微动
+            gsap.to(hintBtn, {
+                duration: 1.5,
+                scale: 1.05,
+                repeat: -1,
+                yoyo: true,
+                ease: "power1.inOut"
+            });
+
+            let isTransitioning = false;
+            const enterMain = () => {
+                if (isTransitioning) return;
+                isTransitioning = true;
+                console.log('✨ 用户点击进入，记录标记并淡出');
+                // 存储标记，保证只播放一次
+                sessionStorage.setItem('introPlayed', 'true');
+                // 停止循环动画
+                idleTl.kill();
+                gsap.killTweensOf(guitarImg);
+                gsap.killTweensOf(hintBtn);
+                // 吉他退出动画
+                gsap.to(guitarImg, {
+                    duration: 0.8,
+                    scale: 1.3,
+                    opacity: 0,
+                    rotationY: 25,
+                    rotationX: -10,
+                    filter: 'blur(15px) brightness(1.3)',
+                    ease: "back.in(1.2)",
+                    clearProps: "all"
+                });
+                // 遮罩层淡出
+                gsap.to(overlay, {
+                    duration: 0.9,
+                    opacity: 0,
+                    ease: "power2.inOut",
+                    onComplete: () => {
+                        overlay.style.display = 'none';
+                        overlay.style.pointerEvents = 'none';
+                        // 主内容淡入
+                        mainContent.style.visibility = 'visible';
+                        gsap.fromTo(mainContent, 
+                            { y: 30, opacity: 0 },
+                            { y: 0, opacity: 1, duration: 1.1, ease: "back.out(0.5)", clearProps: "y" }
+                        );
+                        console.log('🏠 主界面已显示');
+                    }
+                });
+            };
+
+            // 点击整个遮罩层或提示文字进入
+            overlay.addEventListener('click', enterMain);
+            hintBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                enterMain();
+            });
+
+            // 键盘支持
+            const handleKey = (e) => {
+                if (isTransitioning) return;
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'Space') {
+                    e.preventDefault();
+                    enterMain();
+                }
+            };
+            window.addEventListener('keydown', handleKey);
         });
     </script>
 
