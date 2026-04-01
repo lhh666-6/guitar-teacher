@@ -1,7 +1,7 @@
 """Phase 3 realtime chord check for 12 common chords.
 
-Usage:
-    python -m audio.phase3_chord_check --seconds 20
+Usage:python -m audio.phase3_chord_check --seconds 20
+    
 """
 
 from __future__ import annotations

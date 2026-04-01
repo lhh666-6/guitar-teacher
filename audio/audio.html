@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>和弦识别 · 84和弦精准版 | 增强优化</title>
+    <!-- Essentia.js (WASM) -->
+    <script src="https://cdn.jsdelivr.net/npm/essentia.js@0.1.3/dist/essentia-wasm.web.js"></script>
+    <!-- Meyda.js (降级引擎) -->
+    <script src="https://cdn.jsdelivr.net/npm/meyda@5.0.0/dist/web/meyda.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0f1c 0%, #0b1120 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            max-width: 720px;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border-radius: 2.5rem;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 25px 45px -12px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .header {
+            padding: 1.6rem 2rem 0.8rem;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(0,255,200,0.08), rgba(0,120,255,0.03));
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .header h1 {
+            font-size: 1.9rem;
+            background: linear-gradient(135deg, #E0F2FE, #A5F3FC, #7AA2F7);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+        .badge-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .engine-badge {
+            background: #1e2a3e;
+            padding: 4px 14px;
+            border-radius: 60px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #b9e6ff;
+        }
+        .chord-stage {
+            padding: 1.8rem 1.5rem 1rem;
+            text-align: center;
+        }
+        .chord-name {
+            font-size: 5rem;
+            font-weight: 800;
+            background: radial-gradient(circle at 30% 20%, #FFE6C7, #FFB347, #FF8C42);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .confidence-wrapper {
+            margin-top: 0.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+        }
+        .confidence-bar-container {
+            flex: 1;
+            max-width: 260px;
+            height: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #2dd4bf, #3b82f6, #8b5cf6);
+            transition: width 0.12s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+        .confidence-text {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            background: #0f172a90;
+            padding: 4px 14px;
+            border-radius: 60px;
+            backdrop-filter: blur(4px);
+        }
+        .visualizer {
+            background: #0f172a80;
+            margin: 0.8rem 1.5rem 1rem;
+            border-radius: 2rem;
+            padding: 0.8rem 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            flex-wrap: wrap;
+            border: 1px solid #2d3a5e;
+        }
+        .mic-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #00000040;
+            padding: 5px 14px;
+            border-radius: 60px;
+        }
+        .led {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ef4444;
+            transition: 0.1s;
+        }
+        .led.active {
+            background-color: #10b981;
+            box-shadow: 0 0 12px #10b981;
+            animation: pulse 1s infinite;
+        }
+        .volume-bar {
+            flex: 1;
+            height: 6px;
+            background: #334155;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .volume-level {
+            width: 0%;
+            height: 100%;
+            background: #38bdf8;
+            transition: width 0.05s linear;
+        }
+        button {
+            background: linear-gradient(105deg, #1e293b, #0f172a);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        button.primary {
+            background: linear-gradient(105deg, #0f2b3d, #0a1a2f);
+            border-color: #2dd4bf70;
+            color: #ccfbf1;
+        }
+        .status-area {
+            padding: 1rem 1.8rem 1.8rem;
+            font-size: 0.8rem;
+            color: #7e8aa8;
+            text-align: center;
+            border-top: 1px solid #1e293b;
+        }
+        .status-message {
+            font-family: monospace;
+            background: #00000050;
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 60px;
+            font-size: 0.75rem;
+        }
+        .chord-suggestion {
+            margin-top: 12px;
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+        footer {
+            font-size: 0.65rem;
+            text-align: center;
+            padding: 0.9rem;
+            color: #475569;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.6; transform: scale(1);}
+            100% { opacity: 1; transform: scale(1.2);}
+        }
+        @media (max-width: 550px) {
+            .chord-name { font-size: 3.5rem; min-height: 80px; }
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="header">
+        <h1>🎸 和弦识别 · 84和弦精准版</h1>
+        <div class="badge-container">
+            <span class="engine-badge" id="engineBadge">⚙️ 正在加载引擎...</span>
+            <span class="engine-badge" id="smoothBadge">🔁 平滑滤波已启用</span>
+        </div>
+    </div>
+
+    <div class="chord-stage">
+        <div class="chord-name" id="chordDisplay">——</div>
+        <div class="confidence-wrapper">
+            <div class="confidence-bar-container">
+                <div class="confidence-fill" id="confidenceFill"></div>
+            </div>
+            <span class="confidence-text" id="confidencePercent">0%</span>
+        </div>
+    </div>
+
+    <div class="visualizer">
+        <div class="mic-indicator">
+            <div class="led" id="micLed"></div>
+            <span>🎙️ 麦克风</span>
+        </div>
+        <div class="volume-bar">
+            <div class="volume-level" id="volumeLevel"></div>
+        </div>
+        <button id="toggleBtn" class="primary">🎤 开始识别</button>
+    </div>
+
+    <div class="status-area">
+        <div class="status-message" id="statusMsg">⚙️ 正在初始化引擎...</div>
+        <div class="chord-suggestion" id="suggestionMsg">🎵 弹奏吉他扫弦，AI 实时识别84种和弦</div>
+    </div>
+    <footer>基于 Essentia.js (Chordino优化) + 84和弦映射 | 时间平滑 | 能量门限</footer>
+</div>
+
+<script>
+    (function() {
+        // ======================= 1. 定义84个和弦列表 =======================
+        const rootNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+        const qualities = [
+            '', 'm', '7', 'm7', 'maj7', '6', 'm6', '9', 'add9', 'sus2', 'sus4', '7sus4'
+        ];
+        const chordList84 = [];
+        for (const root of rootNotes) {
+            for (const qual of qualities) {
+                chordList84.push(root + qual);
+            }
+        }
+        // 去重（确保无重复，实际无重复）
+        const uniqueChordSet = new Set(chordList84);
+        
+        // 映射表：将Essentia/Meyda输出的原始和弦名标准化到84列表
+        // 原始格式可能为 "C:maj" "C:min" "C:7" "C:maj7" "C:min7" "C:6" "C:min6" "C:9" "C:add9" "C:sus2" "C:sus4" "C:7sus4"
+        // 也可能直接是 "C" "Cm" "C7" 等
+        function normalizeChordTo84(rawChord) {
+            if (!rawChord) return null;
+            let chord = rawChord.trim();
+            // 处理 Essentia 输出格式 "C:maj" -> "C"
+            if (chord.includes(':')) {
+                let [root, quality] = chord.split(':');
+                root = root.toUpperCase();
+                let mappedQual = '';
+                switch(quality) {
+                    case 'maj': mappedQual = ''; break;
+                    case 'min': mappedQual = 'm'; break;
+                    case '7': mappedQual = '7'; break;
+                    case 'maj7': mappedQual = 'maj7'; break;
+                    case 'min7': mappedQual = 'm7'; break;
+                    case '6': mappedQual = '6'; break;
+                    case 'min6': mappedQual = 'm6'; break;
+                    case '9': mappedQual = '9'; break;
+                    case 'add9': mappedQual = 'add9'; break;
+                    case 'sus2': mappedQual = 'sus2'; break;
+                    case 'sus4': mappedQual = 'sus4'; break;
+                    case '7sus4': mappedQual = '7sus4'; break;
+                    default: mappedQual = '';
+                }
+                const candidate = root + mappedQual;
+                return uniqueChordSet.has(candidate) ? candidate : null;
+            } else {
+                // 直接匹配，但可能大小写问题
+                const upperChord = chord.charAt(0).toUpperCase() + chord.slice(1);
+                if (uniqueChordSet.has(upperChord)) return upperChord;
+                // 尝试处理如 "C#m" 之类的（但84列表无升号，忽略）
+                return null;
+            }
+        }
+
+        // ======================= 2. 全局变量 =======================
+        let activeEngine = null;   // 'essentia' or 'meyda'
+        let isActive = false;
+        let mediaStream = null;
+        let audioContext = null;
+        let sourceNode = null;
+        let analyser = null;
+        let animationFrameId = null;
+        
+        // 平滑历史缓存
+        let chordHistory = [];      // 存储 {chord, confidence}
+        const HISTORY_LEN = 5;
+        let lastStableChord = null;
+        let lastStableConfidence = 0;
+        
+        // 能量门限相关
+        let currentVolume = 0;
+        const ENERGY_THRESHOLD = 0.03;   // 音量百分比阈值，低于此值不更新识别结果
+        
+        // UI元素
+        const chordDisplay = document.getElementById('chordDisplay');
+        const confidenceFill = document.getElementById('confidenceFill');
+        const confidencePercent = document.getElementById('confidencePercent');
+        const micLed = document.getElementById('micLed');
+        const volumeLevel = document.getElementById('volumeLevel');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const statusMsgSpan = document.getElementById('statusMsg');
+        const suggestionMsg = document.getElementById('suggestionMsg');
+        const engineBadge = document.getElementById('engineBadge');
+
+        // ======================= 辅助函数 =======================
+        function setStatusMessage(msg, isError = false) {
+            statusMsgSpan.innerText = msg;
+            if (isError) {
+                statusMsgSpan.style.color = "#f87171";
+                statusMsgSpan.style.background = "#7f1a1a80";
+            } else {
+                statusMsgSpan.style.color = "#b9e6ff";
+                statusMsgSpan.style.background = "#0f172a80";
+            }
+        }
+
+        // 更新UI，带平滑后的结果
+        function updateChordUI(chord, confidence) {
+            if (!chord || chord === 'N' || chord === 'none' || chord === 'unknown') {
+                chordDisplay.innerText = '🤔 未识别';
+                confidenceFill.style.width = '0%';
+                confidencePercent.innerText = '0%';
+                suggestionMsg.innerText = '🎸 请清晰扫弦，提高音量';
+                return;
+            }
+            let displayChord = chord.toUpperCase();
+            chordDisplay.innerText = displayChord;
+            let confPercent = Math.min(100, Math.floor(confidence * 100));
+            confidenceFill.style.width = `${confPercent}%`;
+            confidencePercent.innerText = `${confPercent}%`;
+            if (confPercent > 65) {
+                suggestionMsg.innerText = `✅ 检测到 ${displayChord} 和弦 | 置信度良好`;
+            } else if (confPercent > 35) {
+                suggestionMsg.innerText = `🎸 识别为 ${displayChord}，加强扫弦力度`;
+            } else {
+                suggestionMsg.innerText = `🎵 请清晰扫弦，尝试下扫动作`;
+            }
+        }
+
+        // 平滑投票逻辑
+        function smoothAndUpdate(newChord, newConfidence) {
+            if (!newChord) return;
+            // 加入历史
+            chordHistory.push({ chord: newChord, conf: newConfidence });
+            if (chordHistory.length > HISTORY_LEN) chordHistory.shift();
+            
+            // 投票：统计每个和弦的出现次数（可加权置信度）
+            const voteMap = new Map();
+            for (const item of chordHistory) {
+                const count = voteMap.get(item.chord) || 0;
+                voteMap.set(item.chord, count + 1);
+            }
+            let bestChord = null;
+            let bestCount = 0;
+            for (const [chord, count] of voteMap.entries()) {
+                if (count > bestCount) {
+                    bestCount = count;
+                    bestChord = chord;
+                }
+            }
+            // 如果最佳和弦出现次数 >= 3 且当前置信度 > 0.4，则更新稳定结果
+            if (bestCount >= 3 && newConfidence > 0.4) {
+                lastStableChord = bestChord;
+                lastStableConfidence = newConfidence;
+            } else if (newConfidence > 0.75) {
+                // 极高置信度直接更新
+                lastStableChord = newChord;
+                lastStableConfidence = newConfidence;
+            }
+            
+            // 输出稳定结果（若还没有稳定结果，则使用最新）
+            const finalChord = lastStableChord || newChord;
+            const finalConf = lastStableConfidence || newConfidence;
+            if (finalChord) {
+                updateChordUI(finalChord, finalConf);
+            }
+        }
+
+        // 音量/能量更新
+        function updateVolumeMeter() {
+            if (!isActive || !analyser) {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                return;
+            }
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteTimeDomainData(dataArray);
+            let maxSample = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                let v = (dataArray[i] - 128) / 128;
+                maxSample = Math.max(maxSample, Math.abs(v));
+            }
+            let volumePercent = Math.min(100, maxSample * 100);
+            currentVolume = maxSample;  // 用于能量门限
+            volumeLevel.style.width = `${volumePercent}%`;
+            if (volumePercent > 2) {
+                micLed.classList.add('active');
+            } else {
+                micLed.classList.remove('active');
+            }
+            animationFrameId = requestAnimationFrame(() => updateVolumeMeter());
+        }
+
+        // ======================= 停止识别 =======================
+        async function stopRecognition() {
+            isActive = false;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            if (activeEngine === 'essentia' && window.essentiaProcessor) {
+                window.essentiaProcessor.disconnect();
+                window.essentiaProcessor = null;
+            }
+            if (activeEngine === 'meyda' && window.meydaAnalyser) {
+                window.meydaAnalyser.stop();
+                window.meydaAnalyser = null;
+            }
+            if (sourceNode) sourceNode.disconnect();
+            if (analyser) analyser.disconnect();
+            if (audioContext) {
+                await audioContext.close();
+                audioContext = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+                mediaStream = null;
+            }
+            micLed.classList.remove('active');
+            volumeLevel.style.width = '0%';
+            toggleBtn.innerHTML = "🎤 开始识别";
+            setStatusMessage("⏹️ 识别已停止");
+            chordDisplay.innerText = "——";
+            confidenceFill.style.width = "0%";
+            confidencePercent.innerText = "0%";
+            // 清空历史
+            chordHistory = [];
+            lastStableChord = null;
+            lastStableConfidence = 0;
+        }
+
+        // ======================= Essentia 引擎（优化版） =======================
+        let essentia = null;
+        let chordino = null;
+
+        async function initEssentia() {
+            if (essentia) return true;
+            setStatusMessage("🧠 加载 Essentia.js (Chordino优化参数)...");
+            try {
+                if (typeof EssentiaWASM === 'undefined') throw new Error("EssentiaWASM 未加载");
+                essentia = await EssentiaWASM();
+                if (essentia.Chordino && typeof essentia.Chordino === 'function') {
+                    chordino = new essentia.Chordino();
+                } else if (essentia.createChordino && typeof essentia.createChordino === 'function') {
+                    chordino = essentia.createChordino();
+                } else {
+                    throw new Error("Chordino 算法不可用");
+                }
+                // 优化参数：针对吉他扫弦
+                chordino.setParameter("sampleRate", 44100);
+                chordino.setParameter("frameSize", 8192);       // 增大帧长，提高低频分辨率
+                chordino.setParameter("hopSize", 2048);
+                chordino.setParameter("tuningFrequency", 440.0);
+                chordino.setParameter("windowType", "hann");
+                chordino.setParameter("bandPreset", 2);         // 2 = 仅低频，吉他扫弦低频能量多
+                chordino.setParameter("usePitchFilter", true);
+                chordino.setParameter("chordDict", "K14");
+                return true;
+            } catch (err) {
+                console.warn("Essentia 初始化失败:", err);
+                return false;
+            }
+        }
+
+        function startEssentiaEngine() {
+            const FRAME_SIZE = 8192;
+            const HOP_SIZE = 2048;
+            const SAMPLE_RATE = 44100;
+
+            const processor = audioContext.createScriptProcessor(FRAME_SIZE, 1, 1);
+            processor.onaudioprocess = (event) => {
+                if (!isActive) return;
+                const inputData = event.inputBuffer.getChannelData(0);
+                if (inputData.length < FRAME_SIZE) return;
+                // 能量门限：计算帧能量，太低则跳过
+                let sumSq = 0;
+                for (let i = 0; i < inputData.length; i++) sumSq += inputData[i] * inputData[i];
+                const rms = Math.sqrt(sumSq / inputData.length);
+                if (rms < ENERGY_THRESHOLD) return;  // 静音不识别
+                
+                try {
+                    const frame = new Float32Array(inputData.slice(0, FRAME_SIZE));
+                    const chordVec = chordino.computeFrame(frame);
+                    if (chordVec && chordVec.length >= 2) {
+                        const rawChord = chordVec[0];
+                        const rawConfidence = chordVec[1];
+                        if (rawChord && rawChord !== 'N') {
+                            const normalized = normalizeChordTo84(rawChord);
+                            if (normalized) {
+                                smoothAndUpdate(normalized, rawConfidence);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Chordino compute error", err);
+                }
+            };
+            sourceNode.connect(processor);
+            processor.connect(audioContext.destination);
+            window.essentiaProcessor = processor;
+        }
+
+        // ======================= Meyda 引擎（降级，同样优化映射） =======================
+        // 注意：Meyda 模板匹配只支持部分和弦，我们将其结果映射到84列表，并同样做平滑
+        function startMeydaEngine() {
+            // 和弦模板（维持原有简单模板，但增加一些常见和弦）
+            const templates = {
+                "C": [1,0,0,0,1,0,0,1,0,0,0,0],
+                "G": [0,0,0,0,0,0,0,1,0,0,1,1],
+                "Am":[1,0,0,0,0,0,0,0,0,1,0,1],
+                "Em":[0,0,0,0,1,0,0,1,0,0,0,0],
+                "F": [0,0,0,0,0,1,0,0,0,0,1,1],
+                "Dm":[0,0,1,0,0,0,0,1,0,1,0,0],
+                "A": [0,0,0,0,0,0,0,0,0,1,0,1],
+                "E": [0,0,0,0,1,0,0,1,0,0,0,0],
+                "D": [0,0,1,0,0,0,0,1,0,0,0,0],
+                "A7":[0,0,0,0,0,0,0,0,0,1,0,1],
+                "E7":[0,0,0,0,1,0,0,1,0,0,0,0],
+                "C7":[1,0,0,0,1,0,0,1,0,0,0,0]
+            };
+            for (let ch in templates) {
+                let vec = templates[ch];
+                let norm = Math.sqrt(vec.reduce((s,v)=>s+v*v,0));
+                if (norm>0) templates[ch] = vec.map(v=>v/norm);
+            }
+            function cosineSimilarity(a,b) {
+                let dot=0, normA=0, normB=0;
+                for(let i=0;i<a.length;i++) {
+                    dot += a[i]*b[i];
+                    normA += a[i]*a[i];
+                    normB += b[i]*b[i];
+                }
+                if(normA===0||normB===0) return 0;
+                return dot/(Math.sqrt(normA)*Math.sqrt(normB));
+            }
+            function recognizeChroma(chroma) {
+                let norm = Math.sqrt(chroma.reduce((s,v)=>s+v*v,0));
+                let chromaNorm = norm>0 ? chroma.map(v=>v/norm) : chroma;
+                let bestChord = 'Unknown';
+                let bestSim = -1;
+                for(let [chord, tpl] of Object.entries(templates)) {
+                    let sim = cosineSimilarity(chromaNorm, tpl);
+                    if(sim > bestSim) {
+                        bestSim = sim;
+                        bestChord = chord;
+                    }
+                }
+                return { chord: bestSim>0.2 ? bestChord : 'Unknown', confidence: Math.min(1,bestSim) };
+            }
+
+            const meyda = Meyda.createMeydaAnalyzer({
+                audioContext: audioContext,
+                source: sourceNode,
+                bufferSize: 4096,
+                hopSize: 2048,
+                featureExtractors: ['chroma'],
+                callback: (features) => {
+                    if (!isActive || !features.chroma) return;
+                    let energy = features.chroma.reduce((s,v)=>s+v,0);
+                    // 能量门限
+                    if (energy < 0.5) return;  // 静音忽略
+                    const { chord, confidence } = recognizeChroma(features.chroma);
+                    if (chord !== 'Unknown') {
+                        const normalized = normalizeChordTo84(chord);
+                        if (normalized) {
+                            smoothAndUpdate(normalized, confidence);
+                        }
+                    }
+                }
+            });
+            meyda.start();
+            window.meydaAnalyser = meyda;
+        }
+
+        // ======================= 主流程 =======================
+        async function startRecognition() {
+            if (isActive) await stopRecognition();
+            setStatusMessage("🎙️ 请求麦克风...");
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaStream = stream;
+                micLed.classList.add('active');
+                setStatusMessage("✅ 麦克风已获取，启动音频处理...");
+            } catch (err) {
+                setStatusMessage("❌ 麦克风错误: " + (err.message || "请检查权限"), true);
+                return;
+            }
+
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                sourceNode = audioContext.createMediaStreamSource(mediaStream);
+                sourceNode.connect(analyser);
+                updateVolumeMeter();
+
+                // 选择引擎
+                let engineOk = false;
+                if (activeEngine === 'essentia') {
+                    if (chordino) {
+                        startEssentiaEngine();
+                        engineOk = true;
+                    } else {
+                        console.warn("Essentia 不可用，降级到 Meyda");
+                        activeEngine = 'meyda';
+                        startMeydaEngine();
+                        engineOk = true;
+                    }
+                } else {
+                    startMeydaEngine();
+                    engineOk = true;
+                }
+                if (!engineOk) throw new Error("所有引擎均不可用");
+
+                if (audioContext.state === 'suspended') await audioContext.resume();
+
+                isActive = true;
+                toggleBtn.innerHTML = "⏹️ 停止识别";
+                setStatusMessage(`🎧 使用 ${activeEngine === 'essentia' ? 'Essentia Chordino (84和弦优化版)' : 'Meyda + 模板匹配 (84和弦映射)'} 实时识别`);
+            } catch (err) {
+                console.error("启动失败", err);
+                setStatusMessage("❌ 启动失败: " + err.message, true);
+                await stopRecognition();
+            }
+        }
+
+        // ======================= 引擎检测 =======================
+        async function detectEngine() {
+            setStatusMessage("🔍 检测可用引擎...");
+            const essOk = await initEssentia();
+            if (essOk && chordino) {
+                activeEngine = 'essentia';
+                engineBadge.innerHTML = "🎛️ 引擎: Essentia.js (Chordino) · 84和弦映射 + 平滑滤波";
+                setStatusMessage("✅ Essentia 已就绪，点击「开始识别」");
+                return true;
+            } else {
+                activeEngine = 'meyda';
+                engineBadge.innerHTML = "🎛️ 引擎: Meyda.js · 84和弦映射 + 平滑滤波";
+                setStatusMessage("✅ Meyda 引擎可用，点击「开始识别」");
+                return true;
+            }
+        }
+
+        // ======================= 事件绑定 =======================
+        toggleBtn.onclick = async () => {
+            if (isActive) {
+                await stopRecognition();
+            } else {
+                await startRecognition();
+            }
+        };
+
+        window.addEventListener('beforeunload', () => {
+            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            if (audioContext) audioContext.close();
+        });
+
+        document.body.addEventListener('click', () => {
+            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+        });
+
+        detectEngine().catch(err => {
+            console.error(err);
+            setStatusMessage("❌ 引擎初始化失败，请刷新页面重试", true);
+            toggleBtn.disabled = true;
+        });
+    })();
+</script>
+</body>
+</html>

@@ -89,43 +89,43 @@ AUDIO_SAMPLE_RATE = 22050
 # 每次从麦克风读取的采样点数（chunk），越小延迟越低但CPU开销更高
 AUDIO_CHUNK_SIZE = 1024
 # 滑窗总时长（秒），用于一次和弦判定的上下文长度
-AUDIO_WINDOW_SECONDS = 1.0
+AUDIO_WINDOW_SECONDS = 0.8          # 从 1.0 缩短，提高响应
 # 滑窗步长（秒），越小输出越频繁、实时性越强
-AUDIO_HOP_SECONDS = 0.1
+AUDIO_HOP_SECONDS = 0.08            # 从 0.1 缩短，更平滑
 
 # 预处理与抗噪
 # RMS噪声门限：低于该值认为是静音/背景噪声，跳过识别
-AUDIO_RMS_GATE = 0.012
+AUDIO_RMS_GATE = 0.008              # 从 0.012 降低，捕捉更弱的扫弦
 # 是否启用预加重，提高高频细节，改善扫弦瞬态特征
-AUDIO_USE_PREEMPHASIS = False
+AUDIO_USE_PREEMPHASIS = True        # 从 False 改为 True
 # 预加重系数，常用 0.95~0.98
 AUDIO_PREEMPHASIS_COEF = 0.97
 # 是否启用谐波-打击乐分离（HPSS），通常有助于和弦判定稳定
 AUDIO_USE_HPSS = True
 # 可选带通滤波下限（Hz），None 表示不限制
 AUDIO_BANDPASS_LOW_HZ = 80
-# 可选带通滤波上限（Hz），None 表示不限制
-AUDIO_BANDPASS_HIGH_HZ = 1000
+# 可选带通滤波上限（Hz），None 表示不限制；提高上限保留泛音
+AUDIO_BANDPASS_HIGH_HZ = 2500       # 从 1000 提高
 
 # 特征提取（librosa + chroma）
 # chroma算法类型：'stft' 实时更友好，'cqt' 音高表达更细但更耗时
-AUDIO_CHROMA_TYPE = 'stft'
-# STFT窗长（n_fft），越大频率分辨率更好但时延更高
+AUDIO_CHROMA_TYPE = 'cqt'           # 从 'stft' 改为 'cqt'，提高音高稳定性
+# STFT窗长（n_fft），CQT 模式下此参数会被忽略，但保留设置
 AUDIO_N_FFT = 2048
 # 帧移（hop_length），越小时间分辨率越高但计算量更大
 AUDIO_HOP_LENGTH = 512
 # chroma维度固定为12（12平均律）
 AUDIO_CHROMA_BINS = 12
 # chroma时序聚合方式：'median' 对瞬时噪声更稳，'mean' 更平滑
-AUDIO_CHROMA_AGGREGATE = 'median'
+AUDIO_CHROMA_AGGREGATE = 'mean'     # 从 'median' 改为 'mean'，更适合扫弦动态
 # 特征质量阈值（top1-top2分离度），低于阈值表示当前窗口区分度较弱
-AUDIO_FEATURE_QUALITY_GATE = 0.05
+AUDIO_FEATURE_QUALITY_GATE = 0.12   # 从 0.05 提高
 
 # 和弦模板权重（可用于微调不同和弦音的重要性）
-AUDIO_TEMPLATE_ROOT_WEIGHT = 1.0
-AUDIO_TEMPLATE_THIRD_WEIGHT = 0.85
-AUDIO_TEMPLATE_FIFTH_WEIGHT = 0.75
-AUDIO_TEMPLATE_SEVENTH_WEIGHT = 0.65
+AUDIO_TEMPLATE_ROOT_WEIGHT = 1.2      # 从 1.0 稍提高
+AUDIO_TEMPLATE_THIRD_WEIGHT = 1.4     # 从 0.85 大幅提高（关键）
+AUDIO_TEMPLATE_FIFTH_WEIGHT = 1.0     # 保持不变
+AUDIO_TEMPLATE_SEVENTH_WEIGHT = 1.2   # 从 0.65 大幅提高（关键）
 
 # 分类输出设置
 # 每次打印/调试展示的Top-K候选和弦数
@@ -133,27 +133,27 @@ AUDIO_CLASSIFIER_TOP_K = 3
 
 # 平滑器设置
 # 在平滑窗口中，候选和弦至少出现多少次才认为“有足够证据”
-AUDIO_SMOOTH_MIN_VOTES = 2
+AUDIO_SMOOTH_MIN_VOTES = 3            # 从 2 增加
 
 # 分类与置信度控制
 # 首版和弦集合（12个常用和弦），后续可扩展
 AUDIO_CHORD_LABELS = [
-	'C', 'G', 'Am', 'F', 'Dm', 'Em', 'E', 'A', 'D', 'A7', 'E7', 'C7'
+    'C', 'G', 'Am', 'F', 'Dm', 'Em', 'E', 'A', 'D', 'A7', 'E7', 'C7'
 ]
 # Top-1置信度阈值，低于阈值输出 Unknown 以减少误报
-AUDIO_CONFIDENCE_THRESHOLD = 0.30
+AUDIO_CONFIDENCE_THRESHOLD = 0.28      # 从 0.30 略降（因质量门限提高）
 # 次优差距阈值：Top1-Top2 小于该值时判定不稳定，输出 Unknown
-AUDIO_MARGIN_THRESHOLD = 0.025
+AUDIO_MARGIN_THRESHOLD = 0.06          # 从 0.025 提高
 # 未知类别输出名称
 AUDIO_UNKNOWN_LABEL = 'Unknown'
 
 # 实时稳定器（扫弦场景重点）
 # 平滑窗口帧数，窗口内多数投票减少抖动
-AUDIO_SMOOTH_WINDOW = 5
+AUDIO_SMOOTH_WINDOW = 5                # 保持不变
 # 迟滞阈值：新和弦置信度需超过当前和弦该差值才允许切换
-AUDIO_SWITCH_HYSTERESIS = 0.05
+AUDIO_SWITCH_HYSTERESIS = 0.12         # 从 0.05 增加
 # 最小输出间隔（秒），避免终端/上层消费端过于频繁刷新
-AUDIO_MIN_OUTPUT_INTERVAL = 0.08
+AUDIO_MIN_OUTPUT_INTERVAL = 0.08       # 保持不变
 
 # 调试与日志
 # 是否打印每帧调试信息（RMS、TopK、延迟估计）
