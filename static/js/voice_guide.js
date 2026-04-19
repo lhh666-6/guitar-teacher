@@ -1,7 +1,7 @@
 /**
  * VoiceGuide - 全局语音助手（自动持续监听）
  * 功能：唤醒词持续监听、指令分发、TTS播放、音频队列、跨页面状态
- * 新增：通用动作处理 + 悬浮状态图标 + 动态样式注入
+ * 修改：手动关闭后不再自动重启，说“再见/拜拜”等词进入休眠
  */
 const VoiceGuide = (function() {
     // ========== 私有变量 ==========
@@ -17,7 +17,7 @@ const VoiceGuide = (function() {
     let pageCommands = {};
     let audioQueue = [];
     let isPlaying = false;
-    let shouldAutoRestart = true;
+    let shouldAutoRestart = true;      // 默认自动重启
     let userInteracted = false;
 
     // 图标元素
@@ -345,9 +345,10 @@ const VoiceGuide = (function() {
 
     function handleCommand(text) {
         console.log('[指令处理]', text);
-        if (text.includes('谢谢') || text.includes('结束')) {
+        // 🔥 扩展结束语：再见、拜拜、晚安、退下等触发休眠
+        if (text.includes('谢谢') || text.includes('结束') || text.includes('再见') || text.includes('拜拜') || text.includes('晚安') || text.includes('退下')) {
             sleep();
-            playTTS('随时为您服务');
+            playTTS('好的，需要时请说小吉他唤醒我');
             return;
         }
 
@@ -441,6 +442,7 @@ const VoiceGuide = (function() {
         try {
             recognition.start();
             isListening = true;
+            shouldAutoRestart = true;   // 🔥 手动开启时恢复自动重启标志
             showStatus('🎤 语音识别已启动，说“小吉他”唤醒');
             updateIcon();
         } catch (e) {
@@ -458,7 +460,8 @@ const VoiceGuide = (function() {
         if (recognition && isListening) {
             recognition.stop();
             isListening = false;
-            showStatus('🎤 语音已关闭');
+            shouldAutoRestart = false;   // 🔥 手动关闭后不再自动重启
+            showStatus('🎤 语音已关闭（需手动开启）');
             updateIcon();
         }
     }
@@ -499,7 +502,9 @@ const VoiceGuide = (function() {
         },
         wakeUp,
         sleep,
-        speak: playTTS
+        speak: playTTS,
+        // 暴露状态用于调试
+        getStatus: () => ({ isListening, isAwake, shouldAutoRestart })
     };
 })();
 

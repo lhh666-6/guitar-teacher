@@ -76,3 +76,10 @@ ENABLE_LLM = True                          # 是否启用大模型
 # config.py 末尾添加
 
 VOLC_TTS_VOICE_TYPE = "zh-CN-XiaoxiaoNeural"   # 或其他音色
+# ---------- 数据库配置 ----------
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://guitar_user:Lhh815815@127.0.0.1:3306/guitar_db?charset=utf8mb4'
+SQLALCHEMY_TRACK_MODIFICATIONS = False

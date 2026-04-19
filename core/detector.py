@@ -1,9 +1,6 @@
 import cv2
 import numpy as np
 from ultralytics import YOLO
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python.vision import HandLandmarker, HandLandmarkerOptions, RunningMode
 import os
 import sys
 from collections import deque, Counter
@@ -20,14 +17,12 @@ logger = logging.getLogger(__name__)
 
 class GuitarFingeringRecognizer:
     """
-    吉他指法识别器（优化版）
-    支持两种模式：
-      1. 传统模式：传入完整图像，同时运行 YOLO+MediaPipe（process_frame）
-      2. 混合模式：通过 update_fretboard 更新指板参数，然后通过 process_landmarks 传入关键点进行按弦判定
+    吉他指法识别器（无后端MediaPipe版本）
+    指板参数由YOLO检测获得，手部关键点由前端通过WebSocket传入（混合模式）
     """
     def __init__(self,
                  yolo_model_path=YOLO_MODEL_PATH,
-                 hand_model_path=HAND_MODEL_PATH,
+                 hand_model_path=None,   # 不再使用，保留参数仅为兼容
                  num_strings=NUM_STRINGS,
                  num_frets=NUM_FRETS,
                  yolo_conf=YOLO_CONF,
@@ -64,7 +59,6 @@ class GuitarFingeringRecognizer:
                  preferred_hand='auto'):
         # 保存配置参数
         self.yolo_model_path = yolo_model_path
-        self.hand_model_path = hand_model_path
         self.NUM_STRINGS = num_strings
         self.NUM_FRETS = num_frets
         self.YOLO_CONF = yolo_conf
@@ -102,7 +96,7 @@ class GuitarFingeringRecognizer:
         self.force_nut_left = force_nut_left
         self.preferred_hand = preferred_hand
 
-        # 颜色常量（不变）
+        # 颜色常量
         self.COLOR_NUT = (0, 255, 0)
         self.COLOR_BRIDGE = (255, 0, 0)
         self.COLOR_FRET = (255, 255, 255)
@@ -122,19 +116,12 @@ class GuitarFingeringRecognizer:
         ]
         self.THUMB_LANDMARK_IDS = [0, 1, 2, 3, 4]
 
-        self._check_hand_model()
-
-        # 加载YOLO
+        # 加载YOLO模型
         logger.info("加载YOLO模型...")
         if not os.path.exists(self.yolo_model_path):
             logger.error(f"[致命错误] YOLO模型不存在！路径：{self.yolo_model_path}")
             sys.exit(1)
         self.yolo_model = YOLO(self.yolo_model_path)
-        try:
-            self.yolo_model.to('cuda')
-            logger.info("YOLO 模型已移动到 GPU")
-        except Exception as e:
-            logger.warning(f"YOLO 模型移动到 GPU 失败，使用 CPU: {e}")
         try:
             device = next(self.yolo_model.model.parameters()).device
             logger.info(f"YOLO 当前设备: {device}")
@@ -142,23 +129,7 @@ class GuitarFingeringRecognizer:
             logger.warning("无法获取 YOLO 设备信息")
         logger.info(f"YOLO 模型类别: {self.yolo_model.names}")
 
-        # 加载MediaPipe（保留，但混合模式下不使用）
-        logger.info("加载MediaPipe手部模型（CPU模式）...")
-        hand_options = HandLandmarkerOptions(
-            base_options=python.BaseOptions(
-                model_asset_path=self.hand_model_path,
-                delegate=python.BaseOptions.Delegate.CPU
-            ),
-            running_mode=RunningMode.VIDEO,
-            num_hands=2,
-            min_hand_detection_confidence=self.HAND_CONF,
-            min_hand_presence_confidence=self.HAND_CONF,
-            min_tracking_confidence=self.HAND_CONF
-        )
-        self.hand_detector = HandLandmarker.create_from_options(hand_options)
-        logger.info("MediaPipe 手部检测器初始化完成")
-
-        # 状态变量
+        # 状态变量（指板参数、滤波等）
         self.smoothed_points = {}           
         self.prev_hand_landmarks = None      
         self.last_hand_timestamp = None       
@@ -193,17 +164,10 @@ class GuitarFingeringRecognizer:
         self.last_nut_box = None
         self.last_bridge_box = None
 
-        # 新增：用于指板参数的线程锁
         self.fretboard_lock = threading.RLock()
 
-        # ===== 新增：弦号映射（原始弦号 -> 显示弦号，1=底部细弦）=====
+        # 弦号映射（原始弦号 -> 显示弦号，1=底部细弦）
         self.string_no_map = {}
-
-    def _check_hand_model(self):
-        if not os.path.exists(self.hand_model_path):
-            logger.error("\n[错误] 找不到 hand_landmarker.task 模型文件")
-            logger.error("下载地址：https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task")
-            sys.exit(1)
 
     @staticmethod
     def _get_point_on_line(p1, p2, ratio):
@@ -255,7 +219,7 @@ class GuitarFingeringRecognizer:
             self.filter_last_use.pop(k, None)
             logger.debug(f"清理过期滤波状态: {k}")
 
-    # ---------- 新增方法1：从缩略图更新指板参数 ----------
+    # ---------- 指板参数更新（由缩略图触发） ----------
     def update_fretboard(self, frame):
         """接收一帧图像，运行YOLO检测琴枕和琴桥，更新指板几何参数"""
         with self.fretboard_lock:
@@ -280,13 +244,12 @@ class GuitarFingeringRecognizer:
                     elif cls_id == 1:
                         bridge_center = np.array([cx, cy])
                         bridge_box = (x1, y1, x2, y2)
-                        logger.info(f"YOLO 琴枕: 中心({cx:.1f},{cy:.1f}), 宽度{x2-x1:.1f}, 置信度{conf:.2f}")
+                        logger.info(f"YOLO 琴桥: 中心({cx:.1f},{cy:.1f}), 宽度{x2-x1:.1f}, 置信度{conf:.2f}")
 
             if nut_center is None or bridge_center is None:
                 logger.warning("update_fretboard: 未同时检测到琴枕和琴桥")
                 return False
 
-            # 检查高度（琴颈宽度）
             nut_height = nut_box[3] - nut_box[1]
             bridge_height = bridge_box[3] - bridge_box[1]
             if nut_height <= self.MIN_BOX_WIDTH or bridge_height <= self.MIN_BOX_WIDTH:
@@ -366,30 +329,22 @@ class GuitarFingeringRecognizer:
                 fret_ratios[n] = self._get_fret_position_ratio(n)
             self.global_fret_ratios = fret_ratios
 
-            # ===== 新增：根据琴弦线的实际垂直位置建立弦号映射 =====
+            # 建立弦号映射（根据琴弦线的垂直位置）
             if self.string_lines:
-                # 计算每条弦线的中点 y 坐标
                 mid_y = [(p_nut[1] + p_bridge[1]) / 2 for _, p_nut, p_bridge in self.string_lines]
-                # 按 y 降序排序（y越大越靠下，对应细弦）
-                sorted_indices = np.argsort(mid_y)[::-1]  # 降序排列的索引
+                sorted_indices = np.argsort(mid_y)[::-1]
                 self.string_no_map = {}
                 for new_no, orig_idx in enumerate(sorted_indices, start=1):
-                    orig_no = self.string_lines[orig_idx][0]  # 原始弦号
+                    orig_no = self.string_lines[orig_idx][0]
                     self.string_no_map[orig_no] = new_no
                 logger.info(f"弦号映射建立: {self.string_no_map}")
             else:
                 self.string_no_map = {}
 
             logger.info("指板参数更新完成")
-            # 调试图像保存
-            debug_img = frame.copy()
-            cv2.rectangle(debug_img, (int(x1), int(y1)), (int(x2), int(y2)), (0,255,0), 2)
-            cv2.rectangle(debug_img, (int(x1), int(y1)), (int(x2), int(y2)), (255,0,0), 2)
-            for i, (s, p_nut, p_bridge) in enumerate(self.string_lines):
-                cv2.line(debug_img, (int(p_nut[0]), int(p_nut[1])), (int(p_bridge[0]), int(p_bridge[1])), (0,255,255), 1)
-            cv2.imwrite("fretboard_debug.jpg", debug_img)
             return True
 
+    # ---------- 核心：接收前端关键点进行按弦判定 ----------
     def process_landmarks(self, hand_landmarks, timestamp, img_width, img_height):
         """
         接收前端传入的21个手部关键点（归一化坐标），结合当前缓存的指板参数进行按弦判定
@@ -397,61 +352,50 @@ class GuitarFingeringRecognizer:
         timestamp: 时间戳（毫秒）
         img_width, img_height: 原始图像尺寸，用于坐标换算
         """
-        # 准备结果结构
         result = {
             'status': 'success',
             'positions': [],
             'barre': None,
-            'drawing_data': None  # 稍后填充
+            'drawing_data': None
         }
 
         with self.fretboard_lock:
-            # 检查指板参数是否已就绪
             if (self.global_nut_center is None or self.global_bridge_center is None or
                     len(self.string_lines) == 0 or len(self.fret_lines) == 0 or
                     self.global_v_unit is None):
                 logger.warning("指板参数未就绪，但仍返回手部关键点用于调试")
-                # 将归一化坐标转换为像素坐标
                 raw_landmarks_px = [[int(lm[0] * img_width), int(lm[1] * img_height)] for lm in hand_landmarks]
-                # 构建仅包含手部关键点的 drawing_data（无按弦点）
                 drawing_data = self._build_drawing_data(img_width, img_height, raw_landmarks_px, [])
                 result['drawing_data'] = drawing_data
                 return result
 
-            # ---------- 坐标转换 ----------
-            # 1. 将归一化坐标转换为原始图像像素坐标（用于返回绘制）
+            # 坐标转换
             landmarks_px = []
             for lm in hand_landmarks:
                 x = int(lm[0] * img_width)
                 y = int(lm[1] * img_height)
                 landmarks_px.append((x, y))
 
-            # 2. 计算缩略图尺寸（与前端 sendThumbnail 一致）
             thumb_w = THUMBNAIL_WIDTH
             thumb_h = int(thumb_w * img_height / img_width)
-
-            # 3. 将原始像素坐标转换为缩略图坐标（用于几何判定）
             scale_x = thumb_w / img_width
             scale_y = thumb_h / img_height
-            # 假设缩放各向同性，取宽度比例作为统一缩放因子（因为图像保持宽高比，两者接近）
-            scale = scale_x
+            scale = scale_x  # 假设等比例
 
             landmarks_thumb = []
             for (x, y) in landmarks_px:
                 x_thumb = x * scale_x
                 y_thumb = y * scale_y
                 landmarks_thumb.append((x_thumb, y_thumb))
-
-            # 转换为 numpy 数组方便计算
             landmarks_thumb_np = [np.array(pt) for pt in landmarks_thumb]
 
-            # ---------- 横按检测（使用缩略图坐标）----------
+            # 横按检测
             barre_chord = False
             barre_start = None
             barre_end = None
             barre_fret = None
             index_points_for_barre_thumb = [landmarks_thumb_np[i] for i in [5, 6, 7, 8]]
-            index_points_for_barre_px = [landmarks_px[i] for i in [5, 6, 7, 8]]  # 用于返回绘制
+            index_points_for_barre_px = [landmarks_px[i] for i in [5, 6, 7, 8]]
 
             if len(index_points_for_barre_thumb) >= 2:
                 pts = np.array(index_points_for_barre_thumb)
@@ -473,7 +417,6 @@ class GuitarFingeringRecognizer:
 
                     covered_strings = [s for s, val in string_projs if proj_min <= val <= proj_max]
                     if len(covered_strings) >= self.BARRE_MIN_COVERED:
-                        # 找最长连续段
                         sorted_str = sorted(covered_strings)
                         longest_start = sorted_str[0]
                         longest_end = sorted_str[0]
@@ -492,13 +435,13 @@ class GuitarFingeringRecognizer:
                         if longest_end - longest_start + 1 >= self.BARRE_MIN_COVERED:
                             barre_start = longest_start
                             barre_end = longest_end
-                            tip_idx = 8  # 食指尖
+                            tip_idx = 8
                             tip_pt_thumb = landmarks_thumb_np[tip_idx]
-                            barre_fret = self._get_fret_from_point(tip_pt_thumb)  # 使用缩略图坐标
+                            barre_fret = self._get_fret_from_point(tip_pt_thumb)
                             barre_chord = True
                             logger.info(f"横按: 弦{barre_start}-{barre_end} 品{barre_fret}")
 
-            # ---------- 手指按弦判定（使用缩略图坐标）----------
+            # 手指按弦判定
             finger_details = []
             for finger_name, indices in self.FINGER_DEFS:
                 if finger_name == "食指" and barre_chord:
@@ -506,11 +449,9 @@ class GuitarFingeringRecognizer:
 
                 tip_idx = indices[-1]
                 tip_pt_thumb = landmarks_thumb_np[tip_idx]
-                tip_px = landmarks_px[tip_idx]  # 用于返回绘制
+                tip_px = landmarks_px[tip_idx]
 
                 is_pinky = (finger_name == "小指")
-
-                # 小指弯曲角度检查（使用缩略图坐标）
                 if is_pinky:
                     p18 = landmarks_thumb_np[18]
                     p19 = landmarks_thumb_np[19]
@@ -527,14 +468,12 @@ class GuitarFingeringRecognizer:
                     else:
                         continue
 
-                # 阈值转换：原始阈值是在原始图像尺寸下定义的，需要缩放到缩略图尺寸
                 press_thresh_orig = self.pinky_press_threshold_px if is_pinky else self.PRESS_THRESHOLD_PX
                 string_thresh_orig = self.pinky_string_dist_thresh if is_pinky else self.STRING_DIST_THRESH
                 press_thresh = press_thresh_orig * scale
                 string_thresh = string_thresh_orig * scale
                 history_len = self.pinky_fret_history_len if is_pinky else self.FRET_HISTORY_LEN
 
-                # 品丝距离检查（使用缩略图坐标）
                 if len(self.fret_p1s) > 0:
                     dists_to_frets = self._point_to_line_distance_vectorized(tip_pt_thumb, self.fret_p1s, self.fret_p2s)
                     min_fret_dist = np.min(dists_to_frets)
@@ -543,23 +482,18 @@ class GuitarFingeringRecognizer:
                 if min_fret_dist > press_thresh:
                     continue
 
-                # 琴弦距离检查（使用缩略图坐标）
                 if len(self.string_nut_pts) > 0:
                     dists_to_strings = self._point_to_line_distance_vectorized(tip_pt_thumb, self.string_nut_pts, self.string_bridge_pts)
                     min_idx = np.argmin(dists_to_strings)
                     min_string_dist = dists_to_strings[min_idx]
                     closest_string_no = min_idx + 1
-
-                    # ===== 新增：应用弦号映射 =====
                     if self.string_no_map:
                         new_string_no = self.string_no_map.get(closest_string_no, closest_string_no)
                     else:
                         new_string_no = closest_string_no
-                    # =============================
                 else:
                     continue
 
-                # 品号历史平滑（品号逻辑值，与坐标系无关）
                 candidate_fret = self._get_fret_from_point(tip_pt_thumb)
                 if finger_name not in self.fret_history:
                     self.fret_history[finger_name] = deque(maxlen=history_len)
@@ -569,10 +503,10 @@ class GuitarFingeringRecognizer:
 
                 detail = {
                     'finger': finger_name,
-                    'string_start': int(new_string_no),      # 使用映射后弦号
+                    'string_start': int(new_string_no),
                     'string_end': int(new_string_no),
                     'fret': int(final_fret),
-                    'tip_x': int(tip_px[0]),      # 使用原始像素坐标
+                    'tip_x': int(tip_px[0]),
                     'tip_y': int(tip_px[1]),
                     'is_barre': False,
                     'index_points': None
@@ -580,11 +514,9 @@ class GuitarFingeringRecognizer:
                 finger_details.append(detail)
 
             if barre_chord:
-                # ===== 新增：映射横按弦号 =====
                 if self.string_no_map:
                     barre_start = self.string_no_map.get(barre_start, barre_start)
                     barre_end = self.string_no_map.get(barre_end, barre_end)
-                # =============================
                 finger_details.append({
                     'finger': '食指',
                     'string_start': int(barre_start),
@@ -593,10 +525,9 @@ class GuitarFingeringRecognizer:
                     'tip_x': None,
                     'tip_y': None,
                     'is_barre': True,
-                    'index_points': [[float(pt[0]), float(pt[1])] for pt in index_points_for_barre_px]  # 原始坐标
+                    'index_points': [[float(pt[0]), float(pt[1])] for pt in index_points_for_barre_px]
                 })
 
-            # 构建返回结果
             result['positions'] = [{'string': d['string_start'], 'fret': d['fret']} for d in finger_details if not d['is_barre']]
             if barre_chord:
                 result['barre'] = {
@@ -605,50 +536,26 @@ class GuitarFingeringRecognizer:
                     'endString': int(barre_end)
                 }
 
-            # 准备原始像素坐标列表（用于前端绘制，不经过任何变换）
             raw_landmarks_px = [[x, y] for (x, y) in landmarks_px]
-
-            # 调用绘制函数，传入原始像素坐标
             result['drawing_data'] = self._build_drawing_data(
                 img_width, img_height, raw_landmarks_px, finger_details
             )
-            logger.info(f"drawing_data keys before return: {result['drawing_data'].keys()}")
-            return result  
-            
+            return result
 
+    # ---------- 完整图像处理（传统模式，不再使用MediaPipe，仅返回空手部） ----------
     def process_frame(self, frame, timestamp=None):
-        """处理完整图像帧（同时运行YOLO和MediaPipe）"""
-        with self.fretboard_lock:   # 加锁以保证与 update_fretboard 的共享变量安全
-            t_start = time.perf_counter()
-            timings = {}
-  
+        """
+        处理完整图像帧（传统模式）。由于后端不再运行MediaPipe，此方法仅更新指板参数，
+        并返回空的手部检测结果。如果你仍需要通过frame事件识别，请改用混合模式（前端发送landmarks）。
+        """
+        with self.fretboard_lock:
+            # 仅执行YOLO指板参数更新（如果检测到琴枕/琴桥）
             h_img, w_img = frame.shape[:2]
-            self.frame_count += 1
-            if timestamp is not None and self.frame_count % 100 == 0:
-                self._cleanup_old_filters(timestamp)
-
-            # 图像增强（可选）
-            if self.USE_CLAHE:
-                lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
-                l, a, b = cv2.split(lab)
-                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))  
-                l = clahe.apply(l)
-                enhanced_lab = cv2.merge((l,a,b))
-                enhanced_frame = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
-            else:
-                enhanced_frame = frame.copy()
-
-            # YOLO检测
-            t_yolo = time.perf_counter()
             results = self.yolo_model(frame, conf=self.YOLO_CONF, verbose=False)
-            timings['yolo'] = (time.perf_counter() - t_yolo) * 1000
-
             nut_center = None
             bridge_center = None
             nut_box = None
             bridge_box = None
-            fretboard_detected = False
-
             for r in results:
                 for box in r.boxes:
                     cls_id = int(box.cls[0])
@@ -660,36 +567,26 @@ class GuitarFingeringRecognizer:
                     elif cls_id == 1:
                         bridge_center = np.array([cx, cy])
                         bridge_box = (x1, y1, x2, y2)
-
             if nut_center is not None and bridge_center is not None:
                 nut_height = nut_box[3] - nut_box[1]
                 bridge_height = bridge_box[3] - bridge_box[1]
                 if nut_height > self.MIN_BOX_WIDTH and bridge_height > self.MIN_BOX_WIDTH:
+                    # 复用 update_fretboard 内部逻辑（为避免重复，直接调用内部方法）
+                    # 简化：直接更新全局参数
                     if self.force_nut_left and nut_center[0] > bridge_center[0]:
                         nut_center, bridge_center = bridge_center, nut_center
                         nut_box, bridge_box = bridge_box, nut_box
-
                     self.last_nut_center = nut_center
                     self.last_bridge_center = bridge_center
                     self.last_nut_box = nut_box
                     self.last_bridge_box = bridge_box
 
-                    # 更新指板几何参数（复用 update_fretboard 中的计算，但为避免重复代码，可直接调用内部函数）
-                    # 为简洁，这里重新计算
                     line_vec = bridge_center - nut_center
                     perp_vec = np.array([-line_vec[1], line_vec[0]])
                     perp_len = np.linalg.norm(perp_vec)
-                    if perp_len > 0:
-                        perp_unit = perp_vec / perp_len
-                    else:
-                        perp_unit = np.array([0, 0])
-
+                    perp_unit = perp_vec / perp_len if perp_len > 0 else np.array([0, 0])
                     v_len = np.linalg.norm(line_vec)
-                    if v_len > 0:
-                        v_unit = line_vec / v_len
-                    else:
-                        v_unit = np.array([1, 0])
-
+                    v_unit = line_vec / v_len if v_len > 0 else np.array([1, 0])
                     self.global_nut_center = nut_center
                     self.global_bridge_center = bridge_center
                     self.global_v_unit = v_unit
@@ -698,13 +595,11 @@ class GuitarFingeringRecognizer:
 
                     nut_h = nut_box[3] - nut_box[1]
                     bridge_h = bridge_box[3] - bridge_box[1]
-
                     nut_top = nut_center + perp_unit * (nut_h / 2)
                     nut_bottom = nut_center - perp_unit * (nut_h / 2)
                     bridge_top = bridge_center + perp_unit * (bridge_h / 2)
                     bridge_bottom = bridge_center - perp_unit * (bridge_h / 2)
 
-                    # 品丝线
                     self.fret_lines = []
                     for n in range(1, self.NUM_FRETS + 1):
                         fret_ratio = self._get_fret_position_ratio(n)
@@ -713,23 +608,19 @@ class GuitarFingeringRecognizer:
                             fret_p1 = fret_center + perp_unit * (max(nut_h, bridge_h) * 0.85 / 2)
                             fret_p2 = fret_center - perp_unit * (max(nut_h, bridge_h) * 0.85 / 2)
                             self.fret_lines.append((n, fret_p1, fret_p2, fret_center))
-
                     self.fret_p1s = np.array([p1 for _, p1, _, _ in self.fret_lines], dtype=np.float32)
                     self.fret_p2s = np.array([p2 for _, _, p2, _ in self.fret_lines], dtype=np.float32)
 
-                    # 琴弦线
                     self.string_lines = []
                     shrink_nut_top = self._get_point_on_line(nut_top, nut_bottom, self.STRING_EDGE_SHRINK_RATIO)
                     shrink_nut_bottom = self._get_point_on_line(nut_bottom, nut_top, self.STRING_EDGE_SHRINK_RATIO)
                     shrink_bridge_top = self._get_point_on_line(bridge_top, bridge_bottom, self.STRING_EDGE_SHRINK_RATIO)
                     shrink_bridge_bottom = self._get_point_on_line(bridge_bottom, bridge_top, self.STRING_EDGE_SHRINK_RATIO)
-
                     for i in range(self.NUM_STRINGS):
                         t = i / (self.NUM_STRINGS - 1) if self.NUM_STRINGS > 1 else 0.5
                         string_nut = self._get_point_on_line(shrink_nut_top, shrink_nut_bottom, t)
                         string_bridge = self._get_point_on_line(shrink_bridge_top, shrink_bridge_bottom, t)
                         self.string_lines.append((i+1, string_nut, string_bridge))
-
                     self.string_nut_pts = np.array([p_nut for _, p_nut, _ in self.string_lines], dtype=np.float32)
                     self.string_bridge_pts = np.array([p_bridge for _, _, p_bridge in self.string_lines], dtype=np.float32)
 
@@ -738,7 +629,6 @@ class GuitarFingeringRecognizer:
                         fret_ratios[n] = self._get_fret_position_ratio(n)
                     self.global_fret_ratios = fret_ratios
 
-                    # ===== 新增：根据琴弦线的实际垂直位置建立弦号映射 =====
                     if self.string_lines:
                         mid_y = [(p_nut[1] + p_bridge[1]) / 2 for _, p_nut, p_bridge in self.string_lines]
                         sorted_indices = np.argsort(mid_y)[::-1]
@@ -747,90 +637,15 @@ class GuitarFingeringRecognizer:
                             orig_no = self.string_lines[orig_idx][0]
                             self.string_no_map[orig_no] = new_no
                         logger.info(f"传统模式弦号映射: {self.string_no_map}")
-                    else:
-                        self.string_no_map = {}
-                    # ===================================================
-
-                    fretboard_detected = True
                     logger.info("传统模式：指板参数更新成功")
-                else:
-                    logger.warning("传统模式：检测框高度过小")
-            else:
-                logger.warning("传统模式：未检测到琴枕/琴桥")
 
-            # 手部检测
-            t_hand = time.perf_counter()
-            rgb_frame = cv2.cvtColor(enhanced_frame, cv2.COLOR_BGR2RGB)
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-            if timestamp is None:
-                ms_timestamp = 0
-            else:
-                ms_timestamp = int(timestamp * 1000)
-            detection_result = self.hand_detector.detect_for_video(mp_image, ms_timestamp)
-            timings['hand_detect'] = (time.perf_counter() - t_hand) * 1000
-
-            hand_landmarks_to_use = None
-            hand_found = False
-
-            if detection_result.hand_landmarks:
-                # 根据偏好选择手
-                if self.preferred_hand in ['left', 'right']:
-                    target_hand = 'Left' if self.preferred_hand == 'left' else 'Right'
-                    for i, handedness in enumerate(detection_result.handedness):
-                        if handedness[0].category_name == target_hand:
-                            hand_landmarks_to_use = detection_result.hand_landmarks[i]
-                            hand_found = True
-                            break
-                else:  # auto
-                    if self.global_nut_center is not None:
-                        min_dist = float('inf')
-                        for i, hand_landmarks in enumerate(detection_result.hand_landmarks):
-                            avg_x = sum(lm.x for lm in hand_landmarks) / len(hand_landmarks)
-                            avg_y = sum(lm.y for lm in hand_landmarks) / len(hand_landmarks)
-                            hand_pos = np.array([avg_x * w_img, avg_y * w_img])
-                            dist = np.linalg.norm(hand_pos - self.global_nut_center)
-                            if dist < min_dist:
-                                min_dist = dist
-                                hand_landmarks_to_use = hand_landmarks
-                                hand_found = True
-                    else:
-                        # 回退：选择左半屏最左侧的手
-                        left_hand_candidates = []
-                        for hand_landmarks in detection_result.hand_landmarks:
-                            avg_x = sum(lm.x for lm in hand_landmarks) / len(hand_landmarks)
-                            if avg_x * w_img < w_img / 2:
-                                left_hand_candidates.append(hand_landmarks)
-                        if left_hand_candidates:
-                            leftmost_idx = min(range(len(left_hand_candidates)),
-                                               key=lambda i: sum(lm.x for lm in left_hand_candidates[i]) / len(left_hand_candidates[i]))
-                            hand_landmarks_to_use = left_hand_candidates[leftmost_idx]
-                            hand_found = True
-
-                if hand_found:
-                    self.prev_hand_landmarks = hand_landmarks_to_use
-                    self.last_hand_timestamp = timestamp
-
-            if not hand_found or hand_landmarks_to_use is None:
-                result = {
-                    'status': 'success',
-                    'positions': [],
-                    'barre': None,
-                    'drawing_data': self._build_drawing_data(w_img, h_img, [])
-                }
-                return frame, result
-
-            # 将 MediaPipe 关键点转换为前端兼容格式（归一化列表）
-            hand_landmarks_norm = [[lm.x, lm.y] for lm in hand_landmarks_to_use]
-
-            # 复用 process_landmarks 进行按弦判定（避免重复代码）
-            # 注意：process_landmarks 内部需要访问指板参数，我们已经更新过了
-            result = self.process_landmarks(hand_landmarks_norm, timestamp, w_img, h_img)
-
-            total_ms = (time.perf_counter() - t_start) * 1000
-            logger.info(
-                f"[DETAIL] YOLO={timings.get('yolo',0):.1f}ms, Hand={timings.get('hand_detect',0):.1f}ms, "
-                f"Total={total_ms:.1f}ms | 按点: {len(result['positions'])}"
-            )
+            # 不再进行手部检测，直接返回空结果
+            result = {
+                'status': 'success',
+                'positions': [],
+                'barre': None,
+                'drawing_data': self._build_drawing_data(w_img, h_img, [])
+            }
             return frame, result
 
     # ---------- 构建绘图数据 ----------
@@ -839,14 +654,11 @@ class GuitarFingeringRecognizer:
         drawing_data = {}
         drawing_data['image_size'] = [int(w_img), int(h_img)]
 
-        # 计算缩略图实际高度（与前端 sendThumbnail 中的计算一致）
         thumb_w = THUMBNAIL_WIDTH
         thumb_h = int(thumb_w * h_img / w_img)
 
-        # ---------- 琴弦线（转换坐标） ----------
         strings_data = []
         for s, p_nut, p_bridge in self.string_lines:
-            # p_nut/p_bridge 是缩略图坐标系下的坐标，转换到原始图像坐标
             x_nut = p_nut[0] * (w_img / thumb_w)
             y_nut = p_nut[1] * (h_img / thumb_h)
             x_bridge = p_bridge[0] * (w_img / thumb_w)
@@ -858,7 +670,6 @@ class GuitarFingeringRecognizer:
             })
         drawing_data['strings'] = strings_data
 
-        # ---------- 品丝线（转换坐标） ----------
         frets_data = []
         for n, p1, p2, center in self.fret_lines:
             x_p1 = p1[0] * (w_img / thumb_w)
@@ -875,16 +686,14 @@ class GuitarFingeringRecognizer:
             })
         drawing_data['frets'] = frets_data
 
-        # ---------- 手部关键点（已是原始坐标，无需转换） ----------
         drawing_data['hand_landmarks'] = hand_landmarks_px if hand_landmarks_px else []
 
-        # ---------- 按弦点（tip_x/tip_y 已是原始坐标，无需转换） ----------
         press_points = []
         if finger_details:
             for d in finger_details:
                 new_d = {
                     'finger': d['finger'],
-                    'string_start': int(d['string_start']),  # 已经映射后的新弦号
+                    'string_start': int(d['string_start']),
                     'string_end': int(d['string_end']),
                     'fret': int(d['fret']),
                     'is_barre': bool(d['is_barre']),
@@ -893,12 +702,10 @@ class GuitarFingeringRecognizer:
                     'index_points': None
                 }
                 if d.get('index_points') is not None:
-                    # 横按的食指关键点也是原始坐标，无需转换
                     new_d['index_points'] = [[float(pt[0]), float(pt[1])] for pt in d['index_points']]
                 press_points.append(new_d)
         drawing_data['press_points'] = press_points
 
-        # ---------- 琴枕/琴桥中心点（转换坐标） ----------
         if self.global_nut_center is not None:
             x_nut = self.global_nut_center[0] * (w_img / thumb_w)
             y_nut = self.global_nut_center[1] * (h_img / thumb_h)
@@ -925,7 +732,7 @@ class GuitarFingeringRecognizer:
         return self.last_drawing_data
 
     def close(self):
-        self.hand_detector.close()
+        """释放资源（无MediaPipe，仅释放YOLO模型）"""
         del self.yolo_model
         cv2.destroyAllWindows()
         logger.info("识别器资源已释放")

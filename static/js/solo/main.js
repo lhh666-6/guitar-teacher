@@ -100,7 +100,6 @@
                 fretboardMini: document.getElementById('fretboardMini'),
                 trainLayout: document.querySelector('.train-layout'),
                 videoContainer: document.querySelector('.camera-container'),
-                // 新增：难度徽章
                 difficultyBadge: document.getElementById('difficultyBadge')
             };
 
@@ -141,12 +140,8 @@
             }
         }
 
-        // 辅助方法：根据难度返回星号字符串（难度1-5）
         getStars(difficulty) {
             const fullStar = '★';
-            // 如果想显示空心星表示剩余难度（例如难度3显示为★★★☆☆），可改用下面注释的代码
-            // const emptyStar = '☆';
-            // return fullStar.repeat(difficulty) + emptyStar.repeat(5 - difficulty);
             return fullStar.repeat(difficulty);
         }
 
@@ -177,14 +172,11 @@
                 }));
             }
 
-            // 清空并重新渲染下拉框
             const select = this.elements.chordSelect;
             select.innerHTML = '';
-
             this.chords.forEach(chord => {
                 const option = document.createElement('option');
                 option.value = chord.id;
-                // 调用类内的 getStars 方法
                 const stars = this.getStars(chord.difficulty || 1);
                 option.textContent = `${chord.name} ${stars}`;
                 select.appendChild(option);
@@ -194,10 +186,50 @@
                 select.value = this.chords[0].id;
                 select.dispatchEvent(new Event('change'));
             }
-        }     
-        // 将后端弦号转换为显示索引（顶部为6弦，底部为1弦）
+
+            // 从 localStorage 加载驾驶舱页面添加的待训练和弦
+            this.loadPendingChordsFromLocalStorage();
+        }
+
+        // 从 localStorage 加载待训练和弦
+        loadPendingChordsFromLocalStorage() {
+            const stored = localStorage.getItem('pendingSoloChords');
+            if (!stored) return;
+            try {
+                const chordNames = JSON.parse(stored);
+                if (!Array.isArray(chordNames) || chordNames.length === 0) return;
+
+                const newIds = [];
+                for (const name of chordNames) {
+                    const chord = this.chords.find(c => c.name === name);
+                    if (chord && !this.testList.includes(chord.id)) {
+                        newIds.push(chord.id);
+                    }
+                }
+                if (newIds.length) {
+                    this.testList.push(...newIds);
+                    this.testResults = new Array(this.testList.length).fill(null);
+                    this.renderTestList();
+                    this.updateProgress();
+                    console.log(`[Solo] 已从驾驶舱加载 ${newIds.length} 个和弦到测试列表`);
+                }
+                // 可选：加载后不清除，保留用于驾驶舱状态同步
+            } catch(e) {
+                console.warn('解析待训练和弦失败', e);
+            }
+        }
+
+        // 同步当前 testList 到 localStorage（供驾驶舱读取）
+        syncTestListToLocalStorage() {
+            const chordNames = this.testList.map(id => {
+                const chord = this.chords.find(c => c.id === id);
+                return chord ? chord.name : null;
+            }).filter(name => name !== null);
+            localStorage.setItem('pendingSoloChords', JSON.stringify(chordNames));
+        }
+
         backendToDisplayIndex(backendString) {
-            return STRING_COUNT - backendString; // 例如 6弦 -> 0, 1弦 -> 5
+            return STRING_COUNT - backendString;
         }
 
         updateStats() {
@@ -216,18 +248,15 @@
                 const item = document.createElement('div');
                 item.className = 'test-item';
 
-                // 和弦名称
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'test-item-name';
                 nameSpan.textContent = chord.name;
 
-                // 新增：难度徽章
                 const diffSpan = document.createElement('span');
                 diffSpan.className = 'test-item-difficulty';
                 const difficulty = chord.difficulty || 1;
                 diffSpan.textContent = `难度 ${difficulty}`;
 
-                // 状态显示
                 const statusSpan = document.createElement('span');
                 statusSpan.className = 'test-item-status';
 
@@ -260,6 +289,11 @@
 
         stopTestAndSending() {
             this.sendingEnabled = false;
+            // ✅ 修改：统一清理所有 requestAnimationFrame
+            if (this.animationId) {
+                cancelAnimationFrame(this.animationId);
+                this.animationId = null;
+            }
             if (this.animationFrameId) {
                 cancelAnimationFrame(this.animationFrameId);
                 this.animationFrameId = null;
@@ -270,10 +304,6 @@
             if (this.timerInterval) {
                 clearInterval(this.timerInterval);
                 this.timerInterval = null;
-            }
-            if (this.animationId) {
-                cancelAnimationFrame(this.animationId);
-                this.animationId = null;
             }
             this.testMode = false;
             this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
@@ -306,7 +336,6 @@
                 this.elements.chordDetailContent.textContent = chord.detail;
                 this.renderStandardDots(chord);
 
-                // 新增：更新难度徽章
                 if (this.elements.difficultyBadge) {
                     const difficulty = chord.difficulty || 1;
                     this.elements.difficultyBadge.textContent = '难度' + difficulty;
@@ -342,7 +371,6 @@
             this.recordedForCurrentChord = true;
             this.renderTestList();
 
-            // 保存正确记录
             fetch('/api/save_record', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -364,7 +392,6 @@
             this.recordedForCurrentChord = true;
             this.renderTestList();
 
-            // 保存错误记录（不计时）
             fetch('/api/save_record', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -378,7 +405,6 @@
             this.moveToNextTest();
         }
 
-        // ---------- 渲染标准指板（mini指板）----------
         renderStandardDots(chord, userPositions = [], userBarre = null) {
             const container = this.elements.dotContainer;
             container.innerHTML = '';
@@ -396,12 +422,11 @@
             const innerHeight = containerHeight - topPadding - bottomPadding;
 
             const stringSpacing = innerHeight / (STRING_COUNT - 1);
-            const fretSpacing = innerWidth / (FRET_COUNT - 1);  // FRET_COUNT 应为 5
+            const fretSpacing = innerWidth / (FRET_COUNT - 1);
 
             const baseY = topPadding;
             const baseX = leftPadding;
 
-            // 调整琴弦位置
             const stringLines = document.querySelectorAll('.string-mini');
             stringLines.forEach((el, idx) => {
                 const y = baseY + idx * stringSpacing;
@@ -413,7 +438,6 @@
                 el.style.top = (y - 8) + 'px';
             });
 
-            // 品柱
             const fretLines = document.querySelectorAll('.fret-mini');
             fretLines.forEach((el, idx) => {
                 const x = baseX + idx * fretSpacing;
@@ -425,7 +449,6 @@
                 el.style.left = (x - 15) + 'px';
             });
 
-            // ---------- 按品数排序分配列 ----------
             const allPositions = [];
             if (chord && chord.positions) {
                 chord.positions.forEach(pos => {
@@ -473,7 +496,6 @@
                 fretToCol[fret] = idx;
             });
 
-            // 绘制按点
             allPositions.forEach(p => {
                 if (!(p.fret in fretToCol)) return;
                 const colIndex = fretToCol[p.fret];
@@ -489,7 +511,6 @@
                 container.appendChild(dot);
             });
 
-            // 绘制横按
             allBarres.forEach(b => {
                 if (!(b.fret in fretToCol)) return;
                 const colIndex = fretToCol[b.fret];
@@ -517,12 +538,6 @@
             });
         }
 
-        // 保留原方法空定义
-        createDotElement(pos, baseX, baseY, fretSpacing, stringSpacing, className) {}
-
-        createBarreElement(barre, baseX, baseY, fretSpacing, stringSpacing, className) {}
-
-        // ---------- 统一绘制函数 ----------
         drawAll() {
             if (!this.overlayCanvas) return;
             const ctx = this.overlayCtx;
@@ -540,7 +555,6 @@
             }
         }
 
-        // ---------- WebSocket 结果处理 ----------
         handleDetectionResult = (data) => {
             const receiveTime = performance.now();
             if (this.lastFrameSendTime > 0) {
@@ -594,7 +608,6 @@
             }
         }
 
-        // ---------- MediaPipe 结果回调 ----------
         onHandResults(results) {
             const now = performance.now();
             if (!this.testMode || !this.sendingEnabled) return;
@@ -664,7 +677,6 @@
             }
         }
 
-        // ---------- 发送缩略图 ----------
         sendThumbnail() {
             if (!this.socket || !this.socket.connected) return;
             const video = this.elements.cameraFeed;
@@ -681,13 +693,16 @@
             this.socket.emit('thumbnail', { image: imageBase64 });
         }
 
-        // ===== 音频预留 =====
         sendAudio() {}
 
-        // ---------- 摄像头开关 ----------
         async toggleCamera() {
             if (this.cameraStream) {
                 this.sendingEnabled = false;
+                // ✅ 修改：统一清理动画帧
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
                 if (this.animationFrameId) {
                     cancelAnimationFrame(this.animationFrameId);
                     this.animationFrameId = null;
@@ -705,10 +720,6 @@
                     this.socket.disconnect();
                     if (this.socket.close) this.socket.close();
                     this.socket = null;
-                }
-                if (this.animationId) {
-                    cancelAnimationFrame(this.animationId);
-                    this.animationId = null;
                 }
                 this.testMode = false;
                 this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
@@ -747,7 +758,16 @@
                     this.elements.cameraFeed.style.transform = 'scaleX(-1)';
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
-                    this.socket = io();
+
+                    // ✅ 修改：Socket.IO 配置支持自签名证书，且禁止自动重连（由按钮手动控制）
+                    this.socket = io({
+                        path: '/socket.io',
+                        transports: ['websocket', 'polling'],
+                        secure: true,
+                        rejectUnauthorized: false,      // 允许自签名证书（仅测试环境，生产环境请移除）
+                        reconnection: false,            // 禁止自动重连，完全由按钮控制
+                        timeout: 20000
+                    });
 
                     this.socket.on('connect', () => {
                         console.log('✅ WebSocket 连接成功，ID:', this.socket.id);
@@ -799,7 +819,6 @@
             }
         }
 
-        // ---------- 开始测试 ----------
         startTest() {
             if (this.testList.length === 0) {
                 alert('测试列表为空');
@@ -859,7 +878,6 @@
             }
         }
 
-        // ---------- 降级模式：发送帧 ----------
         sendFrame = () => {
             if (!this.sendingEnabled) return;
             if (!this.elements.cameraFeed.videoWidth || !this.socket || !this.socket.connected) {
@@ -886,7 +904,6 @@
             this.animationId = requestAnimationFrame(this.sendFrame);
         }
 
-        // ---------- 绑定事件 ----------
         bindEvents() {
             this.elements.chordSelect.addEventListener('change', () => {
                 const id = this.elements.chordSelect.value;
@@ -898,7 +915,6 @@
                     this.elements.chordDescription.textContent = this.currentChord.description;
                     this.elements.chordDetailContent.textContent = this.currentChord.detail;
                     this.renderStandardDots(this.currentChord);
-                    // 更新难度徽章
                     if (this.elements.difficultyBadge) {
                         const difficulty = this.currentChord.difficulty || 1;
                         this.elements.difficultyBadge.textContent = '难度' + difficulty;
@@ -906,15 +922,18 @@
                 }
             });
 
+            // 添加和弦：同步更新 localStorage
             this.elements.addToTestBtn.addEventListener('click', () => {
                 if (this.currentChord && !this.testList.includes(this.currentChord.id)) {
                     this.testList.push(this.currentChord.id);
                     this.testResults = new Array(this.testList.length).fill(null);
                     this.renderTestList();
                     this.updateProgress();
+                    this.syncTestListToLocalStorage();
                 }
             });
 
+            // 清空列表：同步清空 localStorage
             this.elements.clearTestBtn.addEventListener('click', () => {
                 this.testList = [];
                 this.testResults = [];
@@ -926,6 +945,7 @@
                 if (this.testMode) {
                     this.stopTestAndSending();
                 }
+                localStorage.removeItem('pendingSoloChords');
             });
 
             this.elements.toggleCamera.addEventListener('click', () => this.toggleCamera());
@@ -949,11 +969,14 @@
 
         cleanup() {
             this.sendingEnabled = false;
+            if (this.animationId) {
+                cancelAnimationFrame(this.animationId);
+                this.animationId = null;
+            }
             if (this.animationFrameId) {
                 cancelAnimationFrame(this.animationFrameId);
                 this.animationFrameId = null;
             }
-            if (this.animationId) cancelAnimationFrame(this.animationId);
             if (this.timerInterval) clearInterval(this.timerInterval);
             if (this.camera) {
                 this.camera.stop();

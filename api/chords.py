@@ -801,3 +801,7 @@ chords_data = [
 def get_chords():
     """返回所有和弦数据"""
     return jsonify(chords_data)
+
+# 文件末尾
+# 导出供其他模块使用
+__all__ = ['chords_data']

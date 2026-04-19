@@ -9,9 +9,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import wraps
 
-import random
-from api.chords import chords_bp, chords_data   # 新增 chords_data
-
 import cv2
 import numpy as np
 from flask import Flask, jsonify, request, render_template, send_file, session, redirect, url_for
@@ -66,7 +63,7 @@ app.register_blueprint(auth_bp)
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode=None,
+    async_mode='eventlet',
     max_http_buffer_size=10 * 1024 * 1024,
     ping_timeout=60,
     ping_interval=25,
@@ -391,95 +388,9 @@ def history_stats():
         'chords': chords,
         'accuracies': accuracies
     })
+
 # ---------- 教学驾驶舱 API ----------
 llm_service = LLMService()
-def _generate_smart_recommendations(user_id, count=5):
-    """
-    基于用户练习数据和和弦难度生成智能推荐（带理由），每次调用结果具有随机性。
-    返回格式: [{"name": "C", "reason": "基础和弦，适合巩固"}, ...]
-    """
-    overview = user_stats.get_overview(user_id)
-    recent = user_stats.get_recent_records(user_id, limit=20)
-    
-    practiced_chords = set()
-    chord_accuracies = {}
-    for r in recent:
-        chord = r.get('chord')
-        acc = r.get('accuracy', 0)
-        if chord:
-            practiced_chords.add(chord)
-            chord_accuracies.setdefault(chord, []).append(acc)
-    
-    chord_avg_acc = {c: sum(accs)/len(accs) for c, accs in chord_accuracies.items()}
-    weak_chords = [c for c, acc in chord_avg_acc.items() if acc < 60]
-    
-    chords_info = {c['name']: c for c in chords_data}
-    all_chord_names = list(chords_info.keys())
-    unpracticed = [c for c in all_chord_names if c not in practiced_chords]
-    
-    recommendations = []
-    
-    # 1. 随机选择1~2个薄弱和弦（如果有）
-    if weak_chords:
-        sample_size = min(2, len(weak_chords))
-        selected_weak = random.sample(weak_chords, sample_size)
-        for chord in selected_weak:
-            recommendations.append({
-                'name': chord,
-                'reason': f"你在{chord}上正确率偏低，加强练习能有效提升"
-            })
-    
-    # 2. 从未练习过的和弦中随机选1~2个（优先低难度，但加入随机性）
-    if unpracticed:
-        # 按难度排序，但从中随机抽取，难度越低的被抽中概率可以稍高（可选）
-        # 这里简单起见，直接随机抽取
-        sample_size = min(2, len(unpracticed))
-        selected_unpracticed = random.sample(unpracticed, sample_size)
-        for chord in selected_unpracticed:
-            diff = chords_info[chord]['difficulty']
-            if diff == 1:
-                reason = f"{chord}是基础开放和弦，适合新手入门"
-            elif diff == 2:
-                reason = f"{chord}稍有难度，但值得尝试拓展指法"
-            else:
-                reason = f"{chord}和弦，挑战一下提升技巧"
-            recommendations.append({'name': chord, 'reason': reason})
-    
-    # 3. 剩余名额根据平均正确率随机抽取
-    remaining = count - len(recommendations)
-    if remaining > 0:
-        avg_accuracy = overview.get('avg_accuracy', 0)
-        if avg_accuracy < 50:
-            pool = [c for c in all_chord_names if chords_info[c]['difficulty'] == 1]
-        else:
-            pool = [c for c in all_chord_names if chords_info[c]['difficulty'] >= 2]
-        
-        # 排除已选中的和弦
-        pool = [c for c in pool if c not in [r['name'] for r in recommendations]]
-        if pool:
-            selected = random.sample(pool, min(remaining, len(pool)))
-            for chord in selected:
-                diff = chords_info[chord]['difficulty']
-                if diff == 1:
-                    reason = f"{chord}和弦，巩固基础指法"
-                elif diff == 2:
-                    reason = f"{chord}和弦，提升和弦转换熟练度"
-                else:
-                    reason = f"{chord}和弦，适合高阶练习"
-                recommendations.append({'name': chord, 'reason': reason})
-    
-    # 如果还不够，从所有和弦中随机补全
-    if len(recommendations) < count:
-        remaining = count - len(recommendations)
-        remaining_pool = [c for c in all_chord_names if c not in [r['name'] for r in recommendations]]
-        if remaining_pool:
-            extra = random.sample(remaining_pool, min(remaining, len(remaining_pool)))
-            for chord in extra:
-                recommendations.append({'name': chord, 'reason': '根据你的练习记录智能推荐'})
-    
-    # 最后打乱顺序，让每次结果看起来都不一样
-    random.shuffle(recommendations)
-    return recommendations[:count]
 
 @app.route('/api/teach/dashboard')
 @login_required
@@ -513,21 +424,17 @@ def generate_advice():
 @app.route('/api/teach/recommend_chords', methods=['POST'])
 @login_required
 def recommend_chords():
-    """基于用户练习数据生成智能推荐和弦（带理由）"""
-    try:
-        recommendations = _generate_smart_recommendations(current_user.id, count=5)
-        return jsonify({'chords': recommendations})
-    except Exception as e:
-        logger.exception("生成推荐和弦失败")
-        # 降级：返回默认推荐列表
-        fallback = [
-            {'name': 'C', 'reason': '基础开放和弦'},
-            {'name': 'G', 'reason': '常用和弦'},
-            {'name': 'Am', 'reason': '简单小调和弦'},
-            {'name': 'Em', 'reason': '适合入门'},
-            {'name': 'D', 'reason': '常用和弦'}
-        ]
-        return jsonify({'chords': fallback})
+    overview = user_stats.get_overview(current_user.id)
+    recent = user_stats.get_recent_records(current_user.id, limit=1)
+    stats = {
+        'overview': overview,
+        'recent_records': recent
+    }
+    chords = llm_service.generate_chord_recommendations(stats)
+    if chords:
+        return jsonify({'chords': chords})
+    else:
+        return jsonify({'chords': ['C', 'G', 'Am', 'Em', 'D']})
 
 # ---------- TTS 路由 ----------
 @app.route('/api/tts/speak', methods=['POST'])
@@ -642,7 +549,7 @@ def handle_voice_command(data):
 if __name__ == '__main__':
     # 强制修复 eventlet 异步，必须加这两行
     import eventlet
-    # eventlet.monkey_patch()
+    eventlet.monkey_patch()
 
     logger.info(f"启动服务器，debug={config.DEBUG}")
     socketio.run(
