@@ -3,8 +3,8 @@ import json
 import logging
 import hashlib
 import time
-from typing import Optional, Dict, List, Generator, Any
-from functools import lru_cache
+import re
+from typing import Optional, Dict, List
 from collections import OrderedDict
 
 # 配置日志
@@ -110,15 +110,13 @@ class LLMService:
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "stream": stream
+            "stream": stream,
+            "thinking": {"type": "disabled"}   # Doubao-Seed-2.0-mini 极速模式
         }
         try:
-            resp = self.session.post(self.endpoint, json=payload, timeout=self.timeout, stream=stream)
+            resp = self.session.post(self.endpoint, json=payload, timeout=self.timeout)
             resp.raise_for_status()
-            if stream:
-                return resp
-            else:
-                return resp.json()
+            return resp.json()
         except requests.exceptions.Timeout:
             logger.error("LLM 请求超时")
             return None
@@ -137,38 +135,13 @@ class LLMService:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ]
-        result = self._call_api(messages, temperature, max_tokens, stream=False)
+        result = self._call_api(messages, temperature, max_tokens)
         if result and "choices" in result:
             content = result["choices"][0]["message"]["content"]
             if self.enable_cache:
                 self.cache.set(prompt, system_prompt, temperature, max_tokens, content)
             return content
         return None
-
-    def generate_stream(self, prompt, system_prompt="你是一个专业的吉他教练。", temperature=0.7, max_tokens=500) -> Generator[str, None, None]:
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ]
-        response = self._call_api(messages, temperature, max_tokens, stream=True)
-        if response is None:
-            yield "生成失败，请稍后再试。"
-            return
-
-        for line in response.iter_lines():
-            if line:
-                line = line.decode('utf-8')
-                if line.startswith('data: '):
-                    data = line[6:]
-                    if data == '[DONE]':
-                        break
-                    try:
-                        chunk = json.loads(data)
-                        delta = chunk.get("choices", [{}])[0].get("delta", {})
-                        if "content" in delta:
-                            yield delta["content"]
-                    except json.JSONDecodeError:
-                        continue
 
     def get_conversation(self, session_id: str) -> Conversation:
         if session_id not in self.conversations:
@@ -179,67 +152,67 @@ class LLMService:
         conv = self.get_conversation(session_id)
         conv.add_user_message(user_message)
 
-        result = self._call_api(conv.get_messages(), temperature, max_tokens, stream=False)
+        result = self._call_api(conv.get_messages(), temperature, max_tokens)
         if result and "choices" in result:
             reply = result["choices"][0]["message"]["content"]
             conv.add_assistant_message(reply)
             return reply
         return "抱歉，我暂时无法回答。"
 
-    def chat_stream(self, session_id: str, user_message: str, temperature=0.7, max_tokens=500) -> Generator[str, None, None]:
-        conv = self.get_conversation(session_id)
-        conv.add_user_message(user_message)
-
-        response = self._call_api(conv.get_messages(), temperature, max_tokens, stream=True)
-        if response is None:
-            yield "生成失败，请稍后再试。"
-            return
-
-        full_reply = []
-        for line in response.iter_lines():
-            if line:
-                line = line.decode('utf-8')
-                if line.startswith('data: '):
-                    data = line[6:]
-                    if data == '[DONE]':
-                        break
-                    try:
-                        chunk = json.loads(data)
-                        delta = chunk.get("choices", [{}])[0].get("delta", {})
-                        if "content" in delta:
-                            content = delta["content"]
-                            full_reply.append(content)
-                            yield content
-                    except json.JSONDecodeError:
-                        continue
-
-        conv.add_assistant_message("".join(full_reply))
-
-    def generate_advice(self, user_stats: Dict) -> Optional[str]:
-        overview = user_stats.get('overview', {})
-        total_sessions = overview.get('total_sessions', 0)
-        avg_accuracy = overview.get('avg_accuracy', 0)
-        weak_chords = overview.get('weak_chords', [])
-        weak_chords_str = ', '.join(weak_chords) if weak_chords else '无'
-
+    # ==================== 精简 Prompt 构建方法 ====================
+    def _build_advice_prompt(self, user_stats: Dict) -> str:
+        o = user_stats.get('overview', {})
+        weak = ','.join(o.get('weak_chords', [])) or '无'
         recent_records = user_stats.get('recent_records', [])
-        latest_practice = "无"
-        if recent_records and isinstance(recent_records, list):
-            last = recent_records[0]
-            if isinstance(last, dict):
-                chord = last.get('chord', '未知')
-                acc = last.get('accuracy', 0)
-                latest_practice = f"{chord}和弦 (正确率{acc}%)"
-            else:
-                latest_practice = str(last)
+        last = recent_records[0] if recent_records else {}
+        last_chord = last.get('chord', '?')
+        last_acc = last.get('accuracy', 0)
+        return (
+            f"总{o.get('total_sessions',0)}次 均准{o.get('avg_accuracy',0)}% "
+            f"弱和弦:{weak} 末次:{last_chord}({last_acc}%)\n"
+            f"给出3条详细教学建议"
+        )
 
-        prompt = f"""
-根据以下用户的吉他练习数据，生成3条简短、鼓励性的教学建议（每条不超过30字）：
-- 总练习次数：{total_sessions}
-- 平均正确率：{avg_accuracy}%
-- 薄弱和弦：{weak_chords_str}
-- 最近一次练习：{latest_practice}
+    def _build_chord_recommendation_prompt(self, user_stats: Dict) -> str:
+        o = user_stats.get('overview', {})
+        weak = ','.join(o.get('weak_chords', [])) or '无'
+        recent_records = user_stats.get('recent_records', [])
+        last = recent_records[0] if recent_records else {}
+        last_chord = last.get('chord', '?')
+        last_acc = last.get('accuracy', 0)
+        return (
+            f"总{o.get('total_sessions',0)}次 均准{o.get('avg_accuracy',0)}% "
+            f"弱和弦:[{weak}] 末次{last_chord}({last_acc}%)\n"
+            f"推荐3-5个和弦,仅返回JSON数组如['C','G','Am']"
+        )
 
-建议格式：以“1.”、“2.”、“3.”开头。
-        """
-        return self.generate(prompt, system_prompt="你是一位鼓励型的吉他教练，给出具体可行的建议。")
+    # ==================== 优化后的非流式方法 ====================
+    def generate_advice(self, user_stats: Dict) -> Optional[str]:
+        """生成详细的教学建议（非流式），每条建议包含具体指导"""
+        prompt = self._build_advice_prompt(user_stats)
+        system_prompt = (
+            "你是一位经验丰富的吉他教练，请根据用户数据提供3条详细的教学建议。"
+            "每条建议应包含：1）指出具体问题或方向；2）给出可操作的练习方法或技巧。"
+            "每条建议字数在20-40字之间，用1.2.3.格式输出，语气鼓励且专业。"
+        )
+        return self.generate(prompt, system_prompt, temperature=0.7, max_tokens=180)
+
+    def generate_chord_recommendations(self, user_stats: Dict) -> Optional[List[str]]:
+        """极速生成和弦推荐（非流式），<2秒返回"""
+        prompt = self._build_chord_recommendation_prompt(user_stats)
+        system_prompt = "你是一个专业的吉他教练，根据数据生成推荐和弦列表。仅返回JSON数组，无其他文字。"
+        result = self.generate(prompt, system_prompt, temperature=0.5, max_tokens=60)
+        if not result:
+            return self._fallback_recommendations()
+        try:
+            json_match = re.search(r'\[.*?\]', result, re.DOTALL)
+            if json_match:
+                chords = json.loads(json_match.group())
+                if isinstance(chords, list) and all(isinstance(c, str) for c in chords):
+                    return chords[:5]
+        except Exception as e:
+            logger.warning(f"解析推荐和弦失败: {e}")
+        return self._fallback_recommendations()
+
+    def _fallback_recommendations(self) -> List[str]:
+        return ['C', 'G', 'Am', 'Em', 'D']

@@ -1,0 +1,19 @@
+[0;1;32m●[0m guitar-teacher.service - Guitar Teacher App
+   Loaded: loaded (/etc/systemd/system/guitar-teacher.service; enabled; vendor preset: disabled)
+   Active: [0;1;32mactive (running)[0m since Tue 2026-04-14 21:36:04 CST; 1min 51s ago
+ Main PID: 995245 (python3.11)
+    Tasks: 4 (limit: 11716)
+   Memory: 821.7M
+   CGroup: /system.slice/guitar-teacher.service
+           └─995245 /usr/bin/python3.11 /home/guitar-teacher/app.py
+
+Apr 14 21:37:21 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: 222.244.139.194,127.0.0.1 - - [14/Apr/2026 21:37:21] "POST /socket.io/?EIO=4&transport=polling&t=PsCDVr_&sid=-gsZjcTFYq9Vufv6AAAF HTTP/1.1" 200 195 0.000912
+Apr 14 21:37:21 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: 222.244.139.194,127.0.0.1 - - [14/Apr/2026 21:37:21] "GET /socket.io/?EIO=4&transport=polling&t=PsCDVr_.0&sid=-gsZjcTFYq9Vufv6AAAF HTTP/1.1" 200 189 0.003899
+Apr 14 21:37:21 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: (995245) accepted ('127.0.0.1', 51538)
+Apr 14 21:37:21 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: (995245) accepted ('127.0.0.1', 51548)
+Apr 14 21:37:22 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: 222.244.139.194,127.0.0.1 - - [14/Apr/2026 21:37:22] "GET /socket.io/?EIO=4&transport=polling&t=PsCDVsf&sid=-gsZjcTFYq9Vufv6AAAF HTTP/1.1" 200 157 0.169235
+Apr 14 21:37:22 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: (995245) accepted ('127.0.0.1', 51558)
+Apr 14 21:37:22 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: 222.244.139.194,127.0.0.1 - - [14/Apr/2026 21:37:22] "GET /socket.io/?EIO=4&transport=polling&t=PsCDVvs&sid=-gsZjcTFYq9Vufv6AAAF HTTP/1.1" 200 157 0.000536
+Apr 14 21:37:36 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: 222.244.139.194,127.0.0.1 - - [14/Apr/2026 21:37:36] "GET /socket.io/?EIO=4&transport=websocket&sid=-gsZjcTFYq9Vufv6AAAF HTTP/1.1" 200 0 14.041817
+Apr 14 21:37:36 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: (995245) accepted ('127.0.0.1', 59194)
+Apr 14 21:37:36 iZ2ze67evsl0rxnl4jzm57Z python3.11[995245]: 222.244.139.194,127.0.0.1 - - [14/Apr/2026 21:37:36] "GET /teach HTTP/1.0" 200 17765 0.006093

@@ -8,38 +8,30 @@ Flask-SQLAlchemy==3.1.1
 eventlet==0.33.3
 opencv-python==4.8.1.78
 numpy==1.24.3
-mediapipe==0.10.7
-torch==2.0.1
-torchvision==0.15.2
+mediapipe==0.10.9
+ultralytics>=8.0.0
+
+# HTTP 请求
+requests==2.31.0
+
+# 工具库
 protobuf==3.20.3
-ultralytics
+python-dotenv==1.0.0
 
-#######################################
-#######################################
-# # 基础 Web 框架
-# Flask==2.3.3
-# Flask-CORS==4.0.0
-# Flask-SocketIO==5.3.4
-# eventlet==0.33.3
+# TTS 服务（Edge TTS）
+edge-tts
+flask-login==0.6.2
+email-validator==2.1.0
 
-# # 图像处理
-# opencv-python==4.8.1.78
-# numpy==1.24.3
-
-# # 手部检测
-# mediapipe==0.10.7
-
-# # YOLOv10 所需的 ultralytics（自动管理 PyTorch 依赖）
-# ultralytics==8.0.0
-# # 如果遇到 PyTorch 安装问题，可以手动指定 CUDA 版本，例如：
-# # torch==2.0.1+cu118
-# # torchvision==0.15.2+cu118
-# # 安装命令可参考：https://pytorch.org/get-started/locally/
-
-# # 固定 protobuf 版本避免与 mediapipe 冲突
-# protobuf==3.20.3
-
-# # 其他常用工具（如果用到）
-# requests
-# # scipy==1.10.1
-# # matplotlib==3.7.1
+# ========== PyTorch（可选，YOLO 模型需要） ==========
+# 如果您的 YOLO 模型无法加载，请根据 CUDA 版本安装 PyTorch。
+# 对于 CUDA 11.8：
+# torch==2.0.1
+# torchvision==0.15.1
+# 对于 CUDA 12.1：
+# torch==2.1.0
+# torchvision==0.16.0
+# 安装命令示例：
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# 如果您不需要 GPU，可仅安装 CPU 版：
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu

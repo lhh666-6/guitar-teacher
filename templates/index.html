@@ -2,12 +2,12 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能吉他教学系统 · 音乐家风格</title>
-    <!-- 引入 GSAP -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>智能吉他教学系统 · 音乐家风格 · 动效优化版</title>
+    <!-- ✅ 国内镜像：GSAP (BootCDN) -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <style>
-        /* ========== 原有完整样式 ========== */
+        /* ========== 全局样式 & 动效优化 ========== */
         * {
             margin: 0;
             padding: 0;
@@ -21,6 +21,37 @@
             color: #fff;
             overflow-x: hidden;
             position: relative;
+            will-change: scroll-position;  /* 滚动性能优化 */
+        }
+
+        /* 减少动效偏好适配 */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+            .intro-overlay,
+            .intro-content img,
+            .intro-hint,
+            .mode-card,
+            .nav-btn,
+            .title,
+            #particles-js canvas {
+                animation: none !important;
+                transition: none !important;
+                transform: none !important;
+            }
+            .intro-overlay {
+                display: none !important;
+            }
+            .main-content {
+                opacity: 1 !important;
+                visibility: visible !important;
+            }
         }
 
         body::before {
@@ -34,6 +65,7 @@
             background-size: 20px 20px, 100% 20px, 20px 100%;
             pointer-events: none;
             z-index: 0;
+            will-change: transform;  /* 优化背景合成 */
         }
 
         body::after {
@@ -56,11 +88,13 @@
             pointer-events: none;
         }
 
-        .history-link {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 10;
+        #particles-js canvas {
+            will-change: transform;
+            backface-visibility: hidden;
+        }
+
+        /* 公用按钮样式 */
+        .nav-btn {
             display: inline-flex;
             align-items: center;
             padding: 8px 16px;
@@ -72,15 +106,41 @@
             font-size: 16px;
             font-weight: 500;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: transform 0.2s cubic-bezier(0.2,0.9,0.4,1), 
+                        box-shadow 0.2s ease, 
+                        background 0.25s ease;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            will-change: transform;
+            backface-visibility: hidden;
         }
 
-        .history-link:hover {
+        .nav-btn:hover {
             background: rgba(50, 35, 25, 0.8);
             border-color: #e3a72e;
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(200, 130, 30, 0.4);
+        }
+
+        .nav-btn:active {
+            transform: translateY(1px);
+            transition-duration: 0.05s;
+        }
+
+        /* 左上角按钮 */
+        .top-left-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+        }
+
+        /* 右上角按钮 */
+        .top-right-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
         }
 
         .container {
@@ -106,11 +166,12 @@
             color: transparent;
             -webkit-text-fill-color: transparent;
             text-shadow: 0 0 20px rgba(230, 150, 30, 0.5);
-            animation: fadeInDown 1s ease;
+            animation: fadeInDown 0.9s cubic-bezier(0.2,0.9,0.4,1);
             letter-spacing: 2px;
             position: relative;
             display: inline-block;
             padding: 0 20px;
+            will-change: transform, opacity;
         }
         .title::before, .title::after {
             content: '🎸';
@@ -146,22 +207,26 @@
             border-radius: 32px;
             padding: 1.8rem 1.2rem 2.2rem 1.2rem;
             cursor: pointer;
-            transition: transform 0.25s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            transition: transform 0.25s cubic-bezier(0.2,0.9,0.4,1), 
+                        box-shadow 0.3s ease, 
+                        border-color 0.3s ease;
             box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
             text-align: center;
-            animation: fadeInUp 1s ease backwards;
+            animation: fadeInUp 0.8s cubic-bezier(0.2,0.9,0.4,1) backwards;
             position: relative;
             overflow: hidden;
             outline: none;
+            will-change: transform, box-shadow;
+            backface-visibility: hidden;
         }
         .mode-card:focus-visible {
             border-color: #e3a72e;
             box-shadow: 0 0 0 3px rgba(227, 167, 46, 0.5);
         }
 
-        .mode-card:nth-child(1) { animation-delay: 0.1s; }
-        .mode-card:nth-child(2) { animation-delay: 0.2s; }
-        .mode-card:nth-child(3) { animation-delay: 0.3s; }
+        .mode-card:nth-child(1) { animation-delay: 0.05s; }
+        .mode-card:nth-child(2) { animation-delay: 0.15s; }
+        .mode-card:nth-child(3) { animation-delay: 0.25s; }
 
         .mode-card::after {
             content: '';
@@ -184,7 +249,7 @@
 
         .mode-card:active {
             transform: scale(0.98) translateY(-2px);
-            transition: transform 0.1s;
+            transition: transform 0.08s;
         }
 
         .mode-icon {
@@ -192,7 +257,8 @@
             line-height: 1;
             margin-bottom: 1.2rem;
             filter: drop-shadow(0 0 15px rgba(230, 150, 30, 0.6));
-            transition: transform 0.2s;
+            transition: transform 0.2s ease;
+            will-change: transform;
         }
 
         .mode-card:hover .mode-icon {
@@ -218,19 +284,26 @@
         }
 
         @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-30px); }
+            from { opacity: 0; transform: translateY(-25px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
+            from { opacity: 0; transform: translateY(25px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         @media (max-width: 768px) {
-            .history-link {
+            .top-left-btn, .top-right-btn {
                 top: 10px;
+            }
+            .top-left-btn {
                 left: 10px;
+            }
+            .top-right-btn {
+                right: 10px;
+            }
+            .nav-btn {
                 padding: 6px 12px;
                 font-size: 14px;
             }
@@ -275,7 +348,7 @@
             }
         }
 
-        /* ========== 开场动画样式（背景与index一致） ========== */
+        /* ========== 开场动画样式 (性能优化) ========== */
         .intro-overlay {
             position: fixed;
             top: 0;
@@ -289,7 +362,9 @@
             justify-content: center;
             align-items: center;
             pointer-events: auto;
-            will-change: background-color;
+            will-change: opacity, background-color;
+            cursor: pointer;
+            transition: opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
         .intro-overlay::before {
@@ -323,6 +398,7 @@
             align-items: center;
             z-index: 2;
             perspective: 1000px;
+            transform-style: preserve-3d;
         }
 
         .intro-content img {
@@ -337,22 +413,40 @@
             user-select: none;
             -webkit-user-drag: none;
             transform-style: preserve-3d;
+            backface-visibility: hidden;
         }
 
         .intro-hint {
             margin-top: 30px;
-            color: rgba(255,255,255,0.5);
-            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+            font-size: 1.2rem;
             letter-spacing: 3px;
             text-transform: uppercase;
-            animation: subtlePulse 3s infinite;
+            font-weight: 500;
+            background: rgba(0,0,0,0.4);
+            padding: 8px 24px;
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(227, 167, 46, 0.5);
+            transition: all 0.2s ease;
+            animation: gentlePulse 1.8s infinite;
             z-index: 2;
+            pointer-events: auto;
+            cursor: pointer;
+            will-change: transform, letter-spacing;
+        }
+        
+        .intro-hint:hover {
+            background: rgba(227, 167, 46, 0.3);
+            border-color: #e3a72e;
+            transform: scale(1.02);
+            letter-spacing: 5px;
         }
 
-        @keyframes subtlePulse {
-            0% { opacity: 0.3; }
-            50% { opacity: 0.8; }
-            100% { opacity: 0.3; }
+        @keyframes gentlePulse {
+            0% { opacity: 0.5; transform: scale(0.98); box-shadow: 0 0 0 0 rgba(227, 167, 46, 0.3);}
+            50% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 8px rgba(227, 167, 46, 0);}
+            100% { opacity: 0.5; transform: scale(0.98); box-shadow: 0 0 0 0 rgba(227, 167, 46, 0);}
         }
 
         .main-content {
@@ -360,21 +454,32 @@
             visibility: hidden;
             transition: opacity 1.2s cubic-bezier(0.23, 1, 0.32, 1), visibility 1.2s;
         }
+        
+        .intro-clickable {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <!-- 开场动画容器（只保留吉他图片） -->
-    <div id="intro-overlay" class="intro-overlay">
+    <!-- 开场动画容器 -->
+    <div id="intro-overlay" class="intro-overlay intro-clickable">
         <div class="intro-content" id="intro-content">
-            <img id="img-guitar-notes" src="/static/images/guitar-notes.png" alt="乐符环绕吉他" onerror="console.error('图片加载失败:', this.src)">
+            <img id="img-guitar-notes" src="/static/images/guitar-notes.png" alt="乐符环绕吉他" loading="eager">
         </div>
-        <div class="intro-hint">✨ 即将进入</div>
+        <div class="intro-hint" id="intro-hint">🎸 点击进入音乐之旅 🎸</div>
     </div>
 
-    <!-- 主内容（原有界面） -->
+    <!-- 主内容 -->
     <div class="main-content">
         <canvas id="particles-js"></canvas>
-        <a href="/history" class="history-link" title="训练历史记录">📊 历史</a>
+        <!-- 左上角历史按钮 -->
+        <div class="top-left-btn">
+            <a href="/history" class="nav-btn" title="训练历史记录">📊 历史</a>
+        </div>
+        <!-- 右上角用户状态按钮 -->
+        <div class="top-right-btn">
+            <div id="user-status" class="nav-btn" style="cursor: pointer;">加载中...</div>
+        </div>
         <div class="container">
             <h1 class="title">智能吉他和弦教学系统</h1>
             <div class="title-notation"></div>
@@ -398,146 +503,243 @@
         </div>
     </div>
 
-    <!-- 粒子动画脚本（如果存在） -->
+    <!-- 粒子动画脚本 (保持原有路径) -->
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
-    <!-- 开场动画脚本（单张吉他，伪3D，总时长3秒） -->
+    <!-- 用户状态管理脚本 -->
+    <script>
+        async function loadUserStatus() {
+            const userStatusDiv = document.getElementById('user-status');
+            if (!userStatusDiv) return;
+
+            try {
+                const res = await fetch('/api/current_user');
+                const data = await res.json();
+                if (data.logged_in) {
+                    const displayName = data.nickname || data.email;
+                    userStatusDiv.textContent = `👤 ${displayName}`;
+                    userStatusDiv.onclick = () => {
+                        if (confirm('是否退出登录？')) {
+                            fetch('/api/logout', { method: 'POST' }).then(() => {
+                                window.location.reload();
+                            });
+                        }
+                    };
+                } else {
+                    userStatusDiv.textContent = '🔑 登录';
+                    userStatusDiv.onclick = () => {
+                        window.location.href = '/login';
+                    };
+                }
+            } catch (err) {
+                console.error('获取用户状态失败', err);
+                userStatusDiv.textContent = '🔑 登录';
+                userStatusDiv.onclick = () => {
+                    window.location.href = '/login';
+                };
+            }
+        }
+        loadUserStatus();
+    </script>
+
+    <!-- 开场动画：点击进入 + 只播放一次，并确保图片可见 (动效优化) -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             'use strict';
 
+            const redirectAfter = '{{ redirect_after_intro | default("") }}';
             const overlay = document.getElementById('intro-overlay');
-            const content = document.getElementById('intro-content');
-            const guitar = document.getElementById('img-guitar-notes');
+            const guitarImg = document.getElementById('img-guitar-notes');
             const mainContent = document.querySelector('.main-content');
+            const hintBtn = document.getElementById('intro-hint');
 
-            // 检查是否已播放过
+            // 关键元素缺失则直接显示主内容
+            if (!overlay || !guitarImg || !mainContent) {
+                console.warn('❌ 开场元素缺失，直接显示主内容');
+                if (overlay) overlay.style.display = 'none';
+                if (mainContent) {
+                    mainContent.style.visibility = 'visible';
+                    mainContent.style.opacity = '1';
+                }
+                return;
+            }
+
+            // 减少动效偏好：直接跳过动画
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                console.log('🎯 检测到减少动效偏好，跳过开场动画');
+                overlay.style.display = 'none';
+                mainContent.style.visibility = 'visible';
+                mainContent.style.opacity = '1';
+                return;
+            }
+
+            // 监听图片加载状态
+            guitarImg.onload = () => console.log('✅ 图片加载成功:', guitarImg.src);
+            guitarImg.onerror = () => console.error('❌ 图片加载失败:', guitarImg.src);
+
+            // 有重定向参数（如登录后跳转）：自动播放动画并跳转
+            if (redirectAfter) {
+                console.log('🚀 检测到重定向参数，自动跳转');
+                overlay.style.pointerEvents = 'auto';
+                gsap.set(guitarImg, {
+                    opacity: 0,
+                    scale: 0.8,
+                    filter: 'blur(8px) brightness(0.6)',
+                    rotationY: -15,
+                    rotationX: 5,
+                    transformPerspective: 1000
+                });
+                const autoTl = gsap.timeline({
+                    onComplete: () => {
+                        gsap.to(overlay, {
+                            opacity: 0,
+                            duration: 1.0,
+                            ease: "power2.inOut",
+                            onComplete: () => {
+                                window.location.href = redirectAfter;
+                            }
+                        });
+                    }
+                });
+                autoTl.to(guitarImg, {
+                    opacity: 1,
+                    scale: 1,
+                    filter: 'blur(0px) brightness(1)',
+                    rotationY: 0,
+                    rotationX: 0,
+                    duration: 1.2,
+                    ease: "elastic.out(1, 0.5)",
+                })
+                .to(guitarImg, {
+                    duration: 1.0,
+                    ease: "none"
+                })
+                .to(guitarImg, {
+                    duration: 0.6,
+                    scale: 1.1,
+                    opacity: 0.9,
+                    filter: 'blur(3px) brightness(1.2)',
+                    ease: "power2.in"
+                });
+                overlay.style.cursor = 'default';
+                overlay.style.pointerEvents = 'none';
+                return;
+            }
+
+            // 普通主页：检查是否已经播放过开场动画（只播放一次）
             const hasPlayed = sessionStorage.getItem('introPlayed');
-
             if (hasPlayed) {
                 console.log('⏩ 开场动画已播放过，跳过');
-                if (overlay) overlay.style.display = 'none';
-                if (mainContent) {
-                    mainContent.style.visibility = 'visible';
-                    mainContent.style.opacity = '1';
-                }
+                overlay.style.display = 'none';
+                mainContent.style.visibility = 'visible';
+                mainContent.style.opacity = '1';
                 return;
             }
 
-            if (!overlay || !guitar || !mainContent) {
-                console.error('❌ 开场元素缺失，直接显示主内容');
-                if (overlay) overlay.style.display = 'none';
-                if (mainContent) {
-                    mainContent.style.visibility = 'visible';
-                    mainContent.style.opacity = '1';
-                }
-                return;
-            }
+            // 未播放过：显示开场动画，等待点击进入
+            console.log('🎬 首次进入，展示开场动画，等待点击');
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+            overlay.style.pointerEvents = 'auto';
+            mainContent.style.visibility = 'hidden';
+            mainContent.style.opacity = '0';
 
-            console.log('✅ 开场元素已找到，开始动画');
-            console.log('吉他图片路径:', guitar.src);
-
-            // 初始状态
-            gsap.set(guitar, {
+            // 初始设置吉他样式
+            gsap.set(guitarImg, {
                 opacity: 0,
-                scale: 0.8,
-                filter: 'blur(8px) brightness(0.6)',
-                rotationY: -15,
-                rotationX: 5,
-                transformPerspective: 1000
+                scale: 0.75,
+                filter: 'blur(10px) brightness(0.65)',
+                rotationY: -20,
+                rotationX: 8,
+                transformPerspective: 1200
             });
 
-            // 创建时间线
-            const tl = gsap.timeline({
-                smoothChildTiming: true,
-                onStart: () => console.log('🎬 时间线开始'),
-                onComplete: () => {
-                    console.log('🎬 时间线完成');
-                    sessionStorage.setItem('introPlayed', 'true');
-                }
-            });
-
-            // 吉他淡入 + 伪3D旋转到正常位置，持续2秒
-            tl.to(guitar, {
+            // 循环呼吸动画（让图片可见并呼吸）
+            const idleTl = gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 1, ease: "sine.inOut" });
+            idleTl.to(guitarImg, {
+                duration: 3,
                 opacity: 1,
-                scale: 1,
-                filter: 'blur(0px) brightness(1)',
-                rotationY: 0,
-                rotationX: 0,
-                duration: 2,
-                ease: "elastic.out(1, 0.4)",
-                onStart: () => console.log('🎬 [0s] 吉他淡入并旋转')
-            })
-            // 停留1秒
-            .to(guitar, {
-                duration: 1,
-                ease: "none",
-                onStart: () => console.log('🎬 [2s] 停留1秒')
-            })
-            // 动画结束后自动进入主页（不淡出，直接进入）
-            .call(() => {
-                console.log('🚪 3秒到，自动进入主页');
-                gsap.killTweensOf(guitar);
-                gsap.to(overlay, {
+                scale: 1.02,
+                filter: 'blur(0px) brightness(1.05) drop-shadow(0 0 30px rgba(255,200,50,0.6))',
+                rotationY: -5,
+                rotationX: 3,
+                ease: "sine.inOut"
+            }, 0)
+            .to(guitarImg, {
+                duration: 3,
+                opacity: 0.95,
+                scale: 0.98,
+                filter: 'blur(0px) brightness(0.98) drop-shadow(0 0 15px rgba(255,180,30,0.4))',
+                rotationY: 5,
+                rotationX: -2,
+                ease: "sine.inOut"
+            }, 3);
+
+            // 提示文字微动
+            gsap.to(hintBtn, {
+                duration: 1.5,
+                scale: 1.05,
+                repeat: -1,
+                yoyo: true,
+                ease: "power1.inOut"
+            });
+
+            let isTransitioning = false;
+            const enterMain = () => {
+                if (isTransitioning) return;
+                isTransitioning = true;
+                console.log('✨ 用户点击进入，记录标记并淡出');
+                // 存储标记
+                sessionStorage.setItem('introPlayed', 'true');
+                // 停止循环动画
+                idleTl.kill();
+                gsap.killTweensOf(guitarImg);
+                gsap.killTweensOf(hintBtn);
+                // 吉他退出动画
+                gsap.to(guitarImg, {
+                    duration: 0.7,
+                    scale: 1.3,
                     opacity: 0,
-                    duration: 1.2,
+                    rotationY: 25,
+                    rotationX: -10,
+                    filter: 'blur(15px) brightness(1.3)',
+                    ease: "back.in(1.2)"
+                });
+                // 遮罩层淡出
+                gsap.to(overlay, {
+                    duration: 0.8,
+                    opacity: 0,
                     ease: "power2.inOut",
                     onComplete: () => {
                         overlay.style.display = 'none';
+                        overlay.style.pointerEvents = 'none';
+                        // 主内容淡入
                         mainContent.style.visibility = 'visible';
-                        gsap.fromTo(mainContent,
-                            { y: 20, opacity: 0 },
-                            { y: 0, opacity: 1, duration: 1.2, ease: "power2.out", clearProps: "y" }
+                        gsap.fromTo(mainContent, 
+                            { y: 30, opacity: 0 },
+                            { y: 0, opacity: 1, duration: 1.0, ease: "back.out(0.5)", clearProps: "y" }
                         );
                         console.log('🏠 主界面已显示');
                     }
                 });
-            }, "+=0");
+            };
 
-            // 悬停加速
-            content.addEventListener('mouseenter', () => {
-                tl.timeScale(2);
-                gsap.to(guitar, {
-                    filter: 'drop-shadow(0 0 40px rgba(255,215,0,0.9)) brightness(1.2)',
-                    duration: 0.4,
-                    overwrite: true
-                });
-                console.log('🐭 悬停加速: 2x');
-            });
-            content.addEventListener('mouseleave', () => {
-                tl.timeScale(1);
-                gsap.to(guitar, {
-                    filter: 'drop-shadow(0 0 20px rgba(255,215,0,0.3)) brightness(1)',
-                    duration: 0.6,
-                    overwrite: true
-                });
-                console.log('🐭 悬停恢复: 1x');
+            // 点击进入
+            overlay.addEventListener('click', enterMain);
+            hintBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                enterMain();
             });
 
-            // 强制超时：5秒后强制进入（比总时长多2秒）
-            setTimeout(() => {
-                if (overlay.style.display !== 'none') {
-                    console.warn('⚠️ 强制超时：5秒已过，强制进入主页');
-                    tl.pause();
-                    gsap.killTweensOf(guitar);
-                    gsap.to(overlay, {
-                        opacity: 0,
-                        duration: 1.2,
-                        ease: "power2.inOut",
-                        onComplete: () => {
-                            overlay.style.display = 'none';
-                            mainContent.style.visibility = 'visible';
-                            gsap.fromTo(mainContent,
-                                { y: 20, opacity: 0 },
-                                { y: 0, opacity: 1, duration: 1.2, ease: "power2.out", clearProps: "y" }
-                            );
-                            sessionStorage.setItem('introPlayed', 'true');
-                        }
-                    });
+            // 键盘支持
+            const handleKey = (e) => {
+                if (isTransitioning) return;
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'Space') {
+                    e.preventDefault();
+                    enterMain();
                 }
-            }, 5000);
-
-            console.log('🎬 动画序列已启动');
+            };
+            window.addEventListener('keydown', handleKey);
         });
     </script>
 
@@ -552,17 +754,15 @@
             });
         });
     </script>
+    
+    <!-- 语音助手支持 -->
     <script>
-    if (window.VoiceGuide) {
-        VoiceGuide.registerPageCommands('/', []);
-    }
-</script>
-<script>
-    if (window.VoiceGuide) {
-        VoiceGuide.registerPageCommands('/', []);
-    }
-</script>
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-<script src="/static/js/voice_guide.js"></script>
+        if (window.VoiceGuide) {
+            VoiceGuide.registerPageCommands('/', []);
+        }
+    </script>
+    <!-- ✅ 国内镜像：Socket.IO (BootCDN) -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/voice_guide.js"></script>
 </body>
 </html>

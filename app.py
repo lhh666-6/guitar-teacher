@@ -9,11 +9,15 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import wraps
 
+import random
+from api.chords import chords_bp, chords_data   # 新增 chords_data
+
 import cv2
 import numpy as np
-from flask import Flask, jsonify, request, render_template, send_file
+from flask import Flask, jsonify, request, render_template, send_file, session, redirect, url_for
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from flask_login import LoginManager, login_required, current_user
 from sqlalchemy import func, case
 
 from core.detector import GuitarFingeringRecognizer
@@ -21,8 +25,9 @@ from api.chords import chords_bp
 import config
 from core import user_stats
 from core.llm_service import LLMService
-from models import db, TrainingRecord
+from models import db, TrainingRecord, User
 from core.tts_service import VolcTTS
+from api.auth import auth_bp
 
 # ---------- 日志配置 ----------
 logging.basicConfig(
@@ -33,27 +38,39 @@ logger = logging.getLogger(__name__)
 
 # ---------- 初始化应用 ----------
 app = Flask(__name__)
+app.config.from_object(config)
 CORS(app)
 
-# ---------- 数据库配置 ----------
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///training.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# ---------- 数据库初始化 ----------
 db.init_app(app)
 
 with app.app_context():
     db.create_all()
 
+# ---------- 初始化 Flask-Login ----------
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login_page'
+login_manager.login_message = '请先登录以访问此页面'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 # 注册蓝图
 app.register_blueprint(chords_bp, url_prefix='/api/chords')
+app.register_blueprint(auth_bp)
 
-# 初始化 SocketIO
+# ---------- 修复 SocketIO 配置（解决 400 错误） ----------
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode='eventlet',
+    async_mode=None,
     max_http_buffer_size=10 * 1024 * 1024,
     ping_timeout=60,
-    ping_interval=25
+    ping_interval=25,
+    allow_upgrades=True
 )
 
 # ---------- 模型文件检查 ----------
@@ -78,12 +95,12 @@ recognizer = GuitarFingeringRecognizer(
 
 executor = ThreadPoolExecutor(max_workers=2)
 
-play_records = []
+play_records = {}
 records_lock = threading.Lock()
 MAX_RECORDS = 100
 
-# ---------- TTS 服务 (Edge TTS，无需配置) ----------
-tts_service = VolcTTS()   # 使用默认音色 zh-CN-XiaoxiaoNeural 和缓存目录 tts_cache
+# ---------- TTS 服务 ----------
+tts_service = VolcTTS()
 
 # ---------- 工具函数 ----------
 def base64_to_cv2(image_base64: str):
@@ -196,22 +213,24 @@ def process_and_emit(image_base64: str, sid: str):
 
 # ---------- HTTP 接口 ----------
 @app.route('/api/solo/save_record', methods=['POST'])
+@login_required
 def save_solo_record():
     global play_records
     try:
         data = request.get_json()
         new_record = data.get('record', [])
         with records_lock:
-            play_records = new_record
-            if len(play_records) > MAX_RECORDS:
-                play_records = play_records[-MAX_RECORDS:]
-        logger.info(f"记录保存成功，当前条数: {len(play_records)}")
+            play_records[current_user.id] = new_record
+            if len(play_records[current_user.id]) > MAX_RECORDS:
+                play_records[current_user.id] = play_records[current_user.id][-MAX_RECORDS:]
+        logger.info(f"用户 {current_user.id} 记录保存成功，条数: {len(new_record)}")
         return jsonify({'status': 'success', 'message': '记录保存成功'})
     except Exception as e:
         logger.exception("保存记录失败")
-        return jsonify({'status': 'failed', 'message': '保存失败，请稍后重试'}), 500
+        return jsonify({'status': 'failed', 'message': '保存失败'}), 500
 
 @app.route('/api/save_record', methods=['POST'])
+@login_required
 def save_training_record():
     data = request.get_json()
     if not data or 'chord_name' not in data or 'correct' not in data:
@@ -220,7 +239,8 @@ def save_training_record():
     record = TrainingRecord(
         chord_name=data['chord_name'],
         correct=data['correct'],
-        time_spent=data.get('time_spent', 0.0)
+        time_spent=data.get('time_spent', 0.0),
+        user_id=current_user.id
     )
     db.session.add(record)
     db.session.commit()
@@ -239,25 +259,35 @@ def health_check():
 
 # ---------- 页面路由 ----------
 @app.route('/')
-@app.route('/index.html')
 def index():
     return render_template('index.html')
 
+@app.route('/login')
+def login_page():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
 @app.route('/tuning')
+@login_required
 def tuning():
     return render_template('tuning.html')
 
 @app.route('/solo')
+@login_required
 def solo():
     return render_template('solo.html')
 
 @app.route('/teach')
+@login_required
 def teach():
     return render_template('teach.html')
 
 @app.route('/history')
+@login_required
 def history():
-    records = TrainingRecord.query.order_by(TrainingRecord.created_at.desc()).limit(100).all()
+    records = TrainingRecord.query.filter_by(user_id=current_user.id)\
+        .order_by(TrainingRecord.created_at.desc()).limit(100).all()
     records_data = [{
         'id': r.id,
         'chord_name': r.chord_name,
@@ -269,6 +299,7 @@ def history():
 
 # ---------- 历史记录 API ----------
 @app.route('/api/history/data')
+@login_required
 def history_data():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
@@ -277,7 +308,7 @@ def history_data():
     start_date = request.args.get('start_date', None)
     end_date = request.args.get('end_date', None)
 
-    query = TrainingRecord.query
+    query = TrainingRecord.query.filter_by(user_id=current_user.id)
     if chord and chord != 'all':
         query = query.filter(TrainingRecord.chord_name == chord)
     if result == 'correct':
@@ -323,16 +354,20 @@ def cache_result(ttl=5):
 
 @app.route('/api/history/stats')
 @cache_result(ttl=5)
+@login_required
 def history_stats():
-    total = db.session.query(func.count(TrainingRecord.id)).scalar()
-    correct = db.session.query(func.sum(TrainingRecord.correct.cast(db.Integer))).scalar()
+    total = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == current_user.id).scalar()
+    correct = db.session.query(func.sum(TrainingRecord.correct.cast(db.Integer)))\
+        .filter(TrainingRecord.user_id == current_user.id).scalar()
     accuracy = (correct / total * 100) if total else 0
 
     chord_stats = db.session.query(
         TrainingRecord.chord_name,
         func.count(TrainingRecord.id).label('total'),
         func.sum(TrainingRecord.correct.cast(db.Integer)).label('correct')
-    ).group_by(TrainingRecord.chord_name).all()
+    ).filter(TrainingRecord.user_id == current_user.id)\
+     .group_by(TrainingRecord.chord_name).all()
 
     chords = []
     accuracies = []
@@ -344,7 +379,8 @@ def history_stats():
             chords.append(stat.chord_name)
             accuracies.append(round((stat.correct / stat.total) * 100, 1))
 
-    last = TrainingRecord.query.order_by(TrainingRecord.created_at.desc()).first()
+    last = TrainingRecord.query.filter_by(user_id=current_user.id)\
+        .order_by(TrainingRecord.created_at.desc()).first()
     last_time = last.created_at.isoformat() if last else None
 
     return jsonify({
@@ -355,16 +391,103 @@ def history_stats():
         'chords': chords,
         'accuracies': accuracies
     })
-
 # ---------- 教学驾驶舱 API ----------
 llm_service = LLMService()
+def _generate_smart_recommendations(user_id, count=5):
+    """
+    基于用户练习数据和和弦难度生成智能推荐（带理由），每次调用结果具有随机性。
+    返回格式: [{"name": "C", "reason": "基础和弦，适合巩固"}, ...]
+    """
+    overview = user_stats.get_overview(user_id)
+    recent = user_stats.get_recent_records(user_id, limit=20)
+    
+    practiced_chords = set()
+    chord_accuracies = {}
+    for r in recent:
+        chord = r.get('chord')
+        acc = r.get('accuracy', 0)
+        if chord:
+            practiced_chords.add(chord)
+            chord_accuracies.setdefault(chord, []).append(acc)
+    
+    chord_avg_acc = {c: sum(accs)/len(accs) for c, accs in chord_accuracies.items()}
+    weak_chords = [c for c, acc in chord_avg_acc.items() if acc < 60]
+    
+    chords_info = {c['name']: c for c in chords_data}
+    all_chord_names = list(chords_info.keys())
+    unpracticed = [c for c in all_chord_names if c not in practiced_chords]
+    
+    recommendations = []
+    
+    # 1. 随机选择1~2个薄弱和弦（如果有）
+    if weak_chords:
+        sample_size = min(2, len(weak_chords))
+        selected_weak = random.sample(weak_chords, sample_size)
+        for chord in selected_weak:
+            recommendations.append({
+                'name': chord,
+                'reason': f"你在{chord}上正确率偏低，加强练习能有效提升"
+            })
+    
+    # 2. 从未练习过的和弦中随机选1~2个（优先低难度，但加入随机性）
+    if unpracticed:
+        # 按难度排序，但从中随机抽取，难度越低的被抽中概率可以稍高（可选）
+        # 这里简单起见，直接随机抽取
+        sample_size = min(2, len(unpracticed))
+        selected_unpracticed = random.sample(unpracticed, sample_size)
+        for chord in selected_unpracticed:
+            diff = chords_info[chord]['difficulty']
+            if diff == 1:
+                reason = f"{chord}是基础开放和弦，适合新手入门"
+            elif diff == 2:
+                reason = f"{chord}稍有难度，但值得尝试拓展指法"
+            else:
+                reason = f"{chord}和弦，挑战一下提升技巧"
+            recommendations.append({'name': chord, 'reason': reason})
+    
+    # 3. 剩余名额根据平均正确率随机抽取
+    remaining = count - len(recommendations)
+    if remaining > 0:
+        avg_accuracy = overview.get('avg_accuracy', 0)
+        if avg_accuracy < 50:
+            pool = [c for c in all_chord_names if chords_info[c]['difficulty'] == 1]
+        else:
+            pool = [c for c in all_chord_names if chords_info[c]['difficulty'] >= 2]
+        
+        # 排除已选中的和弦
+        pool = [c for c in pool if c not in [r['name'] for r in recommendations]]
+        if pool:
+            selected = random.sample(pool, min(remaining, len(pool)))
+            for chord in selected:
+                diff = chords_info[chord]['difficulty']
+                if diff == 1:
+                    reason = f"{chord}和弦，巩固基础指法"
+                elif diff == 2:
+                    reason = f"{chord}和弦，提升和弦转换熟练度"
+                else:
+                    reason = f"{chord}和弦，适合高阶练习"
+                recommendations.append({'name': chord, 'reason': reason})
+    
+    # 如果还不够，从所有和弦中随机补全
+    if len(recommendations) < count:
+        remaining = count - len(recommendations)
+        remaining_pool = [c for c in all_chord_names if c not in [r['name'] for r in recommendations]]
+        if remaining_pool:
+            extra = random.sample(remaining_pool, min(remaining, len(remaining_pool)))
+            for chord in extra:
+                recommendations.append({'name': chord, 'reason': '根据你的练习记录智能推荐'})
+    
+    # 最后打乱顺序，让每次结果看起来都不一样
+    random.shuffle(recommendations)
+    return recommendations[:count]
 
 @app.route('/api/teach/dashboard')
+@login_required
 def get_teach_dashboard():
-    overview = user_stats.get_overview()
-    mastery = user_stats.get_chord_mastery()
-    progress = user_stats.get_progress_trend()
-    recent = user_stats.get_recent_records()
+    overview = user_stats.get_overview(current_user.id)
+    mastery = user_stats.get_chord_mastery(current_user.id)
+    progress = user_stats.get_progress_trend(current_user.id)
+    recent = user_stats.get_recent_records(current_user.id)
     return jsonify({
         'overview': overview,
         'mastery': mastery,
@@ -373,9 +496,10 @@ def get_teach_dashboard():
     })
 
 @app.route('/api/teach/generate_advice', methods=['POST'])
+@login_required
 def generate_advice():
-    overview = user_stats.get_overview()
-    recent = user_stats.get_recent_records(limit=1)
+    overview = user_stats.get_overview(current_user.id)
+    recent = user_stats.get_recent_records(current_user.id, limit=1)
     stats = {
         'overview': overview,
         'recent_records': recent
@@ -385,6 +509,25 @@ def generate_advice():
         return jsonify({'advice': advice})
     else:
         return jsonify({'advice': '暂时无法生成建议，请稍后再试。'})
+    
+@app.route('/api/teach/recommend_chords', methods=['POST'])
+@login_required
+def recommend_chords():
+    """基于用户练习数据生成智能推荐和弦（带理由）"""
+    try:
+        recommendations = _generate_smart_recommendations(current_user.id, count=5)
+        return jsonify({'chords': recommendations})
+    except Exception as e:
+        logger.exception("生成推荐和弦失败")
+        # 降级：返回默认推荐列表
+        fallback = [
+            {'name': 'C', 'reason': '基础开放和弦'},
+            {'name': 'G', 'reason': '常用和弦'},
+            {'name': 'Am', 'reason': '简单小调和弦'},
+            {'name': 'Em', 'reason': '适合入门'},
+            {'name': 'D', 'reason': '常用和弦'}
+        ]
+        return jsonify({'chords': fallback})
 
 # ---------- TTS 路由 ----------
 @app.route('/api/tts/speak', methods=['POST'])
@@ -495,13 +638,17 @@ def handle_voice_command(data):
 
     socketio.emit('voice_response', result, room=sid)
 
-# ---------- 启动 ----------
+# ---------- 【最终修复】启动代码（解决 WebSocket 400） ----------
 if __name__ == '__main__':
+    # 强制修复 eventlet 异步，必须加这两行
+    import eventlet
+    # eventlet.monkey_patch()
+
     logger.info(f"启动服务器，debug={config.DEBUG}")
     socketio.run(
         app,
         debug=config.DEBUG,
-        host='0.0.0.0',
+        host='0.0.0.0',    # 允许公网访问
         port=5000,
         use_reloader=False
     )
