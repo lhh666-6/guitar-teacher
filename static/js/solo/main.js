@@ -103,6 +103,8 @@
                 difficultyBadge: document.getElementById('difficultyBadge')
             };
 
+            this.updateSkipButtonState();
+
             // 叠加画布（若不存在则创建）
             this.overlayCanvas = document.getElementById('overlayCanvas');
             if (!this.overlayCanvas) {
@@ -278,12 +280,19 @@
             this.elements.testCountSpan.textContent = this.testList.length;
         }
 
+        updateSkipButtonState() {
+            if (!this.elements.skipBtn) return;
+            const canSkip = this.testMode && this.testList.length > 0 && !this.recordedForCurrentChord;
+            this.elements.skipBtn.disabled = !canSkip;
+        }
+
         updateProgress() {
             if (this.testMode && this.testList.length > 0) {
                 this.elements.progressDisplay.textContent = `${this.currentTestIndex + 1}/${this.testList.length}`;
             } else {
                 this.elements.progressDisplay.textContent = `0/0`;
             }
+            this.updateSkipButtonState();
         }
 
         stopTestAndSending() {
@@ -305,6 +314,7 @@
                 this.timerInterval = null;
             }
             this.testMode = false;
+            this.recordedForCurrentChord = false;
             this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
             if (this.elements.trainLayout) {
                 this.elements.trainLayout.classList.remove('test-mode');
@@ -319,6 +329,7 @@
             } else if (document.msExitFullscreen) {
                 document.msExitFullscreen();
             }
+            this.updateSkipButtonState();
         }
 
         goToTestIndex(index) {
@@ -343,6 +354,7 @@
                 this.recordedForCurrentChord = false;
                 this.chordStartTime = Date.now();
                 this.updateProgress();
+                this.updateSkipButtonState();
             }
         }
 
@@ -355,6 +367,7 @@
                 alert(`测试完成！\n正确: ${this.stats.correct}, 错误: ${this.stats.wrong}\n平均正确用时: ${avgTime.toFixed(2)} 秒`);
                 this.elements.progressDisplay.textContent = `${this.testList.length}/${this.testList.length}`;
                 this.elements.currentTimeDisplay.textContent = '0.0 s';
+                this.updateSkipButtonState();
                 return;
             }
             this.currentTestIndex++;
@@ -368,6 +381,7 @@
             this.stats.correct++;
             this.updateStats();
             this.recordedForCurrentChord = true;
+            this.updateSkipButtonState();
             this.renderTestList();
 
             fetch('/api/save_record', {
@@ -389,6 +403,7 @@
             this.stats.wrong++;
             this.updateStats();
             this.recordedForCurrentChord = true;
+            this.updateSkipButtonState();
             this.renderTestList();
 
             fetch('/api/save_record', {
@@ -936,6 +951,7 @@
             this.elements.clearTestBtn.addEventListener('click', () => {
                 this.testList = [];
                 this.testResults = [];
+                this.recordedForCurrentChord = false;
                 this.renderTestList();
                 this.stats = { correct: 0, wrong: 0 };
                 this.updateStats();
@@ -944,18 +960,14 @@
                 if (this.testMode) {
                     this.stopTestAndSending();
                 }
+                this.updateSkipButtonState();
                 localStorage.removeItem('pendingSoloChords');
             });
 
             this.elements.toggleCamera.addEventListener('click', () => this.toggleCamera());
             this.elements.startTestBtn.addEventListener('click', () => this.startTest());
             this.elements.skipBtn.addEventListener('click', () => {
-                if (!this.testMode) {
-                    alert('请先开始测试');
-                    return;
-                }
-                if (this.recordedForCurrentChord) {
-                    alert('当前和弦已记录，不能再次跳过');
+                if (this.elements.skipBtn.disabled) {
                     return;
                 }
                 this.recordSkip();
