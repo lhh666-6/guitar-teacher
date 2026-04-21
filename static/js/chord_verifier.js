@@ -1,89 +1,81 @@
 /**
- * 和弦验证器（Chroma + 模板匹配）- 触发模式
- * 用途：监听麦克风，当检测到超过能量阈值的声音时，自动录制一段音频并判断是否为目标和弦
- * 适用场景：逐个和弦练习（用户弹一个和弦 → 系统自动判断一次 → 等待下一个）
+ * 和弦验证器（Chroma + 模板匹配）- 综合改进版
+ * - 根音权重 1.2，无五度泛音宽容
+ * - 低频加权 1.05
+ * - 能量加权平均录音帧
+ * - 高能量原始 chroma（无压缩）
  * 依赖：Meyda (https://cdn.jsdelivr.net/npm/meyda@5.0.0/dist/web/meyda.min.js)
  */
-
 class ChordVerifier {
     constructor() {
-        // 音频相关
         this.audioContext = null;
         this.mediaStream = null;
         this.sourceNode = null;
         this.meydaAnalyzer = null;
         this.isActive = false;
         
-        // 触发与录音状态
-        this.isWaitingForTrigger = true;   // 是否在等待声音触发
-        this.isRecording = false;          // 是否正在录音中
-        this.recordingChunks = [];         // 存储录音期间的 chroma 向量
-        this.triggerTimer = null;          // 录音结束定时器
+        this.isWaitingForTrigger = true;
+        this.isRecording = false;
+        this.recordingChunks = [];     // 存储 {chroma, energy}
+        this.triggerTimer = null;
         
-        // 阈值参数
-        this.similarityThreshold = 0.68;   // 余弦相似度阈值（0~1）
-        this.energyThreshold = 0.3;        // chroma 能量阈值（低于此值完全忽略）
-        this.triggerEnergyThreshold = 0.5; // 触发录音的能量阈值（需大于能量阈值）
-        this.holdDuration = 1.2;           // 触发后录音时长（秒）
+        // 阈值（高能量范围）
+        this.similarityThreshold = 0.55;
+        this.energyThreshold = 0.3;
+        this.triggerEnergyThreshold = 0.5;
+        this.holdDuration = 1.0;
         
-        // 目标和弦
+        this.lastEnergy = 0;
+        
         this.targetChord = null;
         this.targetTemplate = null;
         
-        // 回调函数
-        this.onResult = null;      // function(isMatch, similarity, chromaVector)
-        this.onError = null;       // function(errorMessage)
-        this.onStartListening = null; // 可选：开始监听时的回调
-        this.onStopListening = null;  // 可选：停止监听时的回调
+        this.onResult = null;
+        this.onError = null;
+        this.onStartListening = null;
+        this.onStopListening = null;
         
-        // 预计算和弦模板库
         this.templates = this._buildTemplates();
+        console.log("[ChordVerifier] 综合改进版已加载，模板数:", Object.keys(this.templates).length);
     }
 
-    // ================== 和弦模板构建 ==================
+    // ================== 吉他轻度优化 ==================
+    // 低频加权（C~A 半音级权重提高 1.05）
+    _applyLowFreqWeight(chroma) {
+        const lowIndices = [0, 2, 4, 5, 7, 9];
+        const weighted = [...chroma];
+        for (let i of lowIndices) {
+            weighted[i] *= 1.05;
+        }
+        return weighted;
+    }
+
+    // 瞬态检测（能量上升沿）
+    _isAttack(currentEnergy) {
+        if (this.lastEnergy === 0) {
+            this.lastEnergy = currentEnergy;
+            return false;
+        }
+        const ratio = currentEnergy / (this.lastEnergy + 0.01);
+        this.lastEnergy = currentEnergy;
+        return ratio > 1.5 && currentEnergy > this.triggerEnergyThreshold;
+    }
+
+    // ================== 和弦模板构建（根音权重 1.2，无泛音宽容） ==================
     _rootMap() {
         return {
-            'C': 0, 'C#': 1, 'Db': 1,
-            'D': 2, 'D#': 3, 'Eb': 3,
-            'E': 4,
-            'F': 5, 'F#': 6, 'Gb': 6,
-            'G': 7, 'G#': 8, 'Ab': 8,
-            'A': 9, 'A#': 10, 'Bb': 10,
-            'B': 11
+            'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,
+            'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11
         };
     }
 
     _qualityIntervals() {
         return {
-            '':     [0,4,7],          // 大三
-            'm':    [0,3,7],          // 小三
-            '7':    [0,4,7,10],       // 属七
-            'm7':   [0,3,7,10],       // 小七
-            'maj7': [0,4,7,11],       // 大七
-            '6':    [0,4,7,9],        // 六
-            'm6':   [0,3,7,9],        // 小六
-            '9':    [0,4,7,10,14],    // 九
-            'add9': [0,4,7,14],       // add9
-            'sus2': [0,2,7],          // sus2
-            'sus4': [0,5,7],          // sus4
-            '7sus4':[0,5,7,10]        // 7sus4
+            '':[0,4,7], 'm':[0,3,7], '7':[0,4,7,10], 'm7':[0,3,7,10],
+            'maj7':[0,4,7,11], '6':[0,4,7,9], 'm6':[0,3,7,9],
+            '9':[0,4,7,10,14], 'add9':[0,4,7,14], 'sus2':[0,2,7],
+            'sus4':[0,5,7], '7sus4':[0,5,7,10]
         };
-    }
-
-    _parseChordName(chordName) {
-        const qualities = ['maj7', 'm7', '7sus4', 'add9', 'sus2', 'sus4', 'm6', 'm', '7', '6', '9', ''];
-        for (let q of qualities) {
-            if (chordName.endsWith(q)) {
-                const root = chordName.slice(0, chordName.length - q.length);
-                if (this._rootMap()[root]) {
-                    return { root: root, quality: q };
-                }
-            }
-        }
-        if (this._rootMap()[chordName]) {
-            return { root: chordName, quality: '' };
-        }
-        return null;
     }
 
     _getChordTemplate(root, quality) {
@@ -91,102 +83,86 @@ class ChordVerifier {
         if (rootIdx === undefined) return null;
         const intervals = this._qualityIntervals()[quality];
         if (!intervals) return null;
-        
         const template = new Array(12).fill(0);
-        // 根音加权（根音位置权重更高）
         for (let interval of intervals) {
-            let weight = (interval === 0) ? 1.5 : 1.0;
+            // 根音权重 1.2，其他音权重 1.0
+            let weight = (interval === 0) ? 1.2 : 1.0;
             const idx = (rootIdx + interval) % 12;
             template[idx] += weight;
         }
-        // 归一化
         const norm = Math.hypot(...template);
-        if (norm === 0) return template;
-        return template.map(v => v / norm);
+        return norm === 0 ? template : template.map(v => v / norm);
     }
 
     _buildTemplates() {
-        const rootNotes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-        const qualities = ['', 'm', '7', 'm7', 'maj7', '6', 'm6', '9', 'add9', 'sus2', 'sus4', '7sus4'];
+        const roots = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+        const quals = ['','m','7','m7','maj7','6','m6','9','add9','sus2','sus4','7sus4'];
         const templates = {};
-        for (let root of rootNotes) {
-            for (let qual of qualities) {
-                const chordName = root + qual;
-                const template = this._getChordTemplate(root, qual);
-                if (template) templates[chordName] = template;
+        for (let r of roots) {
+            for (let q of quals) {
+                const name = r + q;
+                const tpl = this._getChordTemplate(r, q);
+                if (tpl) templates[name] = tpl;
             }
         }
-        // 等音映射
-        templates['Db'] = templates['C#'];
-        templates['Eb'] = templates['D#'];
-        templates['Gb'] = templates['F#'];
-        templates['Ab'] = templates['G#'];
-        templates['Bb'] = templates['A#'];
+        // 等音别名
+        const aliases = { 'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#' };
+        for (let [alias, orig] of Object.entries(aliases)) {
+            templates[alias] = templates[orig];
+        }
         return templates;
     }
 
-    // 余弦相似度
     _cosineSimilarity(a, b) {
-        let dot = 0, normA = 0, normB = 0;
-        for (let i = 0; i < a.length; i++) {
-            dot += a[i] * b[i];
-            normA += a[i] * a[i];
-            normB += b[i] * b[i];
-        }
-        if (normA === 0 || normB === 0) return 0;
-        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-    }
-
-    // chroma 能量
-    _chromaEnergy(chroma) {
-        return chroma.reduce((sum, v) => sum + v * v, 0);
-    }
-
-    // 谐波抑制（减少泛音干扰）
-    _suppressHarmonics(chroma) {
-        const result = [...chroma];
+        let dot = 0, na = 0, nb = 0;
         for (let i = 0; i < 12; i++) {
-            const fifth = (i + 7) % 12;
-            result[fifth] = Math.max(0, result[fifth] - chroma[i] * 0.3);
+            dot += a[i] * b[i];
+            na += a[i] * a[i];
+            nb += b[i] * b[i];
         }
-        return result;
+        if (na === 0 || nb === 0) return 0;
+        return dot / (Math.sqrt(na) * Math.sqrt(nb));
+    }
+
+    _chromaEnergy(chroma) {
+        return chroma.reduce((s, v) => s + v * v, 0);
     }
 
     // ================== 公共 API ==================
-    
-    // 设置目标和弦（例如 "C", "G7", "Am"）
     setTargetChord(chordName) {
+        console.log(`[setTargetChord] 尝试设置: ${chordName}`);
         if (!this.templates[chordName]) {
-            console.warn(`和弦模板不存在: ${chordName}`);
+            console.warn(`[setTargetChord] 和弦模板不存在: ${chordName}`);
             this.targetChord = null;
             this.targetTemplate = null;
             return false;
         }
         this.targetChord = chordName;
         this.targetTemplate = this.templates[chordName];
+        console.log(`[setTargetChord] 成功设置目标和弦: ${chordName}`);
         this._resetForNext();
         return true;
     }
 
-    // 设置相似度阈值（0~1，默认0.68）
     setThreshold(value) {
-        this.similarityThreshold = Math.min(1, Math.max(0, value));
+        this.similarityThreshold = Math.min(1, Math.max(0.4, value));
+        console.log(`[setThreshold] 相似度阈值 = ${this.similarityThreshold}`);
     }
 
-    // 设置触发灵敏度（能量阈值，默认0.5，越低越灵敏）
     setTriggerSensitivity(value) {
-        this.triggerEnergyThreshold = Math.min(1, Math.max(0.2, value));
+        this.triggerEnergyThreshold = Math.min(0.8, Math.max(0.2, value));
+        console.log(`[setTriggerSensitivity] 触发能量阈值 = ${this.triggerEnergyThreshold}`);
     }
 
-    // 开始监听（需要用户手势触发）
     async start(onResultCallback, onErrorCallback) {
+        console.log("[start] 开始启动验证器...");
         if (this.isActive) {
             await this.stop();
         }
         if (!this.targetTemplate) {
             const err = "请先调用 setTargetChord() 设置目标和弦";
+            console.error(err);
             if (onErrorCallback) onErrorCallback(err);
-            else console.error(err);
             return;
         }
 
@@ -196,15 +172,13 @@ class ChordVerifier {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             this.mediaStream = stream;
-            
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             this.sourceNode = this.audioContext.createMediaStreamSource(stream);
             
             if (typeof Meyda === 'undefined') {
-                throw new Error("Meyda 库未加载，请确保在 HTML 中引入 meyda.min.js");
+                throw new Error("Meyda 库未加载");
             }
             
-            // 创建分析器，回调实现触发+录音逻辑
             this.meydaAnalyzer = Meyda.createMeydaAnalyzer({
                 audioContext: this.audioContext,
                 source: this.sourceNode,
@@ -215,32 +189,40 @@ class ChordVerifier {
                     if (!this.isActive) return;
                     if (!features || !features.chroma) return;
                     
-                    let chroma = features.chroma;
-                    // 应用谐波抑制
-                    chroma = this._suppressHarmonics(chroma);
+                    let chroma = features.chroma.slice();
+                    chroma = this._applyLowFreqWeight(chroma);
                     const energy = this._chromaEnergy(chroma);
                     
-                    // 能量门限：太低的声音完全忽略
-                    if (energy < this.energyThreshold) return;
+                    if (Math.random() < 0.05) {
+                        console.log(`[callback] 能量: ${energy.toFixed(3)} | 等待触发: ${this.isWaitingForTrigger} | 录音中: ${this.isRecording}`);
+                    }
                     
-                    // 等待触发模式
+                    if (energy < this.energyThreshold) {
+                        this.lastEnergy = energy;
+                        return;
+                    }
+                    
+                    const isAttack = this._isAttack(energy);
+                    
                     if (this.isWaitingForTrigger && !this.isRecording) {
-                        if (energy >= this.triggerEnergyThreshold) {
-                            // 触发！开始录音
+                        if (isAttack || energy >= this.triggerEnergyThreshold) {
+                            console.log(`[callback] ✅ 触发录音！能量=${energy.toFixed(3)}`);
                             this.isRecording = true;
                             this.isWaitingForTrigger = false;
                             this.recordingChunks = [];
-                            
-                            // 设置定时器，录音结束后分析
                             this.triggerTimer = setTimeout(() => {
+                                console.log("[callback] 录音定时器到期");
                                 this._finalizeRecording();
                             }, this.holdDuration * 1000);
                         }
                     }
                     
-                    // 录音模式：收集 chroma
                     if (this.isRecording) {
-                        this.recordingChunks.push(chroma);
+                        // 存储 chroma 及其能量（用于加权平均）
+                        this.recordingChunks.push({ chroma, energy });
+                        if (this.recordingChunks.length % 10 === 0) {
+                            console.log(`[callback] 录音中，已收集 ${this.recordingChunks.length} 帧`);
+                        }
                     }
                 }
             });
@@ -248,73 +230,66 @@ class ChordVerifier {
             this.meydaAnalyzer.start();
             await this.audioContext.resume();
             this.isActive = true;
-            
+            console.log("[start] 验证器已激活");
             if (this.onStartListening) this.onStartListening();
-            
         } catch (err) {
-            console.error("启动验证器失败:", err);
+            console.error(err);
             if (this.onError) this.onError(err.message);
             await this.stop();
         }
     }
 
-    // 停止监听，释放资源
     async stop() {
+        console.log("[stop] 停止验证器");
         this.isActive = false;
         if (this.meydaAnalyzer) {
             this.meydaAnalyzer.stop();
             this.meydaAnalyzer = null;
         }
-        if (this.triggerTimer) {
-            clearTimeout(this.triggerTimer);
-            this.triggerTimer = null;
-        }
-        if (this.sourceNode) {
-            this.sourceNode.disconnect();
-            this.sourceNode = null;
-        }
-        if (this.audioContext) {
-            await this.audioContext.close();
-            this.audioContext = null;
-        }
-        if (this.mediaStream) {
-            this.mediaStream.getTracks().forEach(track => track.stop());
-            this.mediaStream = null;
-        }
+        if (this.triggerTimer) clearTimeout(this.triggerTimer);
+        if (this.sourceNode) this.sourceNode.disconnect();
+        if (this.audioContext) await this.audioContext.close();
+        if (this.mediaStream) this.mediaStream.getTracks().forEach(t => t.stop());
         this._resetForNext();
         if (this.onStopListening) this.onStopListening();
     }
 
-    // 重置状态（准备下一次判定）
     _resetForNext() {
         this.isWaitingForTrigger = true;
         this.isRecording = false;
         this.recordingChunks = [];
-        if (this.triggerTimer) {
-            clearTimeout(this.triggerTimer);
-            this.triggerTimer = null;
-        }
+        if (this.triggerTimer) clearTimeout(this.triggerTimer);
+        this.lastEnergy = 0;
+        console.log("[_resetForNext] 状态已重置");
     }
 
-    // 录音结束，分析并回调结果
     _finalizeRecording() {
         if (!this.isRecording) return;
         this.isRecording = false;
         if (this.triggerTimer) clearTimeout(this.triggerTimer);
         
-        if (this.recordingChunks.length === 0) {
+        const frames = this.recordingChunks.length;
+        console.log(`[_finalizeRecording] 录音结束，共 ${frames} 帧`);
+        if (frames === 0) {
             this.isWaitingForTrigger = true;
             if (this.onResult) this.onResult(false, 0, null);
             return;
         }
         
-        // 计算平均 chroma
-        const avgChroma = this.recordingChunks.reduce((acc, c) => {
-            for (let i = 0; i < 12; i++) acc[i] += c[i];
-            return acc;
-        }, new Array(12).fill(0)).map(v => v / this.recordingChunks.length);
+        // 能量加权平均 chroma
+        let totalWeight = 0;
+        const weightedChroma = new Array(12).fill(0);
+        for (const frame of this.recordingChunks) {
+            const weight = frame.energy;
+            totalWeight += weight;
+            for (let i = 0; i < 12; i++) {
+                weightedChroma[i] += frame.chroma[i] * weight;
+            }
+        }
+        const avgChroma = weightedChroma.map(v => v / totalWeight);
         
         const energy = this._chromaEnergy(avgChroma);
+        console.log(`[_finalizeRecording] 平均能量: ${energy.toFixed(3)}`);
         if (energy < this.energyThreshold) {
             this.isWaitingForTrigger = true;
             if (this.onResult) this.onResult(false, 0, avgChroma);
@@ -323,28 +298,18 @@ class ChordVerifier {
         
         const similarity = this._cosineSimilarity(avgChroma, this.targetTemplate);
         const isMatch = similarity >= this.similarityThreshold;
+        console.log(`[_finalizeRecording] 相似度: ${similarity.toFixed(4)} → ${isMatch ? "正确" : "错误"}`);
+        if (this.onResult) this.onResult(isMatch, similarity, avgChroma);
         
-        if (this.onResult) {
-            this.onResult(isMatch, similarity, avgChroma);
-        }
-        
-        // 重置状态，等待下一次触发
         this.isWaitingForTrigger = true;
         this.recordingChunks = [];
     }
 
-    // 强制重置（用于手动清空等待状态）
-    forceReset() {
-        this._resetForNext();
-    }
-
-    // 获取当前是否正在运行
-    isRunning() {
-        return this.isActive;
-    }
+    forceReset() { this._resetForNext(); }
+    isRunning() { return this.isActive; }
 }
 
-// 导出全局变量
 if (typeof window !== 'undefined') {
     window.ChordVerifier = ChordVerifier;
+    console.log("[ChordVerifier] 全局导出完成");
 }
