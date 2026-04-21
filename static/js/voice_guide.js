@@ -20,6 +20,8 @@ const VoiceGuide = (function() {
     let shouldAutoRestart = true;      // 默认自动重启
     let userInteracted = false;
 
+    const VOICE_GUIDE_ENABLED_KEY = 'voice_guide_enabled';
+
     // 图标元素
     let iconElement = null;
 
@@ -43,6 +45,14 @@ const VoiceGuide = (function() {
         updateIcon();
     }
 
+    function isVoiceGuideEnabled() {
+        return localStorage.getItem(VOICE_GUIDE_ENABLED_KEY) !== '0';
+    }
+
+    function setVoiceGuideEnabled(enabled) {
+        localStorage.setItem(VOICE_GUIDE_ENABLED_KEY, enabled ? '1' : '0');
+    }
+
     // 动态注入图标样式（确保动画生效）
     function injectIconStyles() {
         if (document.getElementById('voice-guide-styles')) return;
@@ -54,6 +64,30 @@ const VoiceGuide = (function() {
                 70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
                 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
             }
+
+            #voice-guide-icon i {
+                font-size: 24px;
+                line-height: 1;
+            }
+
+            .voice-guide-icon-stack {
+                position: relative;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .voice-guide-dot {
+                position: absolute;
+                right: -2px;
+                top: -1px;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: #ffffff;
+                border: 2px solid #e74c3c;
+                box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
+            }
         `;
         document.head.appendChild(style);
     }
@@ -63,7 +97,7 @@ const VoiceGuide = (function() {
         if (iconElement) return;
         iconElement = document.createElement('div');
         iconElement.id = 'voice-guide-icon';
-        iconElement.innerHTML = '🎤';
+        iconElement.innerHTML = '<i class="fas fa-microphone" aria-hidden="true"></i>';
         iconElement.title = '语音助手';
         iconElement.style.cssText = `
             position: fixed;
@@ -77,7 +111,6 @@ const VoiceGuide = (function() {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
             cursor: pointer;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             z-index: 10000;
@@ -87,9 +120,9 @@ const VoiceGuide = (function() {
         document.body.appendChild(iconElement);
         iconElement.addEventListener('click', () => {
             if (isListening) {
-                stopListening();
+                stopListening({ manual: true });
             } else {
-                startListening();
+                startListening({ manual: true });
             }
         });
         updateIcon();
@@ -100,19 +133,19 @@ const VoiceGuide = (function() {
         if (!isListening) {
             iconElement.style.backgroundColor = '#999';
             iconElement.style.opacity = '0.5';
-            iconElement.innerHTML = '🎤❌';
+            iconElement.innerHTML = '<i class="fas fa-microphone-slash" aria-hidden="true"></i>';
             iconElement.title = '语音未启动，点击开启';
             iconElement.style.animation = 'none';
         } else if (isAwake) {
             iconElement.style.backgroundColor = '#e74c3c';
             iconElement.style.opacity = '1';
-            iconElement.innerHTML = '🎤🔴';
+            iconElement.innerHTML = '<span class="voice-guide-icon-stack"><i class="fas fa-microphone" aria-hidden="true"></i><span class="voice-guide-dot" aria-hidden="true"></span></span>';
             iconElement.title = '唤醒中，点击关闭';
             iconElement.style.animation = 'voiceGuidePulse 1s infinite';
         } else {
             iconElement.style.backgroundColor = '#2ecc71';
             iconElement.style.opacity = '0.9';
-            iconElement.innerHTML = '🎤';
+            iconElement.innerHTML = '<i class="fas fa-microphone" aria-hidden="true"></i>';
             iconElement.title = '监听中，说“小吉他”唤醒';
             iconElement.style.animation = 'none';
         }
@@ -436,19 +469,21 @@ const VoiceGuide = (function() {
         return true;
     }
 
-    function startListening() {
+    function startListening(options = {}) {
         if (!recognition && !initRecognition()) return;
         if (isListening) return;
         try {
             recognition.start();
             isListening = true;
             shouldAutoRestart = true;   // 🔥 手动开启时恢复自动重启标志
+            if (options.manual) setVoiceGuideEnabled(true);
             showStatus('🎤 语音识别已启动，说“小吉他”唤醒');
             updateIcon();
         } catch (e) {
             console.error('启动语音识别失败', e);
             if (e.name === 'InvalidStateError') {
                 isListening = true;
+                if (options.manual) setVoiceGuideEnabled(true);
             } else {
                 showStatus('❌ 启动失败，请检查麦克风权限');
                 shouldAutoRestart = false;
@@ -456,11 +491,16 @@ const VoiceGuide = (function() {
         }
     }
 
-    function stopListening() {
+    function stopListening(options = {}) {
+        shouldAutoRestart = false;   // 🔥 手动关闭后不再自动重启
+        if (options.manual) setVoiceGuideEnabled(false);
         if (recognition && isListening) {
             recognition.stop();
             isListening = false;
-            shouldAutoRestart = false;   // 🔥 手动关闭后不再自动重启
+            showStatus('🎤 语音已关闭（需手动开启）');
+            updateIcon();
+        } else {
+            isListening = false;
             showStatus('🎤 语音已关闭（需手动开启）');
             updateIcon();
         }
@@ -485,12 +525,18 @@ const VoiceGuide = (function() {
                 sessionId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
                 localStorage.setItem('voice_session_id', sessionId);
             }
-            startListening();
+            if (isVoiceGuideEnabled()) {
+                startListening();
+            } else {
+                isListening = false;
+                shouldAutoRestart = false;
+                updateIcon();
+            }
             const toggleBtn = document.getElementById('voice-toggle');
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', () => {
-                    if (isListening) stopListening();
-                    else startListening();
+                    if (isListening) stopListening({ manual: true });
+                    else startListening({ manual: true });
                 });
             }
         },
