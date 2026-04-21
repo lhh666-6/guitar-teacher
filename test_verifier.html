@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>和弦验证器测试界面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0a0f1c 0%, #0b1120 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            max-width: 700px;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border-radius: 2rem;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 25px 45px -12px rgba(0,0,0,0.5);
+            overflow: hidden;
+            padding: 1.8rem;
+        }
+        h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #E0F2FE, #A5F3FC, #7AA2F7);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        .sub {
+            text-align: center;
+            color: #7e8aa8;
+            font-size: 0.85rem;
+            margin-bottom: 1.8rem;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 0.8rem;
+        }
+        .control-group {
+            background: #0f172a60;
+            border-radius: 1.5rem;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #2d3a5e;
+        }
+        .label {
+            font-weight: 600;
+            color: #cbd5e6;
+            margin-bottom: 0.5rem;
+            display: block;
+            font-size: 0.9rem;
+        }
+        .chord-selector {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .chord-btn {
+            background: #1e293b;
+            border: none;
+            color: #e2e8f0;
+            padding: 8px 16px;
+            border-radius: 60px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .chord-btn:hover {
+            background: #334155;
+            transform: translateY(-1px);
+        }
+        .chord-btn.active {
+            background: linear-gradient(105deg, #2dd4bf, #3b82f6);
+            color: white;
+            box-shadow: 0 0 8px #2dd4bf80;
+        }
+        .custom-chord {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .custom-chord input {
+            flex: 1;
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 10px 15px;
+            border-radius: 60px;
+            color: white;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .custom-chord input:focus {
+            border-color: #2dd4bf;
+        }
+        button.primary {
+            background: linear-gradient(105deg, #0f2b3d, #0a1a2f);
+            border: 1px solid #2dd4bf70;
+            color: #ccfbf1;
+            padding: 10px 24px;
+            border-radius: 60px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+        button.primary:hover {
+            background: linear-gradient(105deg, #1e3a5f, #0f2b3d);
+            transform: scale(0.98);
+        }
+        button.danger {
+            border-color: #f8717170;
+            color: #fecaca;
+        }
+        .status-panel {
+            background: #0f172a80;
+            border-radius: 1.5rem;
+            padding: 1.2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .chord-result {
+            font-size: 3rem;
+            font-weight: 800;
+            margin: 0.5rem 0;
+        }
+        .similarity-bar {
+            width: 100%;
+            height: 10px;
+            background: #334155;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+        .similarity-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #2dd4bf, #3b82f6);
+            transition: width 0.2s ease;
+        }
+        .message {
+            font-family: monospace;
+            background: #00000050;
+            padding: 8px 16px;
+            border-radius: 60px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #b9e6ff;
+        }
+        .log-area {
+            background: #0a0f1c;
+            border-radius: 1rem;
+            padding: 0.8rem;
+            height: 150px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+            font-family: monospace;
+            color: #7e8aa8;
+            border: 1px solid #1e293b;
+        }
+        .log-entry {
+            border-bottom: 1px solid #1e293b;
+            padding: 4px 0;
+        }
+        .flex-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .badge {
+            background: #1e2a3e;
+            padding: 4px 12px;
+            border-radius: 60px;
+            font-size: 0.7rem;
+            color: #a5f3fc;
+        }
+        footer {
+            text-align: center;
+            font-size: 0.65rem;
+            color: #475569;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>🎸 和弦验证器 · 测试平台</h1>
+    <div class="sub">Chroma + 模板匹配 | 自动触发录音 | 单次判定</div>
+
+    <!-- 和弦选择区 -->
+    <div class="control-group">
+        <div class="label">🎵 目标和弦（点击快速选择）</div>
+        <div class="chord-selector" id="quickChords">
+            <button class="chord-btn" data-chord="C">C</button>
+            <button class="chord-btn" data-chord="G">G</button>
+            <button class="chord-btn" data-chord="Am">Am</button>
+            <button class="chord-btn" data-chord="Em">Em</button>
+            <button class="chord-btn" data-chord="F">F</button>
+            <button class="chord-btn" data-chord="Dm">Dm</button>
+            <button class="chord-btn" data-chord="C7">C7</button>
+            <button class="chord-btn" data-chord="maj7">maj7</button>
+        </div>
+        <div class="custom-chord">
+            <input type="text" id="customChord" placeholder="输入其他和弦，如 Dm7, Gsus4, Bb" value="C">
+            <button id="setCustomBtn" class="primary" style="padding: 8px 20px;">设置</button>
+        </div>
+    </div>
+
+    <!-- 控制区 -->
+    <div class="control-group">
+        <div class="label">🎙️ 麦克风控制</div>
+        <div class="flex-row">
+            <button id="startBtn" class="primary">▶ 开始监听</button>
+            <button id="stopBtn" class="primary danger">⏹️ 停止监听</button>
+            <span class="badge" id="statusBadge">⚪ 未启动</span>
+        </div>
+        <div class="flex-row" style="margin-top: 12px;">
+            <div class="label" style="margin-bottom:0;">灵敏度:</div>
+            <input type="range" id="sensitivitySlider" min="0.2" max="0.9" step="0.01" value="0.5" style="flex:1;">
+            <span id="sensitivityVal" class="badge">0.50</span>
+        </div>
+        <div class="flex-row" style="margin-top: 8px;">
+            <div class="label" style="margin-bottom:0;">相似度阈值:</div>
+            <input type="range" id="thresholdSlider" min="0.5" max="0.85" step="0.01" value="0.68" style="flex:1;">
+            <span id="thresholdVal" class="badge">0.68</span>
+        </div>
+    </div>
+
+    <!-- 结果显示区 -->
+    <div class="status-panel">
+        <div class="label">📊 最近一次判定</div>
+        <div class="chord-result" id="resultText">——</div>
+        <div class="similarity-bar">
+            <div class="similarity-fill" id="similarityFill"></div>
+        </div>
+        <div id="similarityPercent" class="message">相似度: 0%</div>
+    </div>
+
+    <!-- 日志区 -->
+    <div class="label">📋 识别日志</div>
+    <div class="log-area" id="logArea">
+        <div class="log-entry">⚙️ 等待启动...</div>
+    </div>
+    <footer>弹奏吉他扫弦 → 自动检测声音 → 判定是否正确 → 等待下一次扫弦</footer>
+</div>
+
+<!-- 依赖库 -->
+<script src="https://cdn.jsdelivr.net/npm/meyda@5.0.0/dist/web/meyda.min.js"></script>
+<!-- 引入 chord_verifier.js，注意路径可能需要根据实际位置调整 -->
+<script src="./static/js/chord_verifier.js"></script>
+
+<script>
+    let verifier = null;
+    let currentTarget = "C";
+
+    // DOM 元素
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusBadge = document.getElementById('statusBadge');
+    const resultText = document.getElementById('resultText');
+    const similarityFill = document.getElementById('similarityFill');
+    const similarityPercent = document.getElementById('similarityPercent');
+    const logArea = document.getElementById('logArea');
+    const sensitivitySlider = document.getElementById('sensitivitySlider');
+    const sensitivityVal = document.getElementById('sensitivityVal');
+    const thresholdSlider = document.getElementById('thresholdSlider');
+    const thresholdVal = document.getElementById('thresholdVal');
+    const customChordInput = document.getElementById('customChord');
+    const setCustomBtn = document.getElementById('setCustomBtn');
+
+    // 快速选择按钮
+    const quickBtns = document.querySelectorAll('.chord-btn[data-chord]');
+    
+    // 添加日志
+    function addLog(message, isError = false) {
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.style.color = isError ? '#f87171' : '#b9e6ff';
+        const time = new Date().toLocaleTimeString();
+        entry.innerText = `[${time}] ${message}`;
+        logArea.appendChild(entry);
+        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // 保留最多30条
+        while (logArea.children.length > 30) logArea.removeChild(logArea.firstChild);
+    }
+
+    // 更新UI显示判定结果
+    function updateResult(isMatch, similarity) {
+        const percent = Math.floor(similarity * 100);
+        similarityFill.style.width = `${percent}%`;
+        similarityPercent.innerText = `相似度: ${percent}%`;
+        if (isMatch) {
+            resultText.innerHTML = `✅ 正确！ (${currentTarget})`;
+            resultText.style.color = "#4ade80";
+        } else {
+            resultText.innerHTML = `❌ 错误 (目标是 ${currentTarget})`;
+            resultText.style.color = "#f87171";
+        }
+        addLog(`判定结果: ${isMatch ? '正确' : '错误'} | 相似度 ${percent}% | 目标: ${currentTarget}`);
+    }
+
+    // 重置UI结果（清空显示）
+    function resetResult() {
+        resultText.innerHTML = "🎸 等待扫弦...";
+        resultText.style.color = "#cbd5e6";
+        similarityFill.style.width = "0%";
+        similarityPercent.innerText = "相似度: 0%";
+    }
+
+    // 设置目标和弦（更新全局变量和验证器）
+    async function setTargetChord(chordName) {
+        if (!verifier) {
+            currentTarget = chordName;
+            addLog(`目标和弦设置为 ${chordName}（但验证器未启动）`);
+            return;
+        }
+        const success = verifier.setTargetChord(chordName);
+        if (success) {
+            currentTarget = chordName;
+            addLog(`🎯 目标和弦已更新: ${chordName}`);
+            resetResult();
+        } else {
+            addLog(`❌ 和弦 ${chordName} 不在模板库中`, true);
+        }
+    }
+
+    // 启动监听
+    async function startListening() {
+        if (verifier && verifier.isRunning()) {
+            addLog("验证器已在运行中");
+            return;
+        }
+        if (!verifier) {
+            verifier = new ChordVerifier();
+        }
+        
+        // 应用当前目标和弦
+        const chordToSet = customChordInput.value.trim() || currentTarget;
+        const success = verifier.setTargetChord(chordToSet);
+        if (!success) {
+            addLog(`和弦 ${chordToSet} 不支持，请使用标准名称 (如 C, Dm, G7, Amaj7 等)`, true);
+            return;
+        }
+        currentTarget = chordToSet;
+        customChordInput.value = currentTarget;
+        
+        // 设置参数
+        const sensitivity = parseFloat(sensitivitySlider.value);
+        const threshold = parseFloat(thresholdSlider.value);
+        verifier.setTriggerSensitivity(sensitivity);
+        verifier.setThreshold(threshold);
+        
+        // 设置回调
+        verifier.onResult = (isMatch, similarity) => {
+            updateResult(isMatch, similarity);
+        };
+        verifier.onError = (err) => {
+            addLog(`错误: ${err}`, true);
+        };
+        verifier.onStartListening = () => {
+            addLog("🎙️ 开始监听，请扫弦...");
+            statusBadge.innerText = "🎤 监听中";
+            statusBadge.style.color = "#2dd4bf";
+            resetResult();
+        };
+        verifier.onStopListening = () => {
+            addLog("⏹️ 监听已停止");
+            statusBadge.innerText = "⚪ 已停止";
+            statusBadge.style.color = "#7e8aa8";
+        };
+        
+        await verifier.start(
+            (isMatch, similarity) => {
+                // 实际已经在 onResult 中处理，这里留空避免重复
+            },
+            (err) => {
+                addLog(`启动失败: ${err}`, true);
+                statusBadge.innerText = "❌ 错误";
+            }
+        );
+    }
+    
+    // 停止监听
+    async function stopListening() {
+        if (verifier && verifier.isRunning()) {
+            await verifier.stop();
+        } else {
+            addLog("验证器未运行");
+        }
+    }
+    
+    // 事件绑定
+    startBtn.onclick = startListening;
+    stopBtn.onclick = stopListening;
+    
+    sensitivitySlider.oninput = () => {
+        const val = parseFloat(sensitivitySlider.value);
+        sensitivityVal.innerText = val.toFixed(2);
+        if (verifier && verifier.isRunning()) {
+            verifier.setTriggerSensitivity(val);
+            addLog(`灵敏度调整为 ${val}`);
+        }
+    };
+    thresholdSlider.oninput = () => {
+        const val = parseFloat(thresholdSlider.value);
+        thresholdVal.innerText = val.toFixed(2);
+        if (verifier && verifier.isRunning()) {
+            verifier.setThreshold(val);
+            addLog(`相似度阈值调整为 ${val}`);
+        }
+    };
+    
+    // 快速和弦按钮
+    quickBtns.forEach(btn => {
+        btn.onclick = () => {
+            const chord = btn.getAttribute('data-chord');
+            customChordInput.value = chord;
+            setTargetChord(chord);
+            // 如果验证器正在运行，立即更新
+            if (verifier && verifier.isRunning()) {
+                verifier.setTargetChord(chord);
+                currentTarget = chord;
+            }
+        };
+    });
+    
+    setCustomBtn.onclick = () => {
+        const chord = customChordInput.value.trim();
+        if (chord) setTargetChord(chord);
+    };
+    
+    // 页面关闭前释放资源
+    window.addEventListener('beforeunload', () => {
+        if (verifier && verifier.isRunning()) verifier.stop();
+    });
+    
+    addLog("✅ 测试界面已加载，点击「开始监听」并允许麦克风权限");
+</script>
+</body>
+</html>
