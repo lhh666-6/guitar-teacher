@@ -61,6 +61,10 @@ const VoiceGuide = (function() {
     }
 
     function syncListeningState() {
+        if (desiredState === 'off') {
+            isListening = false;
+            return;
+        }
         isListening = recognitionState === 'starting' || recognitionState === 'listening' || recognitionState === 'stopping';
     }
 
