@@ -60,6 +60,8 @@
 
             // DOM 元素缓存
             this.cacheElements();
+           
+            this.fingeringDetector = new FingeringDetector();
 
             // 初始化粒子背景
             this.createParticles();
@@ -619,7 +621,10 @@
 
             let targetHandIndex = -1;
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                let minAvgX = Infinity;
+                const screenMidX = 0.5;
+                let candidateIndex = -1;
+                let candidateAvgX = -Infinity; // 改为寻找最大值（对应原始数据中的左手）
+
                 for (let i = 0; i < results.multiHandLandmarks.length; i++) {
                     const landmarks = results.multiHandLandmarks[i];
                     if (!landmarks) continue;
@@ -628,16 +633,34 @@
                         sumX += landmarks[j].x;
                     }
                     const avgX = sumX / landmarks.length;
-                    if (avgX < minAvgX) {
-                        minAvgX = avgX;
-                        targetHandIndex = i;
+                    // 只考虑右半屏的手，并选择 x 坐标最大的（视觉上的左手）
+                    if (avgX > screenMidX && avgX > candidateAvgX) {
+                        candidateAvgX = avgX;
+                        candidateIndex = i;
                     }
                 }
+                targetHandIndex = candidateIndex;
             }
+
             if (targetHandIndex === -1) {
                 this.latestLocalLandmarks = null;
+                // 如果没有检测到手，清空防抖计数
+                if (this._handSwitchCounter) this._handSwitchCounter = 0;
                 return;
             }
+
+            // 简单防抖：新手需连续出现 2 帧才切换
+            if (this._lastTargetHandIndex !== undefined && this._lastTargetHandIndex !== targetHandIndex) {
+                this._handSwitchCounter = (this._handSwitchCounter || 0) + 1;
+                if (this._handSwitchCounter < 2) {
+                    targetHandIndex = this._lastTargetHandIndex;
+                } else {
+                    this._handSwitchCounter = 0;
+                }
+            } else {
+                this._handSwitchCounter = 0;
+            }
+            this._lastTargetHandIndex = targetHandIndex;
 
             const landmarks = results.multiHandLandmarks[targetHandIndex];
             if (!landmarks) {
@@ -663,13 +686,24 @@
 
             this.latestLocalLandmarks = smoothed;
 
-            this.lastFrameSendTime = now;
-            this.socket.emit('hand_landmarks', {
-                landmarks: smoothed.map(p => [p.x, p.y]),
-                timestamp: now,
-                img_width: this.elements.cameraFeed.videoWidth,
-                img_height: this.elements.cameraFeed.videoHeight
-            });
+            if (this.fingeringDetector && this.fingeringDetector.ready) {
+                const detection = this.fingeringDetector.detect(
+                    smoothed,
+                    this.elements.cameraFeed.videoWidth,
+                    this.elements.cameraFeed.videoHeight
+                );
+
+                const result = {
+                    status: 'success',
+                    positions: detection.positions,
+                    barre: detection.barre,
+                    drawing_data: null
+                };
+
+                this.handleDetectionResult(result);
+            } else {
+                console.warn('指板参数未就绪，无法进行本地按弦检测');
+            }
 
             if (now - this.lastThumbnailTime > THUMBNAIL_INTERVAL) {
                 this.sendThumbnail();
@@ -740,7 +774,7 @@
                                 locateFile: (file) => `https://fastly.jsdelivr.net/npm/@mediapipe/hands/${file}`
                             });
                             this.hands.setOptions({
-                                maxNumHands: 1,
+                                maxNumHands: 2,
                                 modelComplexity: 1,
                                 minDetectionConfidence: 0.12,
                                 minTrackingConfidence: 0.12
@@ -768,7 +802,10 @@
                         reconnection: false,            // 禁止自动重连，完全由按钮控制
                         timeout: 20000
                     });
-
+                    this.socket.on('fretboard_params', (params) => {
+                        console.log('收到指板参数', params);
+                        this.fingeringDetector.setParams(params);
+                    });
                     this.socket.on('connect', () => {
                         console.log('✅ WebSocket 连接成功，ID:', this.socket.id);
                     });

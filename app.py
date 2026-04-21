@@ -1,5 +1,5 @@
-import base64
 import logging
+import base64
 import os
 import threading
 import time
@@ -160,6 +160,10 @@ def handle_thumbnail(data):
     success = recognizer.update_fretboard(frame)
     if success:
         logger.info("指板参数更新成功")
+        # 新增：向前端推送指板参数
+        params = recognizer.get_fretboard_params()
+        if params:
+            socketio.emit('fretboard_params', params, room=request.sid)
     else:
         logger.warning("指板参数更新失败（可能未检测到琴枕/琴桥）")
 

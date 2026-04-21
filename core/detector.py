@@ -736,3 +736,40 @@ class GuitarFingeringRecognizer:
         del self.yolo_model
         cv2.destroyAllWindows()
         logger.info("识别器资源已释放")
+
+    def get_fretboard_params(self):
+        """返回前端按弦判定所需的指板几何参数"""
+        with self.fretboard_lock:
+            if self.global_nut_center is None or self.global_bridge_center is None:
+                return None
+            
+            # 构建琴弦数据
+            strings = []
+            for s, p_nut, p_bridge in self.string_lines:
+                strings.append({
+                    'string': int(s),
+                    'nut': [float(p_nut[0]), float(p_nut[1])],
+                    'bridge': [float(p_bridge[0]), float(p_bridge[1])]
+                })
+            
+            # 构建品丝数据
+            frets = []
+            for n, p1, p2, center in self.fret_lines:
+                frets.append({
+                    'fret': int(n),
+                    'p1': [float(p1[0]), float(p1[1])],
+                    'p2': [float(p2[0]), float(p2[1])]
+                })
+            
+            return {
+                'nut_center': [float(self.global_nut_center[0]), float(self.global_nut_center[1])],
+                'bridge_center': [float(self.global_bridge_center[0]), float(self.global_bridge_center[1])],
+                'v_unit': [float(self.global_v_unit[0]), float(self.global_v_unit[1])],
+                'v_len': float(self.global_v_len),
+                'perp_unit': [float(self.global_perp_unit[0]), float(self.global_perp_unit[1])],
+                'strings': strings,
+                'frets': frets,
+                'num_strings': self.NUM_STRINGS,
+                'num_frets': self.NUM_FRETS,
+                'string_no_map': {str(k): int(v) for k, v in self.string_no_map.items()}
+            }
