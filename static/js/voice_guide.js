@@ -8,6 +8,8 @@ const VoiceGuide = (function() {
     let recognition = null;
     let isAwake = false;
     let isListening = false;
+    let desiredState = 'standby';
+    let recognitionState = 'idle';
     let wakeTimeout = null;
     let countdownTimer = null;
     let socket = null;
@@ -51,6 +53,52 @@ const VoiceGuide = (function() {
 
     function setVoiceGuideEnabled(enabled) {
         localStorage.setItem(VOICE_GUIDE_ENABLED_KEY, enabled ? '1' : '0');
+    }
+
+    function setDesiredState(state) {
+        desiredState = state;
+        isAwake = state === 'awake';
+    }
+
+    function syncListeningState() {
+        if (desiredState === 'off') {
+            isListening = false;
+            return;
+        }
+        isListening = recognitionState === 'starting' || recognitionState === 'listening' || recognitionState === 'stopping';
+    }
+
+    function clearSleepTimers() {
+        if (wakeTimeout) clearTimeout(wakeTimeout);
+        if (countdownTimer) clearTimeout(countdownTimer);
+        wakeTimeout = null;
+        countdownTimer = null;
+    }
+
+    function requestStandby(options = {}) {
+        setDesiredState('standby');
+        shouldAutoRestart = true;
+        if (options.manual) setVoiceGuideEnabled(true);
+        syncListeningState();
+        updateIcon();
+    }
+
+    function requestOff(options = {}) {
+        setDesiredState('off');
+        shouldAutoRestart = false;
+        clearSleepTimers();
+        if (options.manual) setVoiceGuideEnabled(false);
+        syncListeningState();
+        updateIcon();
+    }
+
+    function toggleVoiceGuide() {
+        if (desiredState === 'off') {
+            requestStandby({ manual: true });
+            startListening({ manual: true });
+        } else {
+            stopListening({ manual: true });
+        }
     }
 
     // 动态注入图标样式（确保动画生效）
@@ -119,11 +167,7 @@ const VoiceGuide = (function() {
         `;
         document.body.appendChild(iconElement);
         iconElement.addEventListener('click', () => {
-            if (isListening) {
-                stopListening({ manual: true });
-            } else {
-                startListening({ manual: true });
-            }
+            toggleVoiceGuide();
         });
         updateIcon();
     }
@@ -234,17 +278,17 @@ const VoiceGuide = (function() {
 
     // ========== 唤醒与休眠 ==========
     function resetSleepTimer() {
-        if (wakeTimeout) clearTimeout(wakeTimeout);
-        if (countdownTimer) clearTimeout(countdownTimer);
+        clearSleepTimers();
         wakeTimeout = setTimeout(() => sleep(), SLEEP_TIMEOUT);
         countdownTimer = setTimeout(() => {
-            if (isAwake) playTTS('请说出指令');
+            if (desiredState === 'awake') playTTS('请说出指令');
         }, SLEEP_TIMEOUT - 1000);
     }
 
     function wakeUp() {
-        if (isAwake) return;
-        isAwake = true;
+        if (desiredState === 'awake') return;
+        setDesiredState('awake');
+        shouldAutoRestart = true;
         resetSleepTimer();
         playTTS('我在，请问有什么可以帮助您？');
         showStatus('✨ 已唤醒');
@@ -252,10 +296,9 @@ const VoiceGuide = (function() {
     }
 
     function sleep() {
-        if (!isAwake) return;
-        isAwake = false;
-        if (wakeTimeout) clearTimeout(wakeTimeout);
-        if (countdownTimer) clearTimeout(countdownTimer);
+        if (desiredState !== 'awake') return;
+        requestStandby();
+        clearSleepTimers();
         playTTS('需要帮助时请叫我小吉他');
         showStatus('😴 已休眠');
         updateIcon();
@@ -418,6 +461,7 @@ const VoiceGuide = (function() {
     function initRecognition() {
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
             console.warn('不支持语音识别');
+            requestOff();
             showStatus('❌ 不支持语音识别');
             return false;
         }
@@ -425,18 +469,24 @@ const VoiceGuide = (function() {
         recognition.continuous = true;
         recognition.interimResults = false;
         recognition.lang = 'zh-CN';
-        
+
+        recognition.onstart = () => {
+            recognitionState = 'listening';
+            syncListeningState();
+            updateIcon();
+        };
+
         recognition.onresult = (event) => {
             const text = event.results[event.results.length-1][0].transcript;
             console.log('[语音识别]', text);
-            if (isAwake) resetSleepTimer();
-            if (!isAwake && text.includes(WAKE_WORD)) {
+            if (desiredState === 'awake') resetSleepTimer();
+            if (desiredState !== 'awake' && text.includes(WAKE_WORD)) {
                 wakeUp();
-            } else if (isAwake) {
+            } else if (desiredState === 'awake') {
                 handleCommand(text);
             }
         };
-        
+
         recognition.onerror = (e) => {
             if (e.error === 'no-speech') {
                 console.log('[语音识别] 无语音输入，继续监听');
@@ -444,63 +494,96 @@ const VoiceGuide = (function() {
             }
             console.error('[语音识别] 错误:', e.error, e);
             if (e.error === 'not-allowed') {
-                shouldAutoRestart = false;
-                stopListening();
+                requestOff();
+                recognitionState = 'idle';
+                syncListeningState();
                 showStatus('❌ 麦克风权限被拒绝，请点击下方按钮手动开启');
             } else if (e.error === 'network') {
-                console.log('[语音识别] 网络错误，将尝试重启');
+                console.log('[语音识别] 网络错误，将在结束后按目标状态恢复');
             } else if (e.error === 'aborted') {
-                shouldAutoRestart = false;
+                console.log('[语音识别] 识别已中止');
             } else {
-                console.log('[语音识别] 未知错误，尝试重启');
+                console.log('[语音识别] 未知错误，将在结束后按目标状态恢复');
             }
         };
-        
+
         recognition.onend = () => {
             console.log('[语音识别] 识别结束');
-            isListening = false;
-            if (shouldAutoRestart && !window.closed) {
-                setTimeout(() => startListening(), RESTART_DELAY);
-            } else {
+            recognitionState = 'idle';
+            syncListeningState();
+            if (desiredState === 'off' || window.closed) {
                 showStatus('🎤 语音已关闭，请点击按钮开启');
+                updateIcon();
+                return;
             }
+            showStatus('🎤 语音识别已启动，说“小吉他”唤醒');
             updateIcon();
+            setTimeout(() => startListening(), RESTART_DELAY);
         };
         return true;
     }
 
     function startListening(options = {}) {
         if (!recognition && !initRecognition()) return;
-        if (isListening) return;
+        if (options.manual) requestStandby({ manual: true });
+        if (desiredState === 'off') return;
+        if (recognitionState !== 'idle') {
+            syncListeningState();
+            updateIcon();
+            return;
+        }
         try {
+            recognitionState = 'starting';
+            syncListeningState();
             recognition.start();
-            isListening = true;
-            shouldAutoRestart = true;   // 🔥 手动开启时恢复自动重启标志
-            if (options.manual) setVoiceGuideEnabled(true);
+            shouldAutoRestart = true;
             showStatus('🎤 语音识别已启动，说“小吉他”唤醒');
             updateIcon();
         } catch (e) {
             console.error('启动语音识别失败', e);
             if (e.name === 'InvalidStateError') {
-                isListening = true;
-                if (options.manual) setVoiceGuideEnabled(true);
-            } else {
-                showStatus('❌ 启动失败，请检查麦克风权限');
-                shouldAutoRestart = false;
+                recognitionState = 'listening';
+                syncListeningState();
+                updateIcon();
+                return;
             }
+            recognitionState = 'idle';
+            syncListeningState();
+            showStatus('❌ 启动失败，请检查麦克风权限');
+            if (options.manual) requestOff({ manual: true });
+            else requestOff();
         }
     }
 
     function stopListening(options = {}) {
-        shouldAutoRestart = false;   // 🔥 手动关闭后不再自动重启
-        if (options.manual) setVoiceGuideEnabled(false);
-        if (recognition && isListening) {
-            recognition.stop();
-            isListening = false;
+        requestOff(options);
+        if (recognitionState === 'idle') {
             showStatus('🎤 语音已关闭（需手动开启）');
             updateIcon();
-        } else {
-            isListening = false;
+            return;
+        }
+        if (!recognition) {
+            recognitionState = 'idle';
+            syncListeningState();
+            showStatus('🎤 语音已关闭（需手动开启）');
+            updateIcon();
+            return;
+        }
+        if (recognitionState === 'stopping') {
+            showStatus('🎤 语音正在关闭...');
+            updateIcon();
+            return;
+        }
+        recognitionState = 'stopping';
+        syncListeningState();
+        showStatus('🎤 语音正在关闭...');
+        updateIcon();
+        try {
+            recognition.stop();
+        } catch (e) {
+            console.error('停止语音识别失败', e);
+            recognitionState = 'idle';
+            syncListeningState();
             showStatus('🎤 语音已关闭（需手动开启）');
             updateIcon();
         }
@@ -526,17 +609,18 @@ const VoiceGuide = (function() {
                 localStorage.setItem('voice_session_id', sessionId);
             }
             if (isVoiceGuideEnabled()) {
+                requestStandby();
                 startListening();
             } else {
-                isListening = false;
-                shouldAutoRestart = false;
+                requestOff();
+                recognitionState = 'idle';
+                syncListeningState();
                 updateIcon();
             }
             const toggleBtn = document.getElementById('voice-toggle');
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', () => {
-                    if (isListening) stopListening({ manual: true });
-                    else startListening({ manual: true });
+                    toggleVoiceGuide();
                 });
             }
         },
@@ -550,7 +634,7 @@ const VoiceGuide = (function() {
         sleep,
         speak: playTTS,
         // 暴露状态用于调试
-        getStatus: () => ({ isListening, isAwake, shouldAutoRestart })
+        getStatus: () => ({ isListening, isAwake, shouldAutoRestart, desiredState, recognitionState })
     };
 })();
 
