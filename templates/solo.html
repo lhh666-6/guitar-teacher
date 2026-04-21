@@ -116,14 +116,26 @@
             flex-direction: column;
             gap: 16px;
         }
+        .center-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .center-panel-header > .section-title {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
         .chord-heading {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end;
             gap: 14px;
-            padding: 4px 0 2px;
+            padding: 0;
             flex-wrap: wrap;
             text-align: center;
+            margin-left: auto;
         }
         .chord-title-wrap {
             display: inline-flex;
@@ -494,11 +506,13 @@
         .progress-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 8px;
         }
         .progress-actions .btn-custom {
             margin: 0;
-            min-height: 52px;
+            min-height: 38px;
+            padding: 6px 10px;
+            font-size: 0.92rem;
         }
         .skip-btn-content {
             display: inline-flex;
@@ -663,12 +677,15 @@
 
         <!-- 中间指板 -->
         <div class="center-panel">
-            <div class="chord-heading">
-                <div class="chord-title-wrap">
-                    <span class="difficulty-badge" id="difficultyBadge"></span>
-                    <h4 id="currentChordName" class="chord-title">未选择和弦</h4>
+            <div class="center-panel-header">
+                <div class="section-title soft"><i class="fas fa-hand-paper" aria-hidden="true"></i> 指法示意</div>
+                <div class="chord-heading">
+                    <div class="chord-title-wrap">
+                        <span class="difficulty-badge" id="difficultyBadge"></span>
+                        <h4 id="currentChordName" class="chord-title">未选择和弦</h4>
+                    </div>
+                    <p id="chordDescription" class="chord-subtitle"></p>
                 </div>
-                <p id="chordDescription" class="chord-subtitle"></p>
             </div>
             <div class="fretboard-mini" id="fretboardMini">
                 <!-- 品柱 (共5条) -->
@@ -700,6 +717,27 @@
 
                 <div class="dot-container" id="dotContainer"></div>
             </div>
+            <div class="chord-select">
+                <label for="chordSelect" class="panel-label"><i class="fas fa-book-open" aria-hidden="true"></i> 和弦简介</label>
+                <select id="chordSelect"></select>
+                <div class="chord-info" id="chordInfo">
+                    和弦名称: <span id="selChordName">-</span><br>
+                    简介: <span id="selChordDesc">-</span>
+                </div>
+                <button class="btn-custom" id="addToTestBtn" style="width:100%">加入测试列表</button>
+            </div>
+        </div>
+
+        <!-- 右侧控制区 -->
+        <div class="right-panel">
+            <!-- 测试列表区域 -->
+            <div>
+                <div class="test-section-title"><i class="fas fa-list-check" aria-hidden="true"></i> 测试列表 (<span id="testCount">0</span>)</div>
+                <div class="test-list" id="testListDiv"></div>
+                <div style="display: flex; gap:5px; margin-top:5px;">
+                    <button class="btn-custom btn-sm" id="clearTestBtn" style="flex:1;"><i class="fas fa-broom" aria-hidden="true"></i> 清空</button>
+                </div>
+            </div>
             <div class="test-progress-area">
                 <div class="section-title soft"><i class="fas fa-route" aria-hidden="true"></i> 当前测试进度</div>
                 <div class="progress-row">
@@ -718,28 +756,6 @@
                             <span class="skip-btn-note">(记为错误)</span>
                         </span>
                     </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 右侧控制区 -->
-        <div class="right-panel">
-            <div class="chord-select">
-                <label for="chordSelect" class="panel-label"><i class="fas fa-layer-group" aria-hidden="true"></i> 84个标准和弦</label>
-                <select id="chordSelect"></select>
-                <div class="chord-info" id="chordInfo">
-                    和弦名称: <span id="selChordName">-</span><br>
-                    简介: <span id="selChordDesc">-</span>
-                </div>
-                <button class="btn-custom" id="addToTestBtn" style="width:100%">加入测试列表</button>
-            </div>
-
-            <!-- 测试列表区域 -->
-            <div>
-                <div class="test-section-title"><i class="fas fa-list-check" aria-hidden="true"></i> 测试列表 (<span id="testCount">0</span>)</div>
-                <div class="test-list" id="testListDiv"></div>
-                <div style="display: flex; gap:5px; margin-top:5px;">
-                    <button class="btn-custom btn-sm" id="clearTestBtn" style="flex:1;"><i class="fas fa-broom" aria-hidden="true"></i> 清空</button>
                 </div>
             </div>
         </div>
