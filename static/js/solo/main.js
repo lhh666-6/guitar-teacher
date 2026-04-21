@@ -140,9 +140,8 @@
             }
         }
 
-        getStars(difficulty) {
-            const fullStar = '★';
-            return fullStar.repeat(difficulty);
+        getDifficultyLabel(difficulty) {
+            return `难度 ${difficulty}`;
         }
 
         async loadChords() {
@@ -177,8 +176,8 @@
             this.chords.forEach(chord => {
                 const option = document.createElement('option');
                 option.value = chord.id;
-                const stars = this.getStars(chord.difficulty || 1);
-                option.textContent = `${chord.name} ${stars}`;
+                const difficultyLabel = this.getDifficultyLabel(chord.difficulty || 1);
+                option.textContent = `${chord.name} ${difficultyLabel}`;
                 select.appendChild(option);
             });
 
@@ -263,12 +262,12 @@
                 const res = this.testResults[idx];
                 if (res !== undefined && res !== null) {
                     if (res.correct) {
-                        statusSpan.innerHTML = `<span class="test-badge-correct">✓</span> <span class="test-item-time">${res.time.toFixed(1)}s</span>`;
+                        statusSpan.innerHTML = `<span class="test-badge-correct"><i class="fas fa-check" aria-hidden="true"></i></span> <span class="test-item-time">${res.time.toFixed(1)}s</span>`;
                     } else {
-                        statusSpan.innerHTML = `<span class="test-badge-wrong">✗</span> <span class="test-item-time">--</span>`;
+                        statusSpan.innerHTML = `<span class="test-badge-wrong"><i class="fas fa-xmark" aria-hidden="true"></i></span> <span class="test-item-time">--</span>`;
                     }
                 } else {
-                    statusSpan.innerHTML = `<span class="test-badge-pending">⏳</span>`;
+                    statusSpan.innerHTML = `<span class="test-badge-pending"><i class="fas fa-hourglass-half" aria-hidden="true"></i></span>`;
                 }
 
                 item.appendChild(nameSpan);
@@ -353,7 +352,7 @@
                 this.testMode = false;
                 const total = this.stats.correct + this.stats.wrong;
                 const avgTime = this.testResults.filter(r => r && r.correct).reduce((acc, r) => acc + r.time, 0) / (this.stats.correct || 1);
-                alert(`✅ 测试完成！\n正确: ${this.stats.correct}, 错误: ${this.stats.wrong}\n平均正确用时: ${avgTime.toFixed(2)} 秒`);
+                alert(`测试完成！\n正确: ${this.stats.correct}, 错误: ${this.stats.wrong}\n平均正确用时: ${avgTime.toFixed(2)} 秒`);
                 this.elements.progressDisplay.textContent = `${this.testList.length}/${this.testList.length}`;
                 this.elements.currentTimeDisplay.textContent = '0.0 s';
                 return;
@@ -714,8 +713,8 @@
                 this.cameraStream = null;
                 this.elements.cameraFeed.srcObject = null;
                 this.elements.cameraFeed.style.transform = '';
-                this.elements.toggleCamera.textContent = '开启';
-                this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
+                this.elements.toggleCamera.innerHTML = '<i class="fas fa-video" aria-hidden="true"></i> 开启摄像头';
+                this.elements.cameraStatus.innerHTML = '<i class="fas fa-camera" aria-hidden="true"></i> 摄像头已关闭';
                 if (this.socket) {
                     this.socket.disconnect();
                     if (this.socket.close) this.socket.close();
@@ -756,8 +755,8 @@
                     });
                     this.elements.cameraFeed.srcObject = this.cameraStream;
                     this.elements.cameraFeed.style.transform = 'scaleX(-1)';
-                    this.elements.toggleCamera.textContent = '关闭';
-                    this.elements.cameraStatus.innerText = '📷 摄像头已开启';
+                    this.elements.toggleCamera.innerHTML = '<i class="fas fa-video" aria-hidden="true"></i> 关闭摄像头';
+                    this.elements.cameraStatus.innerHTML = '<i class="fas fa-camera" aria-hidden="true"></i> 摄像头已开启';
 
                     // ✅ 修改：Socket.IO 配置支持自签名证书，且禁止自动重连（由按钮手动控制）
                     this.socket = io({

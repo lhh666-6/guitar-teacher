@@ -349,10 +349,10 @@
 
     <!-- 统计卡片 -->
     <div class="stats-grid" id="statsContainer">
-        <div class="stat-card"><div class="stat-title">总练习次数</div><div class="stat-number" id="totalCount">-</div></div>
-        <div class="stat-card"><div class="stat-title">总体正确率</div><div class="stat-number" id="totalAccuracy">-<span class="stat-unit">%</span></div></div>
-        <div class="stat-card"><div class="stat-title">最近练习</div><div class="stat-number" id="lastPractice" style="font-size:1.2rem;">-</div></div>
-        <div class="stat-card"><div class="stat-title">薄弱和弦</div><div class="stat-number" id="weakChords" style="font-size:1.1rem;">-</div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-hashtag"></i> 总练习次数</div><div class="stat-number" id="totalCount">-</div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-bullseye"></i> 总体正确率</div><div class="stat-number" id="totalAccuracy">-<span class="stat-unit">%</span></div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-clock-rotate-left"></i> 最近练习</div><div class="stat-number" id="lastPractice" style="font-size:1.2rem;">-</div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-triangle-exclamation"></i> 薄弱和弦</div><div class="stat-number" id="weakChords" style="font-size:1.1rem;">-</div></div>
     </div>
 
     <div class="chart-filter-row">
@@ -371,8 +371,8 @@
                 <label><i class="fas fa-check-circle"></i> 结果</label>
                 <select id="filterResult">
                     <option value="all">全部</option>
-                    <option value="correct">✓ 正确</option>
-                    <option value="wrong">✗ 错误</option>
+                    <option value="correct">正确</option>
+                    <option value="wrong">错误</option>
                 </select>
             </div>
             <div class="filter-group">

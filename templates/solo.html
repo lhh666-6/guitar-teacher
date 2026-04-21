@@ -444,8 +444,8 @@
     <div id="particles"></div>
 
     <div class="header">
-        <h2 style="font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">🎵 和弦测试 · 木色典藏版</h2>
-        <button class="back-btn" onclick="window.location.href='/'">← 返回主页</button>
+        <h2 style="font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);"><i class="fas fa-guitar" aria-hidden="true"></i> 和弦测试 · 木色典藏版</h2>
+        <button class="back-btn" onclick="window.location.href='/'"><i class="fas fa-arrow-left" aria-hidden="true"></i> 返回主页</button>
     </div>
 
     <div class="train-layout" id="trainLayout">
@@ -454,7 +454,7 @@
             <div class="camera-container" id="cameraContainer">
                 <video id="cameraFeed" autoplay playsinline></video>
                 <div class="camera-status">
-                    <span id="cameraStatus">📷 摄像头已关闭</span>
+                    <span id="cameraStatus"><i class="fas fa-camera" aria-hidden="true"></i> 摄像头已关闭</span>
                     <!-- ✅ 按钮保留图标，文字由 JS 控制（"开启摄像头"/"关闭摄像头"） -->
                     <button id="toggleCamera"><i class="fas fa-video"></i> 开启摄像头</button>
                 </div>
@@ -523,8 +523,8 @@
                 <h6 style="color:#ffd966;"> 测试列表 (<span id="testCount">0</span>)</h6>
                 <div class="test-list" id="testListDiv"></div>
                 <div style="display: flex; gap:5px; margin-top:5px;">
-                    <button class="btn-custom btn-sm" id="startTestBtn" style="flex:2;">▶️ 开始测试</button>
-                    <button class="btn-custom btn-sm" id="clearTestBtn" style="flex:1;">🧹 清空</button>
+                    <button class="btn-custom btn-sm" id="startTestBtn" style="flex:2;"><i class="fas fa-play" aria-hidden="true"></i> 开始测试</button>
+                    <button class="btn-custom btn-sm" id="clearTestBtn" style="flex:1;"><i class="fas fa-broom" aria-hidden="true"></i> 清空</button>
                 </div>
             </div>
 
@@ -538,7 +538,7 @@
                     <span> 当前用时</span>
                     <span id="currentTimeDisplay">0.0 s</span>
                 </div>
-                <button class="btn-custom btn-warning" id="skipBtn" style="width:100%;">⏭️ 跳过当前 (记为错误)</button>
+                <button class="btn-custom btn-warning" id="skipBtn" style="width:100%;"><i class="fas fa-forward-step" aria-hidden="true"></i> 跳过当前 (记为错误)</button>
             </div>
         </div>
     </div>

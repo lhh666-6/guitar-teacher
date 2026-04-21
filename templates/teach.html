@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>吉他教学 · 智能驾驶舱</title>
+    <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/teach.css">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -103,6 +104,10 @@
             letter-spacing: -0.5px;
         }
         .stat-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
             font-size: 0.85rem !important;
             opacity: 0.85;
             font-weight: 500;
@@ -201,6 +206,9 @@
             border-bottom: 1px solid rgba(255, 215, 140, 0.3);
         }
         .recommend-header h3 {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             color: #ffd966;
             font-size: 1.2rem;
             font-weight: 500;
@@ -209,6 +217,9 @@
             text-transform: uppercase;
         }
         .refresh-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             background: rgba(255, 215, 140, 0.15);
             border: 1px solid rgba(255, 215, 140, 0.4);
             border-radius: 40px;
@@ -321,6 +332,9 @@
             border-bottom: 1px solid rgba(255, 215, 140, 0.3);
         }
         .advice-header h3 {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             color: #ffd966;
             font-size: 1.2rem;
             font-weight: 500;
@@ -329,6 +343,9 @@
             text-transform: uppercase;
         }
         #speak-advice-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             background: rgba(255, 215, 140, 0.15);
             border: 1px solid rgba(255, 215, 140, 0.4);
             border-radius: 40px;
@@ -405,6 +422,9 @@
             background-size: 20px 20px;
         }
         .recent-records .section-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             color: #ffd966;
             font-size: 1.2rem;
             font-weight: 500;
@@ -546,6 +566,9 @@
             border-bottom: 1px solid rgba(255, 215, 140, 0.15);
         }
         .top-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             color: #ecd9b4;
             text-decoration: none;
             font-weight: 400;
@@ -567,11 +590,11 @@
     <div id="particles"></div>
 
     <nav class="top-nav">
-        <a href="/">首页</a>
+        <a href="/"><i class="fas fa-house" aria-hidden="true"></i> 首页</a>
         <a href="/tuning">调音器</a>
         <a href="/solo">SOLO模式</a>
         <a href="/history">历史</a>
-        <a href="/teach" class="active">教学驾驶舱</a>
+        <a href="/teach" class="active"><i class="fas fa-gauge-high" aria-hidden="true"></i> 教学驾驶舱</a>
     </nav>
 
     <div class="teach-container">
@@ -579,47 +602,47 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value" id="total-duration">0</div>
-                <div class="stat-label">练习总时长 <span class="unit">(分钟)</span></div>
+                <div class="stat-label"><i class="fas fa-clock" aria-hidden="true"></i> 练习总时长 <span class="unit">(分钟)</span></div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="total-sessions">0</div>
-                <div class="stat-label">练习次数</div>
+                <div class="stat-label"><i class="fas fa-repeat" aria-hidden="true"></i> 练习次数</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="avg-accuracy">0</div>
-                <div class="stat-label">平均正确率</div>
+                <div class="stat-label"><i class="fas fa-bullseye" aria-hidden="true"></i> 平均正确率</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="weak-chords">—</div>
-                <div class="stat-label">薄弱和弦 TOP3</div>
+                <div class="stat-label"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> 薄弱和弦 TOP3</div>
             </div>
         </div>
 
         <!-- 功能按钮栏（前两个按钮） -->
         <div class="action-bar">
-            <button class="action-btn" data-chart="radar">和弦掌握度</button>
-            <button class="action-btn" data-chart="progress">进步趋势</button>
+            <button class="action-btn" data-chart="radar"><i class="fas fa-chart-pie" aria-hidden="true"></i> 和弦掌握度</button>
+            <button class="action-btn" data-chart="progress"><i class="fas fa-chart-line" aria-hidden="true"></i> 进步趋势</button>
         </div>
 
         <!-- AI推荐练习和弦区域 -->
         <div class="recommend-section">
             <div class="recommend-header">
-                <h3>AI 推荐练习和弦</h3>
-                <button class="refresh-btn" id="refreshRecommendBtn">换一批</button>
+                <h3><i class="fas fa-lightbulb" aria-hidden="true"></i> AI 推荐练习和弦</h3>
+                <button class="refresh-btn" id="refreshRecommendBtn"><i class="fas fa-rotate-right" aria-hidden="true"></i> 换一批</button>
             </div>
             <div class="recommend-list" id="recommendList"></div>
         </div>
 
         <!-- 单独放置的生成智能指导按钮 -->
         <div class="single-action">
-            <button class="action-btn" id="generate-advice-btn">生成智能指导</button>
+            <button class="action-btn" id="generate-advice-btn"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> 生成智能指导</button>
         </div>
 
         <!-- 智能指导区域 -->
         <div class="advice-section">
             <div class="advice-header">
-                <h3>智能指导</h3>
-                <button id="speak-advice-btn">朗读</button>
+                <h3><i class="fas fa-robot" aria-hidden="true"></i> 智能指导</h3>
+                <button id="speak-advice-btn"><i class="fas fa-volume-high" aria-hidden="true"></i> 朗读</button>
             </div>
             <div class="advice-content-wrapper">
                 <div id="adviceLoadingContainer" class="loading-mini-container hidden">
@@ -634,7 +657,7 @@
 
         <!-- 最近练习记录 -->
         <section class="recent-records">
-            <h3 class="section-title">最近练习记录</h3>
+            <h3 class="section-title"><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> 最近练习记录</h3>
             <div class="table-wrapper">
                 <table class="table" id="records-table">
                     <thead>
