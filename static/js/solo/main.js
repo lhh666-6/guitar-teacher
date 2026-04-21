@@ -288,10 +288,8 @@
                 this.elements.progressDisplay.textContent = `0/0`;
             }
         }
-
         stopTestAndSending() {
             this.sendingEnabled = false;
-            // ✅ 修改：统一清理所有 requestAnimationFrame
             if (this.animationId) {
                 cancelAnimationFrame(this.animationId);
                 this.animationId = null;
@@ -322,6 +320,9 @@
             } else if (document.msExitFullscreen) {
                 document.msExitFullscreen();
             }
+            // 🔥 新增：同步摄像头按钮状态
+            this.elements.toggleCamera.textContent = '开启';
+            this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
         }
 
         goToTestIndex(index) {
