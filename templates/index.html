@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>智能吉他教学系统 · 音乐家风格 · 动效优化版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <!-- ✅ 国内镜像：GSAP (BootCDN) -->
     <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <style>
@@ -97,6 +98,7 @@
         .nav-btn {
             display: inline-flex;
             align-items: center;
+            gap: 8px;
             padding: 8px 16px;
             background: rgba(30, 20, 15, 0.65);
             backdrop-filter: blur(8px);
@@ -174,15 +176,26 @@
             will-change: transform, opacity;
         }
         .title::before, .title::after {
-            content: '🎸';
-            font-size: 2.5rem;
+            content: '';
+            font-size: 2.1rem;
             opacity: 0.6;
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            color: #f4c542;
+            -webkit-text-fill-color: #f4c542;
+            text-shadow: 0 0 12px rgba(230, 150, 30, 0.35);
         }
-        .title::before { left: -40px; }
-        .title::after { right: -40px; }
+        .title::before {
+            left: -40px;
+            content: '\f7a6';
+        }
+        .title::after {
+            right: -40px;
+            content: '\f7a6';
+        }
 
         .title-notation {
             width: 200px;
@@ -464,9 +477,9 @@
     <!-- 开场动画容器 -->
     <div id="intro-overlay" class="intro-overlay intro-clickable">
         <div class="intro-content" id="intro-content">
-            <img id="img-guitar-notes" src="/static/images/guitar-notes.png" alt="乐符环绕吉他" loading="eager">
+            <img id="img-guitar-notes" src="{{ url_for('static', filename='images/guitar-notes.png', v='20260420-1') }}" alt="乐符环绕吉他" loading="eager">
         </div>
-        <div class="intro-hint" id="intro-hint">🎸 点击进入音乐之旅 🎸</div>
+        <div class="intro-hint" id="intro-hint"><i class="fa-solid fa-guitar" aria-hidden="true"></i><span>点击进入音乐之旅</span><i class="fa-solid fa-guitar" aria-hidden="true"></i></div>
     </div>
 
     <!-- 主内容 -->
@@ -474,7 +487,7 @@
         <canvas id="particles-js"></canvas>
         <!-- 左上角历史按钮 -->
         <div class="top-left-btn">
-            <a href="/history" class="nav-btn" title="训练历史记录">📊 历史</a>
+            <a href="/history" class="nav-btn" title="训练历史记录"><i class="fa-solid fa-chart-line" aria-hidden="true"></i><span>历史</span></a>
         </div>
         <!-- 右上角用户状态按钮 -->
         <div class="top-right-btn">
@@ -517,7 +530,7 @@
                 const data = await res.json();
                 if (data.logged_in) {
                     const displayName = data.nickname || data.email;
-                    userStatusDiv.textContent = `👤 ${displayName}`;
+                    userStatusDiv.innerHTML = `<i class="fa-solid fa-user" aria-hidden="true"></i><span>${displayName}</span>`;
                     userStatusDiv.onclick = () => {
                         if (confirm('是否退出登录？')) {
                             fetch('/api/logout', { method: 'POST' }).then(() => {
@@ -526,14 +539,14 @@
                         }
                     };
                 } else {
-                    userStatusDiv.textContent = '🔑 登录';
+                    userStatusDiv.innerHTML = '<i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i><span>登录</span>';
                     userStatusDiv.onclick = () => {
                         window.location.href = '/login';
                     };
                 }
             } catch (err) {
                 console.error('获取用户状态失败', err);
-                userStatusDiv.textContent = '🔑 登录';
+                userStatusDiv.innerHTML = '<i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i><span>登录</span>';
                 userStatusDiv.onclick = () => {
                     window.location.href = '/login';
                 };
@@ -552,6 +565,7 @@
             const guitarImg = document.getElementById('img-guitar-notes');
             const mainContent = document.querySelector('.main-content');
             const hintBtn = document.getElementById('intro-hint');
+            const introVersion = 'guitar-notes-20260420-1';
 
             // 关键元素缺失则直接显示主内容
             if (!overlay || !guitarImg || !mainContent) {
@@ -627,6 +641,11 @@
             }
 
             // 普通主页：检查是否已经播放过开场动画（只播放一次）
+            const introPlayedVersion = sessionStorage.getItem('introPlayedVersion');
+            if (introPlayedVersion !== introVersion) {
+                sessionStorage.removeItem('introPlayed');
+                sessionStorage.setItem('introPlayedVersion', introVersion);
+            }
             const hasPlayed = sessionStorage.getItem('introPlayed');
             if (hasPlayed) {
                 console.log('⏩ 开场动画已播放过，跳过');
