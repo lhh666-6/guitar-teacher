@@ -202,6 +202,14 @@
             margin-right: auto;
         }
 
+        .header-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
         .back-btn {
             display: inline-flex;
             align-items: center;
@@ -591,6 +599,7 @@
             .header {
                 flex-wrap: wrap;
                 gap: 10px;
+                justify-content: center;
             }
             .auto-mode-btn {
                 order: 1;
@@ -599,9 +608,17 @@
             .header h2 {
                 order: 2;
                 font-size: 1.6rem;
+                width: 100%;
+                justify-content: center;
+                margin-right: 0;
+            }
+            .header-actions {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                gap: 8px;
             }
             .back-btn {
-                order: 3;
                 padding: 6px 15px;
                 font-size: 14px;
             }
@@ -627,7 +644,10 @@
             <span class="auto-status" id="auto-status">关闭</span>
         </div>
         <h2><i class="fas fa-guitar" aria-hidden="true"></i> 专业调音台</h2>
-        <button class="back-btn" onclick="window.location.href='/'"><i class="fas fa-arrow-left" aria-hidden="true"></i> 返回主页</button>
+        <div class="header-actions">
+            <button class="back-btn" onclick="window.location.href='/solo'"><i class="fas fa-music" aria-hidden="true"></i> 进入 SOLO</button>
+            <button class="back-btn" onclick="window.location.href='/'"><i class="fas fa-arrow-left" aria-hidden="true"></i> 返回主页</button>
+        </div>
     </div>
 
     <div class="string-select">
@@ -670,8 +690,8 @@
             <div class="gauge-center-number" id="gauge-center-number">0</div>
         </div>
 
-        <div class="tuning-info" id="deviation">当前偏差：0 音分</div>
-        <div class="guide-text" id="guide"><i class="fas fa-circle-check" aria-hidden="true"></i> 音调准确</div>
+        <div class="tuning-info" id="deviation">当前偏差：未开始调弦</div>
+        <div class="guide-text" id="guide"><i class="fas fa-hand-pointer" aria-hidden="true"></i> 未开始调弦</div>
         <div class="info-note">注：由于环境噪音和算法误差，偏差在±8音分内可视为调音完成。</div>
 
         <button class="start-btn" id="start-tuning">开始调这根弦</button>
@@ -901,6 +921,21 @@
             let centsHistory = [];
             const maxHistory = 10;
 
+            const defaultDeviationText = '当前偏差：未开始调弦';
+            const defaultGuideText = '<i class="fas fa-hand-pointer" aria-hidden="true"></i> 未开始调弦';
+
+            function resetTuningDisplay() {
+                needle.style.left = '50%';
+                deviationEl.textContent = defaultDeviationText;
+                gaugeCenterNumber.textContent = '0';
+                guideEl.innerHTML = defaultGuideText;
+                guideEl.style.color = '';
+                lastSpokenGuide = '';
+                centsHistory = [];
+                volumeBar.style.width = '0%';
+                drawTrendChart();
+            }
+
             function createFirework() {
                 fireworksDiv.style.display = 'block';
                 for (let i = 0; i < 30; i++) {
@@ -951,14 +986,7 @@
                     const note = ['E','B','G','D','A','E'][currentString-1];
                     document.getElementById('current-string').textContent = `${currentString}弦 (${note})`;
 
-                    needle.style.left = '50%';
-                    deviationEl.textContent = '当前偏差：0 音分';
-                    gaugeCenterNumber.textContent = '0';
-                    guideEl.innerHTML = '<i class="fas fa-circle-check" aria-hidden="true"></i> 音调准确';
-                    guideEl.style.color = '';
-                    lastSpokenGuide = '';
-                    centsHistory = [];
-                    drawTrendChart();
+                    resetTuningDisplay();
                 });
             });
 
@@ -1068,16 +1096,8 @@
                     startBtn.textContent = '开始调这根弦';
                     startBtn.classList.remove('tuning');
                     vibrateString.classList.remove('vibrating');
-                    needle.style.left = '50%';
-                    deviationEl.textContent = '当前偏差：0 音分';
-                    gaugeCenterNumber.textContent = '0';
-                    guideEl.innerHTML = '<i class="fas fa-circle-check" aria-hidden="true"></i> 音调准确';
-                    guideEl.style.color = '';
                     VoiceGuide.stop();
-                    lastSpokenGuide = '';
-                    volumeBar.style.width = '0%';
-                    centsHistory = [];
-                    drawTrendChart();
+                    resetTuningDisplay();
                 }
             });
 
