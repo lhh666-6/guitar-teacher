@@ -89,11 +89,16 @@
                 dotContainer: document.getElementById('dotContainer'),
                 cameraFeed: document.getElementById('cameraFeed'),
                 toggleCamera: document.getElementById('toggleCamera'),
+                fullscreenVideoBtn: document.getElementById('fullscreenVideoBtn'),
                 cameraStatus: document.getElementById('cameraStatus'),
                 startTestBtn: document.getElementById('startTestBtn'),
                 clearTestBtn: document.getElementById('clearTestBtn'),
                 addToTestBtn: document.getElementById('addToTestBtn'),
                 skipBtn: document.getElementById('skipBtn'),
+                resultModal: document.getElementById('resultModal'),
+                resultModalTitle: document.getElementById('resultModalTitle'),
+                resultModalBody: document.getElementById('resultModalBody'),
+                resultModalConfirmBtn: document.getElementById('resultModalConfirmBtn'),
                 chordDetailContent: document.getElementById('chordDetailContent'),
                 progressDisplay: document.getElementById('progressDisplay'),
                 currentTimeDisplay: document.getElementById('currentTimeDisplay'),
@@ -104,6 +109,7 @@
             };
 
             this.updateSkipButtonState();
+            this.updateStartButtonState();
 
             // 叠加画布（若不存在则创建）
             this.overlayCanvas = document.getElementById('overlayCanvas');
@@ -295,9 +301,74 @@
             this.updateSkipButtonState();
         }
 
-        stopTestAndSending() {
+        updateStartButtonState() {
+            if (!this.elements.startTestBtn) return;
+            if (this.testMode) {
+                this.elements.startTestBtn.innerHTML = '<i class="fas fa-stop" aria-hidden="true"></i> 停止测试';
+                this.elements.startTestBtn.classList.remove('btn-primary');
+                this.elements.startTestBtn.classList.add('btn-danger');
+            } else {
+                this.elements.startTestBtn.innerHTML = '<i class="fas fa-play" aria-hidden="true"></i> 开始测试';
+                this.elements.startTestBtn.classList.remove('btn-danger');
+                this.elements.startTestBtn.classList.add('btn-primary');
+            }
+        }
+
+        openVideoFullscreen() {
+            const enabled = !document.body.classList.contains('video-overlay-active');
+            this.setVideoOverlayMode(enabled);
+        }
+
+        showResultModal(title, lines) {
+            if (!this.elements.resultModal) return;
+            this.elements.resultModalTitle.textContent = title;
+            this.elements.resultModalBody.textContent = Array.isArray(lines) ? lines.join('\n') : String(lines || '');
+            this.elements.resultModal.classList.add('show');
+        }
+
+        hideResultModal() {
+            if (!this.elements.resultModal) return;
+            this.elements.resultModal.classList.remove('show');
+        }
+
+        setVideoOverlayMode(enabled) {
+            document.body.classList.toggle('video-overlay-active', enabled);
+            if (this.elements.fullscreenVideoBtn) {
+                this.elements.fullscreenVideoBtn.innerHTML = enabled
+                    ? '<i class="fas fa-compress" aria-hidden="true"></i> 退出全屏'
+                    : '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
+            }
+        }
+
+        async ensureCameraReady() {
+            if (!this.cameraStream) {
+                await this.toggleCamera();
+            }
+            if (!this.cameraStream) {
+                return false;
+            }
+            if (this.elements.cameraFeed.videoWidth) {
+                return true;
+            }
+            await new Promise((resolve) => {
+                this.elements.cameraFeed.addEventListener('loadedmetadata', resolve, { once: true });
+            });
+            return !!this.elements.cameraFeed.videoWidth;
+        }
+
+        showErrorModal(message) {
+            this.showResultModal('提示', message);
+        }
+
+        stopTestAndSending(showSummary = false) {
+            const summary = {
+                correct: this.stats.correct,
+                wrong: this.stats.wrong,
+                total: this.stats.correct + this.stats.wrong,
+                avgTime: this.testResults.filter(r => r && r.correct).reduce((acc, r) => acc + r.time, 0) / (this.stats.correct || 1)
+            };
+
             this.sendingEnabled = false;
-            // ✅ 修改：统一清理所有 requestAnimationFrame
             if (this.animationId) {
                 cancelAnimationFrame(this.animationId);
                 this.animationId = null;
@@ -319,18 +390,30 @@
             if (this.elements.trainLayout) {
                 this.elements.trainLayout.classList.remove('test-mode');
             }
-            if (this.elements.videoContainer) {
-                this.elements.videoContainer.classList.remove('video-expanded');
-            }
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
+            this.setVideoOverlayMode(false);
+            this.updateStartButtonState();
+
+            const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+            if (fullscreenElement) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
             }
             this.updateSkipButtonState();
+
+            if (showSummary) {
+                this.showResultModal('测试完成', [
+                    `正确：${summary.correct}`,
+                    `错误：${summary.wrong}`,
+                    `平均正确用时：${summary.avgTime.toFixed(2)} 秒`
+                ]);
+            }
         }
+
 
         goToTestIndex(index) {
             if (!this.testList.length || index < 0 || index >= this.testList.length) return;
@@ -360,11 +443,7 @@
 
         moveToNextTest() {
             if (this.currentTestIndex + 1 >= this.testList.length) {
-                this.stopTestAndSending();
-                this.testMode = false;
-                const total = this.stats.correct + this.stats.wrong;
-                const avgTime = this.testResults.filter(r => r && r.correct).reduce((acc, r) => acc + r.time, 0) / (this.stats.correct || 1);
-                alert(`测试完成！\n正确: ${this.stats.correct}, 错误: ${this.stats.wrong}\n平均正确用时: ${avgTime.toFixed(2)} 秒`);
+                this.stopTestAndSending(true);
                 this.elements.progressDisplay.textContent = `${this.testList.length}/${this.testList.length}`;
                 this.elements.currentTimeDisplay.textContent = '0.0 s';
                 this.updateSkipButtonState();
@@ -711,6 +790,14 @@
 
         async toggleCamera() {
             if (this.cameraStream) {
+                const wasTesting = this.testMode;
+                const stopSummary = wasTesting ? {
+                    completed: this.currentTestIndex,
+                    total: this.testList.length,
+                    correct: this.stats.correct,
+                    wrong: this.stats.wrong
+                } : null;
+                this.stopTestAndSending(false);
                 this.sendingEnabled = false;
                 // ✅ 修改：统一清理动画帧
                 if (this.animationId) {
@@ -743,6 +830,14 @@
                 this.filters = [];
                 this.latestLocalLandmarks = null;
                 this.cachedDrawingData = null;
+                if (wasTesting && stopSummary) {
+                    this.showResultModal('测试已结束', [
+                        '摄像头已关闭，本次测试已结束。',
+                        `已完成进度：${stopSummary.completed}/${stopSummary.total}`,
+                        `正确：${stopSummary.correct}`,
+                        `错误：${stopSummary.wrong}`
+                    ]);
+                }
             } else {
                 try {
                     if (typeof Hands === 'undefined') {
@@ -828,30 +923,34 @@
                         console.log('使用降级图像发送模式');
                     }
                 } catch (err) {
-                    alert('无法访问摄像头：' + err.message);
+                    this.showErrorModal('无法访问摄像头：' + err.message);
                 }
             }
         }
 
-        startTest() {
+        async startTest() {
             if (this.testList.length === 0) {
-                alert('测试列表为空');
+                this.showErrorModal('测试列表为空');
                 return;
             }
-            if (!this.cameraStream) {
-                alert('请先开启摄像头');
+
+            const cameraReady = await this.ensureCameraReady();
+            if (!cameraReady) {
+                this.showErrorModal('无法开启摄像头，请检查权限后重试');
                 return;
             }
             if (!this.elements.cameraFeed.videoWidth) {
-                alert('摄像头未就绪，请稍后再试');
+                this.showErrorModal('摄像头未就绪，请稍后再试');
                 return;
             }
 
             if (this.animationId) cancelAnimationFrame(this.animationId);
             if (this.timerInterval) clearInterval(this.timerInterval);
 
+            this.hideResultModal();
             this.sendingEnabled = true;
             this.testMode = true;
+            this.updateStartButtonState();
             this.stats = { correct: 0, wrong: 0 };
             this.updateStats();
             this.testResults = new Array(this.testList.length).fill(null);
@@ -877,19 +976,6 @@
                 this.elements.trainLayout.classList.add('test-mode');
             }
             this.renderTestList();
-
-            if (this.elements.videoContainer) {
-                this.elements.videoContainer.classList.add('video-expanded');
-            }
-
-            const layout = this.elements.trainLayout;
-            if (layout.requestFullscreen) {
-                layout.requestFullscreen();
-            } else if (layout.webkitRequestFullscreen) {
-                layout.webkitRequestFullscreen();
-            } else if (layout.msRequestFullscreen) {
-                layout.msRequestFullscreen();
-            }
         }
 
         sendFrame = () => {
@@ -965,7 +1051,34 @@
             });
 
             this.elements.toggleCamera.addEventListener('click', () => this.toggleCamera());
-            this.elements.startTestBtn.addEventListener('click', () => this.startTest());
+            this.elements.fullscreenVideoBtn.addEventListener('click', () => this.openVideoFullscreen());
+            this.elements.startTestBtn.addEventListener('click', () => {
+                if (this.testMode) {
+                    this.stopTestAndSending(false);
+                    this.showResultModal('测试已停止', [
+                        `已完成进度：${this.currentTestIndex}/${this.testList.length}`,
+                        `正确：${this.stats.correct}`,
+                        `错误：${this.stats.wrong}`
+                    ]);
+                    this.elements.currentTimeDisplay.textContent = '0.0 s';
+                    return;
+                }
+                this.startTest().catch(err => {
+                    console.error('开始测试失败:', err);
+                    this.showErrorModal('开始测试失败，请稍后重试');
+                });
+            });
+            this.elements.resultModalConfirmBtn.addEventListener('click', () => this.hideResultModal());
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement) {
+                    this.setVideoOverlayMode(false);
+                }
+            });
+            document.addEventListener('webkitfullscreenchange', () => {
+                if (!document.webkitFullscreenElement) {
+                    this.setVideoOverlayMode(false);
+                }
+            });
             this.elements.skipBtn.addEventListener('click', () => {
                 if (this.elements.skipBtn.disabled) {
                     return;

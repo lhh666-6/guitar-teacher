@@ -190,9 +190,18 @@
             justify-content: space-between;
             align-items: center;
             margin-top: 8px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .camera-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         /* 按钮样式统一 */
-        #toggleCamera {
+        #toggleCamera,
+        #fullscreenVideoBtn {
             background: #8b5a2b;
             color: white;
             border: none;
@@ -205,8 +214,12 @@
             align-items: center;
             gap: 8px;
         }
-        #toggleCamera:hover {
+        #toggleCamera:hover,
+        #fullscreenVideoBtn:hover {
             background: #a06b3a;
+        }
+        #fullscreenVideoBtn {
+            padding: 8px 16px;
         }
         .stat-panel {
             background: rgba(0,0,0,0.3);
@@ -559,73 +572,236 @@
             color: #ffd966;
         }
 
-        @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
-        @keyframes slideUp { from {opacity: 0; transform: translateY(30px);} to {opacity: 1; transform: translateY(0);} }
+        .result-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(18, 10, 4, 0.58);
+            backdrop-filter: blur(10px);
+            z-index: 11000;
+            padding: 24px;
+        }
+        .result-modal.show {
+            display: flex;
+        }
+        .result-modal-card {
+            width: min(440px, 100%);
+            background: linear-gradient(180deg, rgba(94, 63, 35, 0.96), rgba(62, 40, 21, 0.96));
+            border: 1px solid rgba(255, 215, 140, 0.28);
+            border-radius: 22px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+            padding: 24px 24px 20px;
+            color: #f6e7d0;
+            text-align: center;
+        }
+        .result-modal-title {
+            color: #ffd966;
+            font-size: 1.22rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            margin-bottom: 12px;
+        }
+        .result-modal-body {
+            font-size: 0.98rem;
+            line-height: 1.8;
+            color: #f8ecd8;
+            white-space: pre-line;
+            margin-bottom: 18px;
+        }
+        .result-modal-actions {
+            display: flex;
+            justify-content: center;
+        }
+        .result-modal-actions .btn-custom {
+            min-width: 132px;
+            margin: 0;
+        }
 
-        /* ========== 测试模式布局调整 ========== */
+        body.video-overlay-active {
+            overflow: hidden;
+        }
+        body.video-overlay-active .train-layout {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            height: 100vh;
+            width: 100vw;
+            display: block;
+        }
+        body.video-overlay-active .left-panel {
+            position: absolute;
+            inset: 0;
+            padding: 0;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            backdrop-filter: none;
+        }
+        body.video-overlay-active .left-panel .stat-panel,
+        body.video-overlay-active #chordDetailFooter,
+        body.video-overlay-active .header,
+        body.video-overlay-active #particles {
+            display: none !important;
+        }
+        body.video-overlay-active .camera-container {
+            position: absolute;
+            inset: 0;
+            height: 100%;
+            padding: 0;
+            background: #000;
+            box-shadow: none;
+            border-radius: 0;
+            overflow: hidden;
+        }
+        body.video-overlay-active #cameraFeed {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            border-radius: 0;
+            background: #000;
+        }
+        body.video-overlay-active #overlayCanvas {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 0;
+            background: transparent !important;
+        }
+        body.video-overlay-active .center-panel,
+        body.video-overlay-active .right-panel {
+            position: absolute;
+            right: 24px;
+            z-index: 10002;
+            background: rgba(49, 31, 16, 0.42);
+            border: 1px solid rgba(255, 215, 140, 0.18);
+            box-shadow: 0 18px 50px rgba(0,0,0,0.28);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            overflow: hidden;
+        }
+        body.video-overlay-active .center-panel {
+            top: 24px;
+            width: min(430px, 33vw);
+            min-width: 360px;
+            padding: 16px 16px 14px;
+            gap: 12px;
+        }
+        body.video-overlay-active .right-panel {
+            top: 392px;
+            width: min(300px, 23vw);
+            min-width: 260px;
+            max-height: calc(100vh - 416px);
+            padding: 14px;
+            gap: 12px;
+            overflow-y: auto;
+        }
+        body.video-overlay-active .center-panel-header {
+            gap: 10px;
+        }
+        body.video-overlay-active .chord-heading {
+            justify-content: flex-start;
+            margin-left: 0;
+            gap: 10px;
+        }
+        body.video-overlay-active .chord-title {
+            font-size: 1.4rem;
+        }
+        body.video-overlay-active .chord-subtitle {
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        body.video-overlay-active .fretboard-mini {
+            height: 250px;
+            padding: 24px 8px 28px;
+            margin-top: 0;
+            transform: perspective(800px) rotateY(-1.5deg);
+        }
+        body.video-overlay-active .chord-select {
+            padding: 12px 14px;
+        }
+        body.video-overlay-active .test-progress-area {
+            padding: 12px 14px;
+            margin-top: 0;
+        }
+        body.video-overlay-active .test-list {
+            max-height: 220px;
+        }
+        body.video-overlay-active .camera-status {
+            position: absolute;
+            left: 24px;
+            bottom: 24px;
+            z-index: 10003;
+            background: rgba(12, 8, 5, 0.4);
+            border: 1px solid rgba(255, 215, 140, 0.14);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 10px 14px;
+            border-radius: 18px;
+        }
+        @media (max-width: 1200px) {
+            body.video-overlay-active .center-panel {
+                width: min(420px, 38vw);
+                min-width: 320px;
+            }
+            body.video-overlay-active .right-panel {
+                width: min(280px, 26vw);
+                min-width: 240px;
+                top: 378px;
+                max-height: calc(100vh - 402px);
+            }
+        }
+
+
+        .train-layout.test-mode {
+            gap: 16px;
+            height: 72vh;
+        }
+
         .train-layout.test-mode .left-panel {
-            flex: 5;  /* 左侧放大，约占50% */
+            flex: 3.45;
+            gap: 14px;
         }
 
         .train-layout.test-mode .center-panel {
-            flex: 3;  /* 中间适当缩小，约占30% */
+            flex: 3.45;
+            gap: 14px;
         }
 
         .train-layout.test-mode .right-panel {
-            flex: 2;  /* 右侧适当缩小，约占20% */
+            flex: 2.1;
+            gap: 14px;
         }
 
-        /* 让视频容器占满左侧面板，并采用 flex 列布局 */
         .train-layout.test-mode .camera-container {
-            height: 100%;
+            flex: 1;
+            min-height: 0;
             display: flex;
             flex-direction: column;
+            padding: 10px;
         }
 
-        /* 视频元素自适应，填满剩余空间 */
         .train-layout.test-mode #cameraFeed {
             width: 100%;
-            flex: 1;                /* 占据除状态栏外的全部高度 */
-            object-fit: cover;      /* 覆盖容器，可能裁剪；若需完整显示可改用 contain */
+            flex: 1;
+            min-height: 0;
+            object-fit: cover;
             background: #000;
         }
 
-        /* ========== 视频放大模式（覆盖指板） ========== */
-        .camera-container.video-expanded {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            z-index: 9999 !important;
-            background-color: #000 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 0 !important;
-            margin: 0 !important;
+        .train-layout.test-mode .fretboard-mini {
+            height: 330px;
+            padding: 28px 12px 30px;
+            transform: perspective(800px) rotateY(-2deg);
         }
 
-        .camera-container.video-expanded video,
-        .camera-container.video-expanded canvas {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain !important;
+        .train-layout.test-mode .stat-panel,
+        .train-layout.test-mode .test-progress-area,
+        .train-layout.test-mode .chord-select {
+            padding-top: 14px;
+            padding-bottom: 14px;
         }
 
-        .camera-container.video-expanded .camera-status {
-            position: absolute !important;
-            bottom: 20px !important;
-            left: 20px !important;
-            z-index: 10000 !important;
-            background: rgba(0,0,0,0.6) !important;
-            padding: 8px 15px !important;
-            border-radius: 30px !important;
-            color: white !important;
-            display: flex !important;
-            gap: 10px !important;
-            align-items: center !important;
-        }
 
         @media (max-width: 1100px) {
             .train-layout {
@@ -664,7 +840,10 @@
                 <video id="cameraFeed" autoplay playsinline></video>
                 <div class="camera-status">
                     <span id="cameraStatus"><i class="fas fa-camera" aria-hidden="true"></i> 摄像头已关闭</span>
-                    <button id="toggleCamera"><i class="fas fa-video" aria-hidden="true"></i> 开启摄像头</button>
+                    <div class="camera-actions">
+                        <button id="fullscreenVideoBtn"><i class="fas fa-expand" aria-hidden="true"></i> 全屏</button>
+                        <button id="toggleCamera"><i class="fas fa-video" aria-hidden="true"></i> 开启摄像头</button>
+                    </div>
                 </div>
             </div>
             <div class="stat-panel">
@@ -765,6 +944,16 @@
     <div class="chord-detail-footer" id="chordDetailFooter">
         <div class="detail-title"> 当前和弦详细介绍</div>
         <div class="detail-content" id="chordDetailContent">请选择一个和弦查看详细介绍。</div>
+    </div>
+
+    <div class="result-modal" id="resultModal">
+        <div class="result-modal-card">
+            <div class="result-modal-title" id="resultModalTitle">测试提示</div>
+            <div class="result-modal-body" id="resultModalBody"></div>
+            <div class="result-modal-actions">
+                <button class="btn-custom btn-primary" id="resultModalConfirmBtn"><i class="fas fa-check" aria-hidden="true"></i> 我知道了</button>
+            </div>
+        </div>
     </div>
 
     <!-- Socket.IO 及 MediaPipe 依赖 (不变) -->
