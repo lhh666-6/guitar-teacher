@@ -515,12 +515,12 @@
                 const colIndex = fretToCol[p.fret];
                 const idx = this.backendToDisplayIndex(p.string);
                 const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
-                const y = baseY + idx * stringSpacing;
+                const y = baseY + idx * stringSpacing - 6;
 
                 const dot = document.createElement('div');
                 dot.className = `dot ${p.type === 'standard' ? 'standard' : (p.correct ? 'user-correct' : 'user-wrong')}`;
-                dot.style.left = (x - DOT_RADIUS) + 'px';
-                dot.style.top = (y - DOT_RADIUS) + 'px';
+                dot.style.left = x + 'px';
+                dot.style.top = y + 'px';
                 dot.textContent = p.fret;
                 container.appendChild(dot);
             });
