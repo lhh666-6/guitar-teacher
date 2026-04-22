@@ -331,6 +331,21 @@
             this.elements.resultModal.classList.remove('show');
         }
 
+        scheduleFretboardRerender() {
+            if (!this.currentChord) return;
+
+            const rerender = () => {
+                if (!this.currentChord) return;
+                this.renderStandardDots(this.currentChord);
+            };
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(rerender);
+            });
+
+            setTimeout(rerender, 180);
+        }
+
         setVideoOverlayMode(enabled) {
             document.body.classList.toggle('video-overlay-active', enabled);
             if (this.elements.fullscreenVideoBtn) {
@@ -338,6 +353,7 @@
                     ? '<i class="fas fa-compress" aria-hidden="true"></i> 退出全屏'
                     : '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
             }
+            this.scheduleFretboardRerender();
         }
 
         async ensureCameraReady() {
@@ -376,9 +392,6 @@
             if (this.animationFrameId) {
                 cancelAnimationFrame(this.animationFrameId);
                 this.animationFrameId = null;
-            }
-            if (this.camera) {
-                this.camera.stop();
             }
             if (this.timerInterval) {
                 clearInterval(this.timerInterval);
@@ -928,6 +941,35 @@
             }
         }
 
+        async restartCameraProcessingIfNeeded() {
+            if (!this.cameraStream || !this.useMediaPipe || !this.hands || !this.elements.cameraFeed) {
+                return;
+            }
+
+            if (this.camera) {
+                this.camera.stop();
+                this.camera = null;
+            }
+
+            this.camera = new Camera(this.elements.cameraFeed, {
+                onFrame: async () => {
+                    await this.hands.send({ image: this.elements.cameraFeed });
+                },
+                width: 1920,
+                height: 1080
+            });
+            this.camera.start();
+
+            if (this.animationFrameId) {
+                cancelAnimationFrame(this.animationFrameId);
+            }
+            const animate = () => {
+                this.drawAll();
+                this.animationFrameId = requestAnimationFrame(animate);
+            };
+            this.animationFrameId = requestAnimationFrame(animate);
+        }
+
         async startTest() {
             if (this.testList.length === 0) {
                 this.showErrorModal('测试列表为空');
@@ -946,6 +988,8 @@
 
             if (this.animationId) cancelAnimationFrame(this.animationId);
             if (this.timerInterval) clearInterval(this.timerInterval);
+
+            await this.restartCameraProcessingIfNeeded();
 
             this.hideResultModal();
             this.sendingEnabled = true;
@@ -1104,6 +1148,7 @@
             if (this.timerInterval) clearInterval(this.timerInterval);
             if (this.camera) {
                 this.camera.stop();
+                this.camera = null;
             }
             if (this.cameraStream) {
                 this.cameraStream.getTracks().forEach(t => t.stop());
