@@ -4,6 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>智能吉他教学系统 · 音乐家风格 · 动效优化版</title>
+    <script>
+        (function() {
+            try {
+                const introVersion = 'guitar-notes-20260420-1';
+                const introPlayedVersion = sessionStorage.getItem('introPlayedVersion');
+                if (introPlayedVersion !== introVersion) {
+                    sessionStorage.removeItem('introPlayed');
+                    sessionStorage.setItem('introPlayedVersion', introVersion);
+                }
+                if (sessionStorage.getItem('introPlayed')) {
+                    document.documentElement.classList.add('skip-intro');
+                }
+            } catch (error) {
+                console.warn('读取开场动画状态失败', error);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <!-- ✅ 国内镜像：GSAP (BootCDN) -->
     <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -380,6 +397,15 @@
             transition: opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
+        html.skip-intro .intro-overlay {
+            display: none;
+        }
+
+        html.skip-intro .main-content {
+            opacity: 1;
+            visibility: visible;
+        }
+
         .intro-overlay::before {
             content: '';
             position: absolute;
@@ -641,11 +667,6 @@
             }
 
             // 普通主页：检查是否已经播放过开场动画（只播放一次）
-            const introPlayedVersion = sessionStorage.getItem('introPlayedVersion');
-            if (introPlayedVersion !== introVersion) {
-                sessionStorage.removeItem('introPlayed');
-                sessionStorage.setItem('introPlayedVersion', introVersion);
-            }
             const hasPlayed = sessionStorage.getItem('introPlayed');
             if (hasPlayed) {
                 console.log('⏩ 开场动画已播放过，跳过');
