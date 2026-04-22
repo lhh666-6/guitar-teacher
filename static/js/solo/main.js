@@ -41,16 +41,15 @@
             // MediaPipe 相关
             this.hands = null;
             this.camera = null;
-            this.filters = [];               // 21个点的滤波器
+            this.filters = [];
             this.lastThumbnailTime = 0;
             this.sendingEnabled = false;
-            this.useMediaPipe = true;         // 是否尝试使用 MediaPipe
+            this.useMediaPipe = true;
 
             // 音频预留
             this.audioContext = null;
             this.audioEnabled = false;
 
-            // 关键点发送节流
             this.lastLandmarkSendTime = 0;
 
             // 用于实时绘制
@@ -63,16 +62,13 @@
            
             this.fingeringDetector = new FingeringDetector();
 
-            // 初始化粒子背景
             this.createParticles();
-
-            // 加载和弦数据
             this.loadChords();
-
-            // 绑定事件
             this.bindEvents();
 
-            // 窗口卸载清理
+            // 全局挂载便于调试
+            window.guitarApp = this;
+
             window.addEventListener('beforeunload', () => this.cleanup());
         }
 
@@ -105,7 +101,6 @@
                 difficultyBadge: document.getElementById('difficultyBadge')
             };
 
-            // 叠加画布（若不存在则创建）
             this.overlayCanvas = document.getElementById('overlayCanvas');
             if (!this.overlayCanvas) {
                 this.overlayCanvas = document.createElement('canvas');
@@ -189,11 +184,9 @@
                 select.dispatchEvent(new Event('change'));
             }
 
-            // 从 localStorage 加载驾驶舱页面添加的待训练和弦
             this.loadPendingChordsFromLocalStorage();
         }
 
-        // 从 localStorage 加载待训练和弦
         loadPendingChordsFromLocalStorage() {
             const stored = localStorage.getItem('pendingSoloChords');
             if (!stored) return;
@@ -215,13 +208,11 @@
                     this.updateProgress();
                     console.log(`[Solo] 已从驾驶舱加载 ${newIds.length} 个和弦到测试列表`);
                 }
-                // 可选：加载后不清除，保留用于驾驶舱状态同步
             } catch(e) {
                 console.warn('解析待训练和弦失败', e);
             }
         }
 
-        // 同步当前 testList 到 localStorage（供驾驶舱读取）
         syncTestListToLocalStorage() {
             const chordNames = this.testList.map(id => {
                 const chord = this.chords.find(c => c.id === id);
@@ -288,6 +279,7 @@
                 this.elements.progressDisplay.textContent = `0/0`;
             }
         }
+
         stopTestAndSending() {
             this.sendingEnabled = false;
             if (this.animationId) {
@@ -320,7 +312,6 @@
             } else if (document.msExitFullscreen) {
                 document.msExitFullscreen();
             }
-            // 🔥 新增：同步摄像头按钮状态
             this.elements.toggleCamera.textContent = '开启';
             this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
         }
@@ -550,7 +541,10 @@
             ctx.clearRect(0, 0, w, h);
 
             if (this.cachedDrawingData) {
+                console.log('🖌️ 绘制背景，弦线:', this.cachedDrawingData.strings.length);
                 drawOverlay(ctx, w, h, this.cachedDrawingData);
+            } else {
+                console.warn('⚠️ cachedDrawingData 为空，无法绘制弦线和品丝');
             }
 
             if (this.latestLocalLandmarks) {
@@ -624,7 +618,7 @@
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const screenMidX = 0.5;
                 let candidateIndex = -1;
-                let candidateAvgX = -Infinity; // 改为寻找最大值（对应原始数据中的左手）
+                let candidateAvgX = -Infinity;
 
                 for (let i = 0; i < results.multiHandLandmarks.length; i++) {
                     const landmarks = results.multiHandLandmarks[i];
@@ -634,7 +628,6 @@
                         sumX += landmarks[j].x;
                     }
                     const avgX = sumX / landmarks.length;
-                    // 只考虑右半屏的手，并选择 x 坐标最大的（视觉上的左手）
                     if (avgX > screenMidX && avgX > candidateAvgX) {
                         candidateAvgX = avgX;
                         candidateIndex = i;
@@ -645,12 +638,10 @@
 
             if (targetHandIndex === -1) {
                 this.latestLocalLandmarks = null;
-                // 如果没有检测到手，清空防抖计数
                 if (this._handSwitchCounter) this._handSwitchCounter = 0;
                 return;
             }
 
-            // 简单防抖：新手需连续出现 2 帧才切换
             if (this._lastTargetHandIndex !== undefined && this._lastTargetHandIndex !== targetHandIndex) {
                 this._handSwitchCounter = (this._handSwitchCounter || 0) + 1;
                 if (this._handSwitchCounter < 2) {
@@ -733,7 +724,6 @@
         async toggleCamera() {
             if (this.cameraStream) {
                 this.sendingEnabled = false;
-                // ✅ 修改：统一清理动画帧
                 if (this.animationId) {
                     cancelAnimationFrame(this.animationId);
                     this.animationId = null;
@@ -794,19 +784,26 @@
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
 
-                    // ✅ 修改：Socket.IO 配置支持自签名证书，且禁止自动重连（由按钮手动控制）
                     this.socket = io({
                         path: '/socket.io',
                         transports: ['websocket', 'polling'],
                         secure: true,
-                        rejectUnauthorized: false,      // 允许自签名证书（仅测试环境，生产环境请移除）
-                        reconnection: false,            // 禁止自动重连，完全由按钮控制
+                        rejectUnauthorized: false,
+                        reconnection: false,
                         timeout: 20000
                     });
+
                     this.socket.on('fretboard_params', (params) => {
-                        console.log('收到指板参数', params);
+                        console.log('📐 收到指板参数', params);
                         this.fingeringDetector.setParams(params);
+                        
+                        const drawingData = this._buildDrawingDataFromParams(params);
+                        this.cachedDrawingData = drawingData;
+                        console.log('🎨 已生成 drawing_data，弦线数:', drawingData.strings.length, '品丝数:', drawingData.frets.length);
+                        
+                        this.drawAll();
                     });
+
                     this.socket.on('connect', () => {
                         console.log('✅ WebSocket 连接成功，ID:', this.socket.id);
                     });
@@ -855,6 +852,42 @@
                     alert('无法访问摄像头：' + err.message);
                 }
             }
+        }
+
+        _buildDrawingDataFromParams(params) {
+            const video = this.elements.cameraFeed;
+            const videoW = video.videoWidth || 1920;
+            const videoH = video.videoHeight || 1080;
+            const thumbW = 960;  // 与后端 THUMBNAIL_WIDTH 一致
+            const scale = videoW / thumbW;
+            // Y轴缩放因子（若画面比例与缩略图比例一致，可直接用 scale；否则用单独比例）
+            const scaleY = scale;  // 通常等比例即可
+
+            console.log(`📐 绘制缩放: scale=${scale.toFixed(3)}, 视频尺寸: ${videoW}x${videoH}`);
+
+            // 转换弦线坐标
+            const strings = params.strings.map(s => ({
+                string: s.string,
+                start: [s.nut[0] * scale, s.nut[1] * scaleY],
+                end: [s.bridge[0] * scale, s.bridge[1] * scaleY]
+            }));
+
+            // 转换品丝坐标
+            const frets = params.frets.map(f => ({
+                fret: f.fret,
+                start: [f.p1[0] * scale, f.p1[1] * scaleY],
+                end: [f.p2[0] * scale, f.p2[1] * scaleY]
+            }));
+
+            return {
+                image_size: [videoW, videoH],
+                strings: strings,
+                frets: frets,
+                hand_landmarks: [],
+                press_points: [],
+                nut_center: params.nut_center ? [params.nut_center[0] * scale, params.nut_center[1] * scaleY] : null,
+                bridge_center: params.bridge_center ? [params.bridge_center[0] * scale, params.bridge_center[1] * scaleY] : null
+            };
         }
 
         startTest() {
@@ -960,7 +993,6 @@
                 }
             });
 
-            // 添加和弦：同步更新 localStorage
             this.elements.addToTestBtn.addEventListener('click', () => {
                 if (this.currentChord && !this.testList.includes(this.currentChord.id)) {
                     this.testList.push(this.currentChord.id);
@@ -971,7 +1003,6 @@
                 }
             });
 
-            // 清空列表：同步清空 localStorage
             this.elements.clearTestBtn.addEventListener('click', () => {
                 this.testList = [];
                 this.testResults = [];
@@ -1028,6 +1059,5 @@
         }
     }
 
-    // 启动应用
     new GuitarTrainApp();
 })();

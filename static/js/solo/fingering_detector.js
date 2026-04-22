@@ -80,43 +80,66 @@ class FingeringDetector {
     /**
      * 主检测入口：接收 MediaPipe 归一化 landmarks，返回 { positions, barre }
      */
-    detect(landmarks, imgWidth, imgHeight) {
-        if (!this.ready || !landmarks || landmarks.length < 21) {
-            return { positions: [], barre: null };
-        }
-
-        // 转换为像素坐标
-        const pxLandmarks = landmarks.map(lm => [
-            lm.x * imgWidth,
-            lm.y * imgHeight
-        ]);
-
-        // 横按检测
-        const barre = this._detectBarre(pxLandmarks);
-
-        // 手指按弦检测
-        const positions = [];
-        for (const finger of this.FINGER_DEFS) {
-            // 如果食指已判定为横按，则跳过单点检测
-            if (finger.name === '食指' && barre) {
-                continue;
+        detect(landmarks, imgWidth, imgHeight) {
+            if (!this.ready || !landmarks || landmarks.length < 21) {
+                return { positions: [], barre: null };
             }
-            const result = this._detectFingerPress(pxLandmarks, finger);
-            if (result) {
-                positions.push(result);
+
+            const thumbW = 960;
+            const scale = imgWidth / thumbW;
+            // 如果画面比例与缩略图不一致，可对 Y 轴单独缩放（通常等比例即可）
+            const scaleY = scale;
+
+            // 将手部归一化坐标转为视频像素坐标
+            const pxLandmarks = landmarks.map(lm => [
+                lm.x * imgWidth,
+                lm.y * imgHeight
+            ]);
+
+            // 动态缩放弦线向量（供距离计算使用）
+            const scaledStringVectors = this.params.strings.map(s => {
+                const nut = [s.nut[0] * scale, s.nut[1] * scaleY];
+                const bridge = [s.bridge[0] * scale, s.bridge[1] * scaleY];
+                const dx = bridge[0] - nut[0];
+                const dy = bridge[1] - nut[1];
+                const len = Math.hypot(dx, dy);
+                return { nut, bridge, dx, dy, len };
+            });
+
+            // 动态缩放品丝线段
+            const scaledFretSegments = this.params.frets.map(f => ({
+                fret: f.fret,
+                p1: [f.p1[0] * scale, f.p1[1] * scaleY],
+                p2: [f.p2[0] * scale, f.p2[1] * scaleY]
+            }));
+
+            // 临时替换实例变量，使内部方法 _detectBarre 和 _detectFingerPress 使用缩放后的数据
+            const origStringVectors = this.stringVectors;
+            const origFretSegments = this.fretSegments;
+            const origVLen = this.vLen;
+            const origNutCenter = this.nutCenter;
+
+            this.stringVectors = scaledStringVectors;
+            this.fretSegments = scaledFretSegments;
+            this.vLen = this.params.v_len * scale;
+            this.nutCenter = this.params.nut_center ? [this.params.nut_center[0] * scale, this.params.nut_center[1] * scaleY] : null;
+
+            const barre = this._detectBarre(pxLandmarks);
+            const positions = [];
+            for (const finger of this.FINGER_DEFS) {
+                if (finger.name === '食指' && barre) continue;
+                const result = this._detectFingerPress(pxLandmarks, finger);
+                if (result) positions.push(result);
             }
-        }
 
-        // 如果有横按，添加到结果
-        if (barre) {
-            // 横按本身不加入 positions（与后端保持一致）
-        }
+            // 恢复原始值
+            this.stringVectors = origStringVectors;
+            this.fretSegments = origFretSegments;
+            this.vLen = origVLen;
+            this.nutCenter = origNutCenter;
 
-        return {
-            positions: positions,
-            barre: barre
-        };
-    }
+            return { positions, barre };
+        }
 
     _detectBarre(landmarks) {
         const indexPoints = [5, 6, 7, 8].map(i => landmarks[i]);
