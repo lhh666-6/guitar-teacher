@@ -57,7 +57,24 @@ function validateFusion(visualResult, audioResult, targetChord, options = { mode
     }
     return visualMatch; // 默认纯视觉
 }
+/**
+ * 综合判定（视觉 + 音频）
+ * @param {boolean} visualOk - 视觉是否匹配（已稳定）
+ * @param {Object|null} audioResult - { chord, confidence } 或 null（超时代表无有效音频）
+ * @param {Object} options - { threshold: 0.55 }
+ * @returns {string} 'correct' | 'unstable' | 'wrong'
+ */
+function evaluateChord(visualOk, audioResult, options = { threshold: 0.55 }) {
+    // 视觉错误 → 直接判错（不论音频）
+    if (!visualOk) return 'wrong';
+    // 视觉正确，但无音频（超时） → 不稳
+    if (!audioResult) return 'unstable';
+    // 视觉正确，有音频
+    if (audioResult.confidence >= options.threshold) return 'correct';
+    return 'unstable';
+}
 
+window.evaluateChord = evaluateChord;
 // 将函数暴露到全局（适用于传统 script 引入）
 window.validateVisual = validateVisual;
 window.validateFusion = validateFusion;

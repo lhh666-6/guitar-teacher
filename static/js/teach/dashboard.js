@@ -3,7 +3,6 @@ let modalChartInstance = null;
 let currentRecommendations = [];
 let addedChords = new Set();
 
-// 等待文案库
 const WAITING_MESSAGES = [
     '正在分析练习数据...',
     '请教 AI 教练中...',
@@ -14,7 +13,6 @@ const WAITING_MESSAGES = [
     '为您量身定制指导...'
 ];
 
-// DOM 元素
 const generateBtn = document.getElementById('generate-advice-btn');
 const adviceTextEl = document.getElementById('adviceTextDisplay');
 const loadingContainer = document.getElementById('adviceLoadingContainer');
@@ -24,7 +22,6 @@ let loadingInterval = null;
 let loadingStartTime = null;
 let isLoading = false;
 
-// 显示加载动画
 function showLoading() {
     if (isLoading) return;
     isLoading = true;
@@ -32,7 +29,6 @@ function showLoading() {
     loadingContainer.classList.remove('hidden');
     generateBtn.disabled = true;
     generateBtn.textContent = '生成中...';
-
     let msgIndex = 0;
     const updateBubble = () => {
         bubbleMsgEl.style.opacity = '0';
@@ -46,7 +42,6 @@ function showLoading() {
     loadingInterval = setInterval(updateBubble, 2000);
 }
 
-// 隐藏加载动画（确保至少显示 1.5 秒）
 function hideLoading(minTime = 1500) {
     return new Promise(resolve => {
         const hide = () => {
@@ -61,17 +56,13 @@ function hideLoading(minTime = 1500) {
             isLoading = false;
             resolve();
         };
-
         if (!loadingStartTime) {
             hide();
             return;
         }
         const elapsed = Date.now() - loadingStartTime;
-        if (elapsed >= minTime) {
-            hide();
-        } else {
-            setTimeout(hide, minTime - elapsed);
-        }
+        if (elapsed >= minTime) hide();
+        else setTimeout(hide, minTime - elapsed);
         loadingStartTime = null;
     });
 }
@@ -81,13 +72,29 @@ function startLoading() {
     showLoading();
 }
 
+// 渲染新增的三个卡片
+function renderExtraStats(data) {
+    const unstableCountEl = document.getElementById('unstable-count');
+    const unstableRatioEl = document.getElementById('unstable-ratio');
+    const practiceModeEl = document.getElementById('practice-mode');
+
+    if (unstableCountEl) {
+        unstableCountEl.textContent = data.unstable_count ?? 0;
+    }
+    if (unstableRatioEl) {
+        unstableRatioEl.textContent = (data.unstable_ratio ?? 0).toFixed(1) + '%';
+    }
+    if (practiceModeEl) {
+        const mode = data.recent_mode;
+        practiceModeEl.textContent = mode === 'quick' ? '快速模式' : (mode === 'normal' ? '普通模式' : '无记录');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-    // 首次加载数据时显示动画
     startLoading();
     await loadDashboardData();
     await hideLoading(1500);
 
-    // 生成指导按钮事件
     generateBtn.addEventListener('click', async () => {
         startLoading();
         try {
@@ -105,7 +112,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // 朗读按钮
     document.getElementById('speak-advice-btn').addEventListener('click', () => {
         const text = adviceTextEl.innerText;
         if (text && text !== '点击"生成智能指导"获取个性化建议' && window.VoiceGuide) {
@@ -113,7 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // 图表切换按钮（和弦掌握度 / 进步趋势）
+    // 图表按钮统一绑定（根据 data-chart 分发）
     document.querySelectorAll('[data-chart]').forEach(btn => {
         btn.addEventListener('click', () => {
             const type = btn.dataset.chart;
@@ -121,14 +127,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // 模态框关闭
     const modal = document.getElementById('chartModal');
     document.getElementById('closeModalBtn').addEventListener('click', closeModal);
     modal.addEventListener('click', e => {
         if (e.target === modal) closeModal();
     });
 
-    // 推荐列表刷新
     const refreshBtn = document.getElementById('refreshRecommendBtn');
     refreshBtn.addEventListener('click', async () => {
         refreshBtn.disabled = true;
@@ -138,10 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         refreshBtn.style.opacity = '1';
     });
 
-    // 初始化推荐列表
     await loadRecommendations();
-
-    // 暴露语音控制
     window.showChartModal = showChartModal;
 });
 
@@ -160,6 +161,9 @@ async function loadDashboardData() {
     tbody.innerHTML = records.map(r => `
         <tr><td>${r.time||'—'}</td><td>${r.chord||'—'}</td><td>${r.accuracy||0}%</td><td>${r.duration||0}</td></tr>
     `).join('');
+
+    // 渲染新增卡片
+    renderExtraStats(dashboardData);
 }
 
 // ========== 推荐列表 ==========
@@ -167,11 +171,9 @@ function loadAddedChords() {
     const stored = localStorage.getItem('pendingSoloChords');
     addedChords = stored ? new Set(JSON.parse(stored)) : new Set();
 }
-
 function saveAddedChords() {
     localStorage.setItem('pendingSoloChords', JSON.stringify([...addedChords]));
 }
-
 async function fetchRecommendations() {
     const res = await fetch('/api/teach/recommend_chords', {
         method: 'POST',
@@ -181,7 +183,6 @@ async function fetchRecommendations() {
     const data = await res.json();
     return data.chords || [];
 }
-
 async function loadRecommendations() {
     loadAddedChords();
     try {
@@ -196,14 +197,12 @@ async function loadRecommendations() {
     }
     renderRecommendations();
 }
-
 function renderRecommendations() {
     const container = document.getElementById('recommendList');
     if (!currentRecommendations.length) {
         container.innerHTML = '<div class="recommend-item" style="justify-content:center;">暂无推荐</div>';
         return;
     }
-
     container.innerHTML = currentRecommendations.map((item, idx) => {
         const isAdded = addedChords.has(item.name);
         return `
@@ -218,7 +217,6 @@ function renderRecommendations() {
             </div>
         `;
     }).join('');
-
     container.querySelectorAll('.add-btn:not([disabled])').forEach(btn => {
         btn.addEventListener('click', e => {
             e.stopPropagation();
@@ -232,7 +230,7 @@ function renderRecommendations() {
     });
 }
 
-// ========== 图表模态框 ==========
+// ========== 图表模态框（分发） ==========
 function showChartModal(type) {
     if (!dashboardData) return;
     const title = document.getElementById('modalTitle');
@@ -245,15 +243,21 @@ function showChartModal(type) {
     } else if (type === 'progress' && dashboardData.progress?.dates?.length) {
         title.textContent = '进步趋势';
         modalChartInstance = Charts.renderProgressInElement(box, dashboardData.progress);
+    } else if (type === 'similarity' && dashboardData.similarity_trend?.length) {
+        title.textContent = '相似度趋势';
+        modalChartInstance = renderSimilarityChart(box, dashboardData.similarity_trend);
+    } else if (type === 'stability') {
+        title.textContent = '正确/不稳统计';
+        modalChartInstance = renderStabilityChart(box);
     } else {
         box.innerHTML = '<p style="text-align:center;color:#ecd9b4;">暂无数据</p>';
+        modalChartInstance = null;
+        document.getElementById('chartModal').classList.add('active');
+        return;
     }
 
     document.getElementById('chartModal').classList.add('active');
-
-    const resizeHandler = () => {
-        if (modalChartInstance?.resize) modalChartInstance.resize();
-    };
+    const resizeHandler = () => { if (modalChartInstance?.resize) modalChartInstance.resize(); };
     window.addEventListener('resize', resizeHandler);
     document.getElementById('chartModal')._resizeHandler = resizeHandler;
 }
@@ -269,6 +273,99 @@ function closeModal() {
         modalChartInstance.dispose();
         modalChartInstance = null;
     }
+}
+
+// 相似度趋势图（折线图，复用 dashboardData.similarity_trend）
+function renderSimilarityChart(container, dataArray) {
+    if (container._chart) container._chart.dispose();
+    const chart = echarts.init(container);
+    chart.setOption({
+        tooltip: {
+            trigger: 'axis',
+            formatter: params => `第${params[0].name}次: ${(params[0].value * 100).toFixed(1)}%`
+        },
+        xAxis: {
+            type: 'category',
+            data: dataArray.map((_, i) => i + 1),
+            axisLabel: { color: '#c0a88b' }
+        },
+        yAxis: {
+            type: 'value',
+            name: '相似度',
+            min: 0, max: 1,
+            axisLabel: { color: '#c0a88b', formatter: val => (val * 100).toFixed(0) + '%' },
+            splitLine: { lineStyle: { color: 'rgba(255,215,140,0.1)' } }
+        },
+        series: [{
+            type: 'line',
+            data: dataArray,
+            smooth: true,
+            lineStyle: { color: '#ffd966', width: 2 },
+            itemStyle: { color: '#ffd966' },
+            areaStyle: { color: 'rgba(255,215,140,0.1)' }
+        }],
+        grid: { containLabel: true, left: '8%', top: 40, bottom: 20 }
+    });
+    container._chart = chart;
+    return chart;
+}
+
+// 正确/不稳统计（分组柱状图，从 overview 推算）
+function renderStabilityChart(container) {
+    if (container._chart) container._chart.dispose();
+    const chart = echarts.init(container);
+
+    const total = dashboardData.overview.total_sessions || 0;
+    const accuracy = parseFloat(dashboardData.overview.avg_accuracy) || 0;
+    const unstableCount = dashboardData.unstable_count || 0;
+    const correctCount = Math.round(total * accuracy / 100);
+    const errorCount = total - correctCount;
+
+    chart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: {
+            data: ['正确次数', '错误次数', '不稳次数'],
+            textStyle: { color: '#ecd9b4' },
+            top: 10
+        },
+        xAxis: {
+            type: 'category',
+            data: ['统计'],
+            axisLabel: { color: '#ecd9b4' },
+            axisLine: { lineStyle: { color: '#b98c5f' } }
+        },
+        yAxis: {
+            type: 'value',
+            name: '次数',
+            nameTextStyle: { color: '#ecd9b4' },
+            axisLabel: { color: '#ecd9b4' },
+            splitLine: { lineStyle: { color: 'rgba(255,215,140,0.1)' } }
+        },
+        series: [
+            {
+                name: '正确次数',
+                type: 'bar',
+                data: [correctCount],
+                itemStyle: { color: '#2ecc71' },
+                barGap: '10%'
+            },
+            {
+                name: '错误次数',
+                type: 'bar',
+                data: [errorCount],
+                itemStyle: { color: '#e74c3c' }
+            },
+            {
+                name: '不稳次数',
+                type: 'bar',
+                data: [unstableCount],
+                itemStyle: { color: '#e6a817' }
+            }
+        ],
+        grid: { containLabel: true, left: '10%', right: '10%', top: 60, bottom: 30 }
+    });
+    container._chart = chart;
+    return chart;
 }
 
 // 兼容隐藏样式

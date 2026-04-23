@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>训练历史 - 智能吉他教学系统 · 动效优化版</title>
+    <title>训练历史 - 智能吉他教学系统</title>
     <!-- ✅ 国内镜像：ECharts (BootCDN) 与 Font Awesome (Staticfile CDN) -->
     <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
     <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* ========== 全局样式 & 动效优化 ========== */
         * { 
             box-sizing: border-box; 
         }
@@ -18,22 +17,15 @@
             background: linear-gradient(135deg, #f9f3e7 0%, #e8dccc 100%);
             margin: 0;
             padding: 20px;
-            will-change: scroll-position;  /* 滚动性能优化 */
         }
 
-        /* 减少动效偏好适配 */
         @media (prefers-reduced-motion: reduce) {
-            *,
-            *::before,
-            *::after {
+            *, *::before, *::after {
                 animation-duration: 0.01ms !important;
                 animation-iteration-count: 1 !important;
                 transition-duration: 0.01ms !important;
-                scroll-behavior: auto !important;
             }
-            .back-link:hover,
-            .btn-reset:hover,
-            .page-btn:hover {
+            .back-link:hover, .btn-reset:hover, .page-btn:hover {
                 transform: none !important;
             }
         }
@@ -45,7 +37,6 @@
             border-radius: 32px;
             padding: 20px 30px 40px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            transition: box-shadow 0.3s ease;
         }
 
         .header {
@@ -77,26 +68,17 @@
             padding: 8px 20px;
             border-radius: 40px;
             font-weight: 500;
-            transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.4, 1), 
-                        background 0.25s ease,
-                        box-shadow 0.2s;
+            transition: transform 0.2s, background 0.25s, box-shadow 0.2s;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            will-change: transform;
-            backface-visibility: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
         .back-link:hover {
             background: #5a3a1a;
             transform: translateY(-2px);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
-        }
-
-        .back-link:active {
-            transform: translateY(1px);
-            transition-duration: 0.05s;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
         }
 
         .stats-grid {
@@ -111,14 +93,13 @@
             border-radius: 28px;
             padding: 20px;
             border-left: 8px solid #d9b48b;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            will-change: transform;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .stat-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.08);
         }
 
         .stat-title {
@@ -148,31 +129,32 @@
             flex-wrap: wrap;
             gap: 30px;
             margin-bottom: 40px;
-            align-items: stretch;          /* 让两侧高度一致 */
+            align-items: stretch;
         }
+
         .chart-box {
             flex: 2;
             background: #fffef7;
             border-radius: 24px;
-            padding: 20px 15px 15px;       /* 上边距稍大，给标题留空间 */
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            padding: 20px 15px 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
             display: flex;
             flex-direction: column;
-            min-height: 380px;             /* 保证最小高度，防止被压缩 */
-        }
-        #chartContainer {
-            width: 100%;
-            flex: 1;                       /* 自动填满 .chart-box 剩余高度 */
-            min-height: 320px;             /* 保留最小高度 */
+            min-height: 380px;
         }
 
+        #chartContainer {
+            width: 100%;
+            flex: 1;
+            min-height: 320px;
+        }
 
         .filters-box {
             flex: 1;
             background: #fffef7;
             border-radius: 24px;
             padding: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
         }
 
         .filter-group {
@@ -194,14 +176,13 @@
             border-radius: 30px;
             font-size: 0.9rem;
             background: white;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            will-change: box-shadow;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         select:focus, input:focus {
             outline: none;
             border-color: #b87a4b;
-            box-shadow: 0 0 0 3px rgba(184, 122, 75, 0.2);
+            box-shadow: 0 0 0 3px rgba(184,122,75,0.2);
         }
 
         .btn-reset {
@@ -213,8 +194,7 @@
             font-weight: 600;
             color: #5a3e2b;
             width: 100%;
-            transition: background 0.2s ease, transform 0.15s cubic-bezier(0.2, 0.9, 0.4, 1);
-            will-change: transform;
+            transition: background 0.2s, transform 0.15s;
         }
 
         .btn-reset:hover {
@@ -223,21 +203,14 @@
             transform: translateY(-1px);
         }
 
-        .btn-reset:active {
-            transform: translateY(1px);
-        }
-
-        /* 虚拟滚动容器 */
         .virtual-scroll-container {
             height: 500px;
             overflow-y: auto;
             background: white;
             border-radius: 24px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
-            position: relative;
-            scroll-behavior: smooth;
-            margin-top: 20px;                /* ✅ 增加顶部间距，防止与筛选栏重叠 */
-            border: 1px solid #e2cfb3;       /* 增加边界，更清晰 */
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            margin-top: 20px;
+            border: 1px solid #e2cfb3;
         }
 
         .virtual-scroll-content {
@@ -249,7 +222,7 @@
             display: flex;
             border-bottom: 1px solid #f0e5d8;
             font-size: 0.9rem;
-            transition: background 0.15s ease;
+            transition: background 0.15s;
         }
 
         .table-row:not(.header-row):hover {
@@ -263,8 +236,7 @@
             top: 0;
             z-index: 10;
             border-bottom: 2px solid #d9b48b;
-            will-change: transform;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* 增加阴影，区分内容区 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
         .table-cell {
@@ -275,11 +247,12 @@
             white-space: nowrap;
         }
 
-        .col-id { width: 8%; }
-        .col-chord { width: 15%; }
-        .col-result { width: 20%; }
-        .col-time { width: 15%; }
-        .col-date { width: 42%; }
+        .col-id { width: 5%; }
+        .col-chord { width: 12%; }
+        .col-result { width: 14%; }
+        .col-status { width: 12%; }
+        .col-time { width: 10%; }
+        .col-date { width: 47%; }
 
         .badge-correct, .badge-wrong {
             display: inline-block;
@@ -306,10 +279,7 @@
             border-radius: 40px;
             cursor: pointer;
             font-weight: 500;
-            transition: transform 0.15s cubic-bezier(0.2, 0.9, 0.4, 1), 
-                        background 0.2s ease,
-                        box-shadow 0.2s;
-            will-change: transform;
+            transition: transform 0.15s, background 0.2s;
         }
 
         .page-btn.active {
@@ -321,10 +291,6 @@
             background: #d9b48b;
             color: white;
             transform: translateY(-1px);
-        }
-
-        .page-btn:active {
-            transform: translateY(1px);
         }
 
         .empty-row {
@@ -346,18 +312,47 @@
         <h1><i class="fas fa-chart-line"></i> 训练历史</h1>
         <a href="/" class="back-link"><i class="fas fa-home"></i> 返回首页</a>
     </div>
-
-    <!-- 统计卡片 -->
+    
+    <!-- 第一行统计卡片 -->
     <div class="stats-grid" id="statsContainer">
-        <div class="stat-card"><div class="stat-title">总练习次数</div><div class="stat-number" id="totalCount">-</div></div>
-        <div class="stat-card"><div class="stat-title">总体正确率</div><div class="stat-number" id="totalAccuracy">-<span class="stat-unit">%</span></div></div>
-        <div class="stat-card"><div class="stat-title">最近练习</div><div class="stat-number" id="lastPractice" style="font-size:1.2rem;">-</div></div>
-        <div class="stat-card"><div class="stat-title">薄弱和弦</div><div class="stat-number" id="weakChords" style="font-size:1.1rem;">-</div></div>
+        <div class="stat-card">
+            <div class="stat-title">总练习次数</div>
+            <div class="stat-number" id="totalCount">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">总体正确率</div>
+            <div class="stat-number" id="totalAccuracy">-<span class="stat-unit">%</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">最近练习</div>
+            <div class="stat-number" id="lastPractice" style="font-size:1.2rem;">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">薄弱和弦</div>
+            <div class="stat-number" id="weakChords" style="font-size:1.1rem;">-</div>
+        </div>
     </div>
 
+    <!-- 第二行统计卡片（样式与第一行完全一致） -->
+    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-card">
+            <div class="stat-title">按弦不稳次数</div>
+            <div class="stat-number" id="unstable-count">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">不稳比例</div>
+            <div class="stat-number" id="unstable-ratio">0%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">最近练习模式</div>
+            <div class="stat-number" id="practice-mode" style="font-size:1.2rem;">-</div>
+        </div>
+    </div>
+
+    <!-- 图表与筛选区域 -->
     <div class="chart-filter-row">
         <div class="chart-box">
-            <div id="chartContainer" style="height: 320px; width: 100%;"></div>
+            <div id="chartContainer"></div>
         </div>
         <div class="filters-box">
             <h3 style="margin-top:0; color:#7a4d2e;"><i class="fas fa-filter"></i> 筛选记录</h3>
@@ -391,6 +386,7 @@
                 <div class="table-cell col-id">#</div>
                 <div class="table-cell col-chord">和弦</div>
                 <div class="table-cell col-result">结果</div>
+                <div class="table-cell col-status">状态</div>
                 <div class="table-cell col-time">用时(秒)</div>
                 <div class="table-cell col-date">练习时间</div>
             </div>
@@ -401,7 +397,7 @@
 </div>
 
 <script>
-    // 筛选条件
+    // ---- 全局变量 ----
     let filters = { chord: 'all', result: 'all', startDate: '', endDate: '' };
     let currentPage = 1;
     let totalPages = 1;
@@ -412,13 +408,14 @@
     let scrollHandler = null;
     let resizeObserver = null;
 
-    // 虚拟滚动核心
+    // 虚拟滚动渲染
     function renderVisibleRows() {
         const scrollTop = container.scrollTop;
         const visibleHeight = container.clientHeight;
         const startIndex = Math.floor(scrollTop / ROW_HEIGHT);
         const endIndex = Math.min(startIndex + Math.ceil(visibleHeight / ROW_HEIGHT) + 1, allRecords.length);
-        // 移除所有非表头行
+        
+        // 清除旧行（保留表头）
         const rows = content.querySelectorAll('.table-row:not(.header-row)');
         rows.forEach(row => row.remove());
 
@@ -433,6 +430,10 @@
                 <div class="table-cell col-id">${(currentPage-1)*10 + i + 1}</div>
                 <div class="table-cell col-chord"><strong>${escapeHtml(rec.chord_name)}</strong></div>
                 <div class="table-cell col-result">${rec.correct ? '<span class="badge-correct"><i class="fas fa-check"></i> 正确</span>' : '<span class="badge-wrong"><i class="fas fa-times"></i> 错误</span>'}</div>
+                <div class="table-cell col-status">
+                    ${rec.is_unstable ? '<i class="fas fa-exclamation-triangle" style="color:#e6a817;" title="按弦不稳"></i>' : ''}
+                    ${rec.similarity != null ? '<span style="margin-left:6px;">' + parseFloat(rec.similarity).toFixed(2) + '</span>' : ''}
+                </div>
                 <div class="table-cell col-time">${rec.time_spent ? rec.time_spent.toFixed(2) : '--'}</div>
                 <div class="table-cell col-date">${formatDate(rec.created_at)}</div>
             `;
@@ -442,25 +443,17 @@
 
     function formatDate(isoString) {
         if (!isoString) return '';
-        try {
-            return new Date(isoString).toLocaleString();
-        } catch(e) { return isoString; }
+        try { return new Date(isoString).toLocaleString(); } catch(e) { return isoString; }
     }
 
     function escapeHtml(str) {
         if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
+        return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]);
     }
 
     function setupVirtualScroll(records) {
         allRecords = records;
-        const totalHeight = records.length * ROW_HEIGHT;
-        content.style.height = totalHeight + 'px';
+        content.style.height = (records.length * ROW_HEIGHT) + 'px';
         renderVisibleRows();
         if (scrollHandler) container.removeEventListener('scroll', scrollHandler);
         scrollHandler = () => requestAnimationFrame(renderVisibleRows);
@@ -470,39 +463,24 @@
         resizeObserver.observe(container);
     }
 
-    // ✅ 修复：安全处理统计数据，避免 toFixed 调用出错
+    // 加载顶部统计
     async function loadStats() {
         try {
             const res = await fetch('/api/history/stats');
             const stats = await res.json();
 
-            // 安全获取数字
-            const totalCount = stats.total_count ?? 0;
-            document.getElementById('totalCount').innerText = totalCount;
-
-            // 正确率：确保是数字再调用 toFixed
-            let accuracyValue = parseFloat(stats.accuracy);
-            if (isNaN(accuracyValue)) accuracyValue = 0;
-            document.getElementById('totalAccuracy').innerHTML = accuracyValue.toFixed(1) + '<span class="stat-unit">%</span>';
-
-            // 最近练习
-            document.getElementById('lastPractice').innerHTML = stats.last_practice 
-                ? new Date(stats.last_practice).toLocaleString() 
-                : '无记录';
-
-            // 薄弱和弦
+            document.getElementById('totalCount').innerText = stats.total_count ?? 0;
+            let accuracy = parseFloat(stats.accuracy);
+            if (isNaN(accuracy)) accuracy = 0;
+            document.getElementById('totalAccuracy').innerHTML = accuracy.toFixed(1) + '<span class="stat-unit">%</span>';
+            document.getElementById('lastPractice').innerHTML = stats.last_practice ? new Date(stats.last_practice).toLocaleString() : '无记录';
             const weakChords = stats.weak_chords || [];
-            document.getElementById('weakChords').innerHTML = weakChords.length 
-                ? weakChords.join(', ') 
-                : '暂无';
+            document.getElementById('weakChords').innerHTML = weakChords.length ? weakChords.join(', ') : '暂无';
 
-            // 填充和弦下拉框
             const chordSelect = document.getElementById('filterChord');
             const chordList = stats.chords || [];
-            chordSelect.innerHTML = '<option value="all">全部和弦</option>' + 
-                chordList.map(ch => `<option value="${ch}">${ch}</option>`).join('');
+            chordSelect.innerHTML = '<option value="all">全部和弦</option>' + chordList.map(c => `<option value="${c}">${c}</option>`).join('');
 
-            // 懒加载图表
             if (chordList.length) {
                 renderChartLater(chordList, stats.accuracies || []);
             } else {
@@ -517,49 +495,34 @@
     function renderChartLater(chords, accuracies) {
         if (chartRendered) return;
         const container = document.getElementById('chartContainer');
-        
-        // ✅ 等待容器有实际尺寸后再渲染
         const checkSize = () => {
-            const rect = container.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
+            if (container.clientWidth > 0 && container.clientHeight > 0) {
                 renderChart(chords, accuracies);
                 chartRendered = true;
             } else {
                 requestAnimationFrame(checkSize);
             }
         };
-    
-    const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-            checkSize();
-            observer.disconnect();
-        }
-    });
-    observer.observe(container);
-}
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) { checkSize(); observer.disconnect(); }
+        });
+        observer.observe(container);
+    }
 
     function renderChart(chords, accuracies) {
         const chartDom = document.getElementById('chartContainer');
         const myChart = echarts.init(chartDom);
-        // 确保 accuracies 中的值都是数字
         const safeAccuracies = (accuracies || []).map(v => parseFloat(v) || 0);
         myChart.setOption({
             tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
             xAxis: { type: 'category', data: chords, axisLabel: { rotate: 30 } },
             yAxis: { type: 'value', name: '正确率 (%)', max: 100 },
             series: [{
-                name: '正确率',
-                type: 'bar',
-                data: safeAccuracies,
+                name: '正确率', type: 'bar', data: safeAccuracies,
                 itemStyle: { borderRadius: [8,8,0,0], color: '#b87a4b' },
                 label: { show: true, position: 'top', formatter: '{c}%' }
             }],
-            grid: { 
-            containLabel: true, 
-            left: '8%',      // 可根据实际文字长度微调
-            top: 45, 
-            bottom: 20 
-        }
+            grid: { containLabel: true, left: '8%', top: 45, bottom: 20 }
         });
         window.addEventListener('resize', () => myChart.resize());
     }
@@ -568,8 +531,7 @@
     async function loadTable(page = 1) {
         currentPage = page;
         const params = new URLSearchParams({
-            page: page,
-            per_page: 10,
+            page, per_page: 10,
             chord: filters.chord !== 'all' ? filters.chord : '',
             result: filters.result !== 'all' ? filters.result : '',
             start_date: filters.startDate,
@@ -582,22 +544,19 @@
             totalPages = Math.ceil((data.total || 0) / (data.per_page || 10));
             renderPagination();
         } catch (err) {
-            console.error('加载表格数据失败', err);
+            console.error('加载表格失败', err);
             content.innerHTML += '<div class="empty-row">加载失败，请重试</div>';
         }
     }
 
     function renderPagination() {
-        const paginationContainer = document.getElementById('paginationControls');
-        if (totalPages <= 1) {
-            paginationContainer.innerHTML = '';
-            return;
-        }
+        const pag = document.getElementById('paginationControls');
+        if (totalPages <= 1) { pag.innerHTML = ''; return; }
         let btns = '';
         for (let i = 1; i <= totalPages; i++) {
             btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
         }
-        paginationContainer.innerHTML = btns;
+        pag.innerHTML = btns;
         document.querySelectorAll('.page-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const page = parseInt(btn.dataset.page);
@@ -624,10 +583,8 @@
         startDate.addEventListener('change', update);
         endDate.addEventListener('change', update);
         resetBtn.addEventListener('click', () => {
-            chordSelect.value = 'all';
-            resultSelect.value = 'all';
-            startDate.value = '';
-            endDate.value = '';
+            chordSelect.value = 'all'; resultSelect.value = 'all';
+            startDate.value = ''; endDate.value = '';
             update();
         });
     }
@@ -640,13 +597,12 @@
     init();
 </script>
 
-<!-- 语音助手支持 -->
+<!-- 语音助手 -->
 <script>
     if (window.VoiceGuide) {
         VoiceGuide.registerPageCommands('/history', []);
     }
 </script>
-<!-- ✅ 国内镜像：Socket.IO (BootCDN) -->
 <script src="https://cdn.bootcdn.net/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
 <script src="/static/js/voice_guide.js"></script>
 </body>

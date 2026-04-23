@@ -472,7 +472,7 @@ const VoiceGuide = (function() {
             injectIconStyles();  // 动态注入动画样式
             createIcon();        // 创建悬浮图标
             if (typeof io !== 'undefined') {
-                socket = io();
+                socket = io("https://www.hnuguitarteacher.xyz", { transports: ['websocket'] });
                 socket.on('voice_response', onVoiceResponse);
                 socket.on('connect_error', (err) => {
                     console.warn('[VoiceGuide] Socket连接错误:', err);

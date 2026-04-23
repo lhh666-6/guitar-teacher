@@ -244,7 +244,10 @@ def save_training_record():
         chord_name=data['chord_name'],
         correct=data['correct'],
         time_spent=data.get('time_spent', 0.0),
-        user_id=current_user.id
+        user_id=current_user.id,
+        is_unstable=data.get('is_unstable', False),
+        similarity=data.get('similarity', None),
+        mode=data.get('mode', None)
     )
     db.session.add(record)
     db.session.commit()
@@ -326,13 +329,7 @@ def history_data():
 
     total = query.count()
     records = query.order_by(TrainingRecord.created_at.desc()).offset((page-1)*per_page).limit(per_page).all()
-    records_data = [{
-        'id': r.id,
-        'chord_name': r.chord_name,
-        'correct': r.correct,
-        'time_spent': float(r.time_spent) if r.time_spent else None,
-        'created_at': r.created_at.isoformat() if r.created_at else None
-    } for r in records]
+    records_data = [r.to_dict() for r in records]   # 使用 to_dict 即可包含新字段
 
     return jsonify({
         'records': records_data,
@@ -492,11 +489,46 @@ def get_teach_dashboard():
     mastery = user_stats.get_chord_mastery(current_user.id)
     progress = user_stats.get_progress_trend(current_user.id)
     recent = user_stats.get_recent_records(current_user.id)
+
+    # 新增：不稳统计
+    unstable_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.is_unstable == True).scalar()
+    total_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == current_user.id).scalar()
+    unstable_ratio = (unstable_count / total_count * 100) if total_count else 0.0
+
+    # 新增：相似度趋势（最近20条，已调整）
+    recent_similarities = db.session.query(
+        TrainingRecord.correct, TrainingRecord.similarity
+    ).filter(
+        TrainingRecord.user_id == current_user.id,
+        TrainingRecord.similarity.isnot(None)
+    ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
+    # 调整规则：正确 ×1.1 上限1，错误/不稳 ×0.9
+    adjusted_trend = []
+    for correct_val, sim in reversed(recent_similarities):  # 保持时间升序
+        sim = float(sim)
+        if correct_val:
+            adjusted = min(sim * 1.1, 1.0)
+        else:
+            adjusted = sim * 0.9
+        adjusted_trend.append(round(adjusted, 3))
+
+    # 最近一次练习的模式
+    last_record = db.session.query(TrainingRecord.mode)\
+        .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.mode.isnot(None))\
+        .order_by(TrainingRecord.created_at.desc()).first()
+    recent_mode = last_record.mode if last_record else None
+
     return jsonify({
         'overview': overview,
         'mastery': mastery,
         'progress': progress,
-        'recent_records': recent
+        'recent_records': recent,
+        'unstable_count': unstable_count,
+        'unstable_ratio': round(unstable_ratio, 1),
+        'similarity_trend': adjusted_trend,
+        'recent_mode': recent_mode
     })
 
 @app.route('/api/teach/generate_advice', methods=['POST'])

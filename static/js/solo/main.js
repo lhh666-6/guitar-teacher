@@ -37,6 +37,24 @@
             this.chordStartTime = null;
             this.lastSendTime = 0;
             this.lastFrameSendTime = 0;
+            
+            // 音频验证器
+            this.audioVerifier = new ChordVerifier();
+            this.audioResultCache = null;           // { chord, confidence }
+            this.audioWaiting = false;              // 是否启动了3秒等待
+            this.audioTimeout = null;               // 3秒无音频超时定时器
+
+            // 视觉状态（100ms防抖）
+            this._visualStablePassed = false;       // 稳定后的视觉状态
+            this._visualErrorStart = null;          // 视觉错误开始时间戳
+            this._visualStableReady = false;        // 是否已有稳定视觉结论
+
+            // 冷却与超时
+            this.cooldownTimer = null;              // 1秒冷却切换
+            this.quickTimer = null;                 // 快速模式5秒超时
+
+            // 其他
+            this.recordedForCurrentChord = false;   // 已有
 
             // MediaPipe 相关
             this.hands = null;
@@ -297,6 +315,13 @@
                 clearInterval(this.timerInterval);
                 this.timerInterval = null;
             }
+
+            // 停止音频与所有定时器
+            this._clearAllTimers();
+            if (this.audioVerifier) {
+                this.audioVerifier.stop();
+            }
+
             this.testMode = false;
             this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
             if (this.elements.trainLayout) {
@@ -337,6 +362,28 @@
 
                 this.recordedForCurrentChord = false;
                 this.chordStartTime = Date.now();
+                // 重置视觉与音频状态
+                this._visualStablePassed = false;
+                this._visualStableReady = false;
+                this._visualErrorStart = null;
+                this.audioResultCache = null;
+                this.audioWaiting = false;
+                this._clearAllTimers();
+
+                // 更新音频目标
+                if (this.audioVerifier && this.audioVerifier.isRunning()) {
+                    this.audioVerifier.setTargetChord(this.currentChord.name);
+                }
+
+                // 快速模式 5 秒超时
+                if (QUICK_MODE) {
+                    this.quickTimer = setTimeout(() => {
+                        if (this.testMode && !this.recordedForCurrentChord) {
+                            // 直接判错（无需等音频）
+                            this._finalizeChord('wrong');
+                        }
+                    }, 5000);
+                }
                 this.updateProgress();
             }
         }
@@ -371,12 +418,12 @@
                 body: JSON.stringify({
                     chord_name: this.currentChord.name,
                     correct: true,
-                    time_spent: elapsed
+                    time_spent: elapsed,
+                    mode: QUICK_MODE ? 'quick' : 'normal'    // 新增
                 })
             }).catch(err => console.error('保存记录失败:', err));
-
-            this.moveToNextTest();
         }
+
 
         recordSkip() {
             if (!this.testMode || this.recordedForCurrentChord) return;
@@ -392,11 +439,10 @@
                 body: JSON.stringify({
                     chord_name: this.currentChord.name,
                     correct: false,
-                    time_spent: 0.0
+                    time_spent: 0.0,
+                    mode: QUICK_MODE ? 'quick' : 'normal'    // 新增
                 })
             }).catch(err => console.error('保存记录失败:', err));
-
-            this.moveToNextTest();
         }
 
         renderStandardDots(chord, userPositions = [], userBarre = null) {
@@ -552,6 +598,89 @@
             }
         }
 
+    _recordUnstable() {
+        this.testResults[this.currentTestIndex] = {
+            correct: false,
+            time: null,
+            unstable: true
+        };
+        this.stats.unstable = (this.stats.unstable || 0) + 1;
+        console.log('[记录] 按弦不稳');
+
+        // 新增：发送服务器
+        const similarity = this.audioResultCache ? this.audioResultCache.confidence : null;
+        fetch('/api/save_record', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chord_name: this.currentChord.name,
+                correct: false,
+                is_unstable: true,
+                similarity: similarity,
+                time_spent: 0,
+                mode: QUICK_MODE ? 'quick' : 'normal'
+            })
+        }).catch(err => console.error('保存不稳记录失败:', err));
+    }
+
+        _clearAllTimers() {
+            if (this.cooldownTimer) clearTimeout(this.cooldownTimer);
+            if (this.audioTimeout) clearTimeout(this.audioTimeout);
+            if (this.quickTimer) clearTimeout(this.quickTimer);
+            this.cooldownTimer = null;
+            this.audioTimeout = null;
+            this.quickTimer = null;
+            this.audioWaiting = false;
+        }
+
+        _finalizeChord(result) {
+            if (!this.testMode || this.recordedForCurrentChord) return;
+
+            this._clearAllTimers();
+
+            switch (result) {
+                case 'correct':
+                    this.recordCorrect();       // 原有统计+后端保存
+                    break;
+                case 'unstable':
+                    this._recordUnstable();     // 内存记录
+                    break;
+                case 'wrong':
+                    this.recordSkip();          // 记录错误并跳过
+                    break;
+            }
+
+            // 1秒冷却后自动切换
+            this.cooldownTimer = setTimeout(() => this.moveToNextTest(), 1000);
+        }
+
+        _handleAudioReady() {
+            if (!this.testMode || this.recordedForCurrentChord) return;
+            if (this.audioTimeout) clearTimeout(this.audioTimeout);
+            this.audioTimeout = null;
+            this.audioWaiting = false;
+
+            // 使用稳定后的视觉状态，若仍未稳定则跳过本次（但音频已到，可强制用瞬时值）
+            const visualOk = this._visualStableReady
+                ? this._visualStablePassed
+                : this._visualStablePassed;  // 若不稳定，沿用上次值（通常已稳定）
+
+            const result = window.evaluateChord(visualOk, this.audioResultCache, { threshold: 0.55 });
+            this._finalizeChord(result);
+        }
+
+        _startAudioTimeout() {
+            if (this.audioWaiting || this.audioResultCache) return;
+            this.audioWaiting = true;
+            this.audioTimeout = setTimeout(() => {
+                // 3秒无音频，视为 null
+                this.audioResultCache = null;
+                this._handleAudioReady();
+            }, 3000);
+        }
+
+// ========== main.js 中 handleDetectionResult 的完整替换 ==========
+
         handleDetectionResult = (data) => {
             const receiveTime = performance.now();
             if (this.lastFrameSendTime > 0) {
@@ -575,12 +704,28 @@
                     barre: data.barre || null
                 };
 
-                const isCorrect = window.validateVisual(
+                // --- 1. 瞬时视觉判断 ---
+                const visualOk = window.validateVisual(
                     visualResult.positions,
                     visualResult.barre,
                     this.currentChord
                 );
 
+                // --- 2. 视觉状态稳定化（100ms 防抖，正确立即生效，错误需持续100ms）---
+                if (visualOk) {
+                    this._visualStablePassed = true;
+                    this._visualStableReady = true;
+                    this._visualErrorStart = null;
+                } else {
+                    if (!this._visualErrorStart) {
+                        this._visualErrorStart = performance.now();
+                    } else if (performance.now() - this._visualErrorStart >= 100) {
+                        this._visualStablePassed = false;
+                        this._visualStableReady = true;
+                    }
+                }
+
+                // --- 3. 绘制指板（保持原有逻辑）---
                 const userPositions = visualResult.positions.map(pos => ({
                     ...pos,
                     correct: this.currentChord.positions.some(p => p.string === pos.string && p.fret === pos.fret)
@@ -597,14 +742,20 @@
                 const processEnd = performance.now();
                 console.log(`⚙️ 结果处理耗时: ${(processEnd - processStart).toFixed(2)} ms`);
 
-                if (isCorrect && !this.recordedForCurrentChord) {
-                    this.recordCorrect();
-                }
-
                 this.renderStandardDots(this.currentChord, userPositions, userBarre);
-            }
-        }
 
+                // --- 4. 视觉稳定后驱动音频等待或判定 ---
+                if (this._visualStableReady && !this.recordedForCurrentChord) {
+                    if (this.audioResultCache) {
+                        // 音频结果已就绪，直接进行综合判定
+                        this._handleAudioReady();
+                    } else if (!this.audioWaiting) {
+                        // 启动 3 秒音频超时等待
+                        this._startAudioTimeout();
+                    }
+                }
+            }
+        };
         onHandResults(results) {
             const now = performance.now();
             if (!this.testMode || !this.sendingEnabled) return;
@@ -735,6 +886,10 @@
                 if (this.camera) {
                     this.camera.stop();
                 }
+                if (this.audioVerifier) {
+                    this.audioVerifier.stop();
+                }
+                this._clearAllTimers();
                 this.cameraStream.getTracks().forEach(t => t.stop());
                 this.cameraStream = null;
                 this.elements.cameraFeed.srcObject = null;
@@ -784,15 +939,14 @@
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
 
-                    this.socket = io({
+                    this.socket = io("https://www.hnuguitarteacher.xyz", {
                         path: '/socket.io',
-                        transports: ['websocket', 'polling'],
+                        transports: ['websocket'],
                         secure: true,
                         rejectUnauthorized: false,
                         reconnection: false,
                         timeout: 20000
                     });
-
                     this.socket.on('fretboard_params', (params) => {
                         console.log('📐 收到指板参数', params);
                         this.fingeringDetector.setParams(params);
@@ -908,6 +1062,24 @@
             if (this.timerInterval) clearInterval(this.timerInterval);
 
             this.sendingEnabled = true;
+            // 重置音频状态
+            this.audioResultCache = null;
+            this.audioWaiting = false;
+            if (this.audioVerifier) {
+                this.audioVerifier.setTargetChord(this.currentChord.name);
+                this.audioVerifier.start((isMatch, similarity) => {
+                    // 音频结果到达
+                    this.audioResultCache = {
+                        chord: isMatch ? this.currentChord.name : null,
+                        confidence: similarity
+                    };
+                    if (this.audioWaiting) {
+                        // 收到音频，清除超时并立即判定
+                        this._handleAudioReady();
+                    }
+                }, (err) => console.error('[音频]', err));
+            }
+
             this.testMode = true;
             this.stats = { correct: 0, wrong: 0 };
             this.updateStats();
@@ -1056,6 +1228,7 @@
             if (this.socket) {
                 this.socket.disconnect();
             }
+            if (this.audioVerifier) this.audioVerifier.stop();
         }
     }
 

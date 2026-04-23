@@ -37,6 +37,7 @@ const DOT_RADIUS = 12;
 // -------------------- 记录相关 --------------------
 const MAX_RECORDS = 100;
 
+const QUICK_MODE = false;   // 改为 true 启动 5 秒超时
 // -------------------- 和弦库数据（备用，当后端加载失败时使用）--------------------
 const DEFAULT_CHORDS = [
     { name: 'C', desc: '大三和弦 (明亮)', difficulty: 1, positions: [{string:2, fret:1}, {string:4, fret:2}, {string:5, fret:3}, {string:6, fret:3}], barre: null },
