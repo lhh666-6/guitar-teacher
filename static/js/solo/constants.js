@@ -6,7 +6,7 @@
 const FRAME_INTERVAL = 200;
 
 // 缩略图发送间隔（毫秒），5fps = 200ms
-const THUMBNAIL_INTERVAL = 500;
+//const THUMBNAIL_INTERVAL = 500;
 
 // 缩略图宽度（像素），高度按比例自动计算
 // 提高此值可增加后端 YOLO 精度，但会增加网络流量

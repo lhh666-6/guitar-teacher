@@ -170,7 +170,6 @@
                 }));
             }
 
-            // 填充隐藏的 select
             const select = this.elements.chordSelect;
             select.innerHTML = '';
             this.chords.forEach(chord => {
@@ -185,13 +184,10 @@
                 select.dispatchEvent(new Event('change'));
             }
 
-            // 填充弹出面板列表
             this.renderPopupList();
-
             this.loadPendingChordsFromLocalStorage();
         }
 
-        // 新增方法：渲染弹出面板列表
         renderPopupList(filterText = '') {
             const popupList = document.getElementById('chordPopupList');
             if (!popupList) return;
@@ -216,7 +212,6 @@
             });
         }
 
-        // 原有 loadPendingChordsFromLocalStorage 等保持不变
         loadPendingChordsFromLocalStorage() {
             const stored = localStorage.getItem('pendingSoloChords');
             if (!stored) return;
@@ -334,13 +329,18 @@
             if (this.elements.videoContainer) {
                 this.elements.videoContainer.classList.remove('video-expanded');
             }
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
+
+            // 安全退出全屏（仅在活动文档全屏状态下调用）
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
             }
+
             if (document.body.classList.contains('video-overlay-active')) {
                 document.body.classList.remove('video-overlay-active');
                 const fullscreenBtn = document.getElementById('fullscreenVideoBtn');
@@ -348,7 +348,6 @@
                     fullscreenBtn.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
                 }
             }
-            // 退出全屏后重绘指板
             if (this.currentChord) {
                 requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
             }
@@ -356,7 +355,6 @@
             this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
         }
 
-        // ... 保留 goToTestIndex, moveToNextTest, recordCorrect, recordSkip 等原有方法 ...
         goToTestIndex(index) {
             if (!this.testList.length || index < 0 || index >= this.testList.length) return;
             const chordId = this.testList[index];
@@ -385,13 +383,13 @@
                 if (this.audioVerifier && this.audioVerifier.isRunning()) {
                     this.audioVerifier.setTargetChord(this.currentChord.name);
                 }
-            if (QUICK_MODE) {
-                this.quickTimer = setTimeout(() => {
-                    if (this.testMode && !this.recordedForCurrentChord) {
-                        this._finalizeChord('wrong', { forceSkip: true });   // 强制跳过
-                    }
-                }, 5000);
-            }
+                if (QUICK_MODE) {
+                    this.quickTimer = setTimeout(() => {
+                        if (this.testMode && !this.recordedForCurrentChord) {
+                            this._finalizeChord('wrong', { forceSkip: true });
+                        }
+                    }, 5000);
+                }
                 this.updateProgress();
             }
         }
@@ -448,9 +446,9 @@
                     mode: QUICK_MODE ? 'quick' : 'normal'
                 })
             }).catch(err => console.error('保存记录失败:', err));
+            this.moveToNextTest();
         }
 
-        // 修改：标准按点 y 坐标增加 DOT_RADIUS，使点中心对准弦线
         renderStandardDots(chord, userPositions = [], userBarre = null) {
             const container = this.elements.dotContainer;
             container.innerHTML = '';
@@ -498,29 +496,16 @@
             const allPositions = [];
             if (chord && chord.positions) {
                 chord.positions.forEach(pos => {
-                    allPositions.push({
-                        ...pos,
-                        type: 'standard',
-                        correct: false
-                    });
+                    allPositions.push({ ...pos, type: 'standard', correct: false });
                 });
             }
             userPositions.forEach(up => {
-                allPositions.push({
-                    string: up.string,
-                    fret: up.fret,
-                    type: 'user',
-                    correct: up.correct
-                });
+                allPositions.push({ string: up.string, fret: up.fret, type: 'user', correct: up.correct });
             });
 
             const allBarres = [];
             if (chord && chord.barre) {
-                allBarres.push({
-                    ...chord.barre,
-                    type: 'standard',
-                    correct: false
-                });
+                allBarres.push({ ...chord.barre, type: 'standard', correct: false });
             }
             if (userBarre) {
                 allBarres.push({
@@ -538,9 +523,7 @@
             const uniqueFrets = Array.from(allFrets).sort((a, b) => a - b);
             const validFrets = uniqueFrets.slice(0, FRET_COUNT);
             const fretToCol = {};
-            validFrets.forEach((fret, idx) => {
-                fretToCol[fret] = idx;
-            });
+            validFrets.forEach((fret, idx) => { fretToCol[fret] = idx; });
 
             allPositions.forEach(p => {
                 if (!(p.fret in fretToCol)) return;
@@ -552,9 +535,8 @@
                 const dot = document.createElement('div');
                 dot.className = `dot ${p.type === 'standard' ? 'standard' : (p.correct ? 'user-correct' : 'user-wrong')}`;
                 dot.style.left = (x - DOT_RADIUS) + 'px';
-                // 修改：标准点下移 DOT_RADIUS
                 if (p.type === 'standard') {
-                    dot.style.top = (y - DOT_RADIUS + DOT_RADIUS) + 'px'; // 即 y
+                    dot.style.top = (y - DOT_RADIUS + DOT_RADIUS) + 'px'; // 对齐弦线
                 } else {
                     dot.style.top = (y - DOT_RADIUS) + 'px';
                 }
@@ -652,15 +634,11 @@
                     break;
                 case 'wrong':
                     this.recordSkip();
-                    // 如果是强制跳过（快速模式超时），继续执行后面的自动切换
-                    // 否则直接 return，停留在当前和弦
                     if (!options.forceSkip) {
                         return;
                     }
                     break;
             }
-
-            // 正确、不稳、或强制跳过的错误才到这里
             this.cooldownTimer = setTimeout(() => this.moveToNextTest(), 1000);
         }
 
@@ -669,9 +647,7 @@
             if (this.audioTimeout) clearTimeout(this.audioTimeout);
             this.audioTimeout = null;
             this.audioWaiting = false;
-            const visualOk = this._visualStableReady
-                ? this._visualStablePassed
-                : this._visualStablePassed;
+            const visualOk = this._visualStableReady ? this._visualStablePassed : this._visualStablePassed;
             const result = window.evaluateChord(visualOk, this.audioResultCache, { threshold: 0.55 });
             this._finalizeChord(result);
         }
@@ -702,11 +678,7 @@
                     positions: data.positions || [],
                     barre: data.barre || null
                 };
-                const visualOk = window.validateVisual(
-                    visualResult.positions,
-                    visualResult.barre,
-                    this.currentChord
-                );
+                const visualOk = window.validateVisual(visualResult.positions, visualResult.barre, this.currentChord);
                 if (visualOk) {
                     this._visualStablePassed = true;
                     this._visualStableReady = true;
@@ -746,11 +718,8 @@
 
         onHandResults(results) {
             const now = performance.now();
-            if (!this.testMode || !this.sendingEnabled) return;
-            if (now - this.lastLandmarkSendTime < LANDMARK_SEND_INTERVAL) {
-                return;
-            }
-            this.lastLandmarkSendTime = now;
+
+            // 选择目标手部 (与之前相同)
             let targetHandIndex = -1;
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const screenMidX = 0.5;
@@ -771,11 +740,13 @@
                 }
                 targetHandIndex = candidateIndex;
             }
+
             if (targetHandIndex === -1) {
                 this.latestLocalLandmarks = null;
-                if (this._handSwitchCounter) this._handSwitchCounter = 0;
+                this.drawAll();
                 return;
             }
+
             if (this._lastTargetHandIndex !== undefined && this._lastTargetHandIndex !== targetHandIndex) {
                 this._handSwitchCounter = (this._handSwitchCounter || 0) + 1;
                 if (this._handSwitchCounter < 2) {
@@ -787,11 +758,15 @@
                 this._handSwitchCounter = 0;
             }
             this._lastTargetHandIndex = targetHandIndex;
+
             const landmarks = results.multiHandLandmarks[targetHandIndex];
             if (!landmarks) {
                 this.latestLocalLandmarks = null;
+                this.drawAll();
                 return;
             }
+
+            // 平滑滤波
             const smoothed = [];
             for (let i = 0; i < landmarks.length; i++) {
                 const lm = landmarks[i];
@@ -808,6 +783,21 @@
                 }
             }
             this.latestLocalLandmarks = smoothed;
+
+            // 非测试模式下仅更新骨骼绘制，不进行按弦检测和远程发送
+            if (!this.testMode || !this.sendingEnabled) {
+                this.drawAll();
+                if (now - this.lastThumbnailTime > THUMBNAIL_INTERVAL) {
+                    this.sendThumbnail();
+                    this.lastThumbnailTime = now;
+                }
+                return;
+            }
+
+            // 测试模式下的发送和检测
+            if (now - this.lastLandmarkSendTime < LANDMARK_SEND_INTERVAL) return;
+            this.lastLandmarkSendTime = now;
+
             if (this.fingeringDetector && this.fingeringDetector.ready) {
                 const detection = this.fingeringDetector.detect(
                     smoothed,
@@ -824,6 +814,7 @@
             } else {
                 console.warn('指板参数未就绪，无法进行本地按弦检测');
             }
+
             if (now - this.lastThumbnailTime > THUMBNAIL_INTERVAL) {
                 this.sendThumbnail();
                 this.lastThumbnailTime = now;
@@ -891,14 +882,12 @@
                 this.cameraStream.getTracks().forEach(t => t.stop());
                 this.cameraStream = null;
                 this.elements.cameraFeed.srcObject = null;
-                // 退出全屏
                 if (document.body.classList.contains('video-overlay-active')) {
                     document.body.classList.remove('video-overlay-active');
                     const fullscreenBtn = document.getElementById('fullscreenVideoBtn');
                     if (fullscreenBtn) {
                         fullscreenBtn.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
                     }
-                    // 重绘指板
                     if (this.currentChord) {
                         requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
                     }
@@ -935,7 +924,8 @@
                                 minDetectionConfidence: 0.12,
                                 minTrackingConfidence: 0.12
                             });
-                            this.hands.onResults((results) => this.onHandResults(results));
+                            // 修复：直接赋值回调
+                            this.hands.onResults = (results) => this.onHandResults(results);
                             await new Promise(resolve => setTimeout(resolve, 1000));
                             this.useMediaPipe = true;
                         }
@@ -949,7 +939,6 @@
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
 
-                    // 监听流意外终止
                     this.cameraStream.getTracks().forEach(track => {
                         track.addEventListener('ended', () => {
                             if (this.cameraStream.getTracks().every(t => t.readyState === 'ended')) {
@@ -1067,10 +1056,9 @@
                 alert('摄像头未就绪，请稍后再试');
                 return;
             }
-            // 初始化快速模式按钮状态
             const stateSpan = document.getElementById('quickModeState');
             if (stateSpan) {
-                stateSpan.textContent = window.QUICK_MODE ? '开' : '关';
+                stateSpan.textContent = QUICK_MODE ? '开' : '关';
             }
             if (this.animationId) cancelAnimationFrame(this.animationId);
             if (this.timerInterval) clearInterval(this.timerInterval);
@@ -1092,7 +1080,6 @@
             }
 
             this.testMode = true;
-            // 自动全屏
             if (!document.body.classList.contains('video-overlay-active')) {
                 document.body.classList.add('video-overlay-active');
                 const fullscreenBtn = document.getElementById('fullscreenVideoBtn');
@@ -1145,12 +1132,23 @@
                 this.animationId = requestAnimationFrame(this.sendFrame);
                 return;
             }
+
             const now = Date.now();
-            if (now - this.lastSendTime < FRAME_INTERVAL) {
+            const HIGH_FPS_INTERVAL = 200;
+            const LOW_FPS_INTERVAL = 500;
+
+            if (!this.dynamicFrameInterval) {
+                this.dynamicFrameInterval = LOW_FPS_INTERVAL;
+            }
+
+            if (now - this.lastSendTime < this.dynamicFrameInterval) {
                 this.animationId = requestAnimationFrame(this.sendFrame);
                 return;
             }
             this.lastSendTime = now;
+
+            const frameStart = performance.now();
+
             const canvas = document.createElement('canvas');
             canvas.width = this.elements.cameraFeed.videoWidth;
             canvas.height = this.elements.cameraFeed.videoHeight;
@@ -1160,22 +1158,36 @@
             ctx.drawImage(this.elements.cameraFeed, 0, 0, canvas.width, canvas.height);
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
-            this.socket.emit('frame', { image: imageBase64 });
+
+            this.socket.emit('frame', { image: imageBase64 }, (response) => {
+                const rtt = performance.now() - frameStart;
+                if (!this.rttHistory) this.rttHistory = [];
+                this.rttHistory.push(rtt);
+                if (this.rttHistory.length > 5) this.rttHistory.shift();
+                const avgRtt = this.rttHistory.reduce((a, b) => a + b, 0) / this.rttHistory.length;
+
+                if (avgRtt > 300) {
+                    this.dynamicFrameInterval = LOW_FPS_INTERVAL;
+                } else {
+                    this.dynamicFrameInterval = HIGH_FPS_INTERVAL;
+                }
+            });
+
             this.animationId = requestAnimationFrame(this.sendFrame);
-        }
+        };
 
         bindEvents() {
-
             const quickBtn = document.getElementById('toggleQuickMode');
             const quickState = document.getElementById('quickModeState');
             if (quickBtn && quickState) {
-                quickState.textContent = QUICK_MODE ? '开' : '关'; // 初始化显示
+                quickState.textContent = QUICK_MODE ? '开' : '关';
                 quickBtn.addEventListener('click', () => {
                     QUICK_MODE = !QUICK_MODE;
                     quickState.textContent = QUICK_MODE ? '开' : '关';
                     console.log('快速模式', QUICK_MODE ? '已开启' : '已关闭');
                 });
             }
+
             this.elements.chordSelect.addEventListener('change', () => {
                 const id = this.elements.chordSelect.value;
                 this.currentChord = this.chords.find(c => c.id === id);
@@ -1235,7 +1247,6 @@
                 if (this.currentChord) this.renderStandardDots(this.currentChord);
             });
 
-            // 新增弹出面板事件
             const popupBtn = document.getElementById('chordPopupBtn');
             const chordModal = document.getElementById('chordModal');
             const searchInput = document.getElementById('chordPopupSearch');
@@ -1250,10 +1261,10 @@
                     this.renderPopupList(e.target.value);
                 });
             }
-        document.addEventListener('click', (e) => {
-            if (chordModal && chordModal.classList.contains('active') && !chordModal.contains(e.target) && e.target !== popupBtn) {
-                chordModal.classList.remove('active');
-            }
+            document.addEventListener('click', (e) => {
+                if (chordModal && chordModal.classList.contains('active') && !chordModal.contains(e.target) && e.target !== popupBtn) {
+                    chordModal.classList.remove('active');
+                }
             });
         }
 
@@ -1280,5 +1291,6 @@
             if (this.audioVerifier) this.audioVerifier.stop();
         }
     }
+
     new GuitarTrainApp();
 })();

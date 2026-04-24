@@ -168,15 +168,16 @@ def handle_thumbnail(data):
         logger.warning("指板参数更新失败（可能未检测到琴枕/琴桥）")
 
 @socketio.on('frame')
-def handle_frame(data):
+def handle_frame(data, callback=None):
     image_base64 = data.get('image')
     if not image_base64:
-        logger.warning("收到空图像数据")
-        _safe_emit('detection_result', {'status': 'failed', 'error': '图像数据为空'})
+        if callback:
+            callback('failed')
         return
-
     sid = request.sid
     executor.submit(process_and_emit, image_base64, sid)
+    if callback:
+        callback('ok')
 
 def process_and_emit(image_base64: str, sid: str):
     timings = {}
