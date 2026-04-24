@@ -1126,6 +1126,15 @@
             });
         });
 
+            const icon = this.querySelector('i');
+            if (document.body.classList.contains('video-overlay-active')) {
+                icon.className = 'fas fa-compress';
+                this.innerHTML = '<i class="fas fa-compress" aria-hidden="true"></i> 退出全屏';
+            } else {
+                icon.className = 'fas fa-expand';
+                this.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
+            }
+
 
             // ===== 和弦选择模态窗口控制 =====
             (function() {

@@ -1,7 +1,4 @@
-from flask import Blueprint
+# api/__init__.py - 不在此处注册蓝图，各蓝图在 app.py 中直接注册
+# 保留必要的导入以支持 app.py 中的 from api.xxx import xxx
 from .teach import teach_bp
-from .chords import chords_bp   # 新增
-
-api_bp = Blueprint('api', __name__, url_prefix='/api')
-api_bp.register_blueprint(teach_bp)
-api_bp.register_blueprint(chords_bp)   # 注册
+from .chords import chords_bp

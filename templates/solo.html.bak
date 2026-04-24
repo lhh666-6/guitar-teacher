@@ -34,46 +34,6 @@
             z-index: 0;
             pointer-events: none;
         }
-
-        /* 弹出和弦选择模态窗口 */
-        .chord-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(8px);
-            z-index: 20000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        .chord-modal-overlay.active { display: flex; }
-        .chord-modal-card {
-            width: 90%; max-width: 420px; max-height: 70vh;
-            background: linear-gradient(145deg, #5a3e2b, #3e2c1b);
-            border: 1px solid #b98c5f; border-radius: 24px;
-            padding: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-            color: #f5e6d3; overflow-y: auto;
-        }
-        .chord-modal-header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
-        }
-        .chord-modal-header h3 { margin: 0; color: #ffd966; }
-        .chord-modal-close { background: none; border: none; font-size: 28px; color: #ecd9b4; cursor: pointer; }
-        .chord-modal-search {
-            width: 100%; padding: 10px; border-radius: 30px;
-            border: 1px solid #b98c5f; background: #4a3522; color: #f5e6d3;
-            margin-bottom: 12px; font-size: 0.95rem;
-        }
-        .chord-modal-list { max-height: 50vh; overflow-y: auto; }
-        .popup-chord-item {
-            padding: 10px 12px; cursor: pointer; border-radius: 12px; color: #ffd966;
-            display: flex; justify-content: space-between; align-items: center;
-            transition: background 0.2s;
-        }
-        .popup-chord-item:hover { background: rgba(255,215,140,0.15); }
-        .popup-chord-name { font-weight: 700; }
-        .popup-chord-stars { color: #f4d9b6; letter-spacing: 2px; }
-
         .particle {
             position: absolute;
             border-radius: 50%;
@@ -708,8 +668,6 @@
             border-radius: 0;
             background: transparent !important;
         }
-
-
         body.video-overlay-active .center-panel,
         body.video-overlay-active .right-panel {
             position: absolute;
@@ -1011,13 +969,7 @@
             </div>
             <div class="chord-select">
                 <label for="chordSelect" class="panel-label"><i class="fas fa-book-open" aria-hidden="true"></i> 和弦简介</label>
-            <button class="btn-custom" id="chordPopupBtn" type="button" style="width:100%">
-                <i class="fas fa-guitar"></i> <span id="chordPopupLabel">选择和弦</span>
-            </button>
-            <select id="chordSelect" style="display:none;"></select>
-
-
-
+                <select id="chordSelect"></select>
                 <div class="chord-info" id="chordInfo">
                     和弦名称: <span id="selChordName">-</span><br>
                     简介: <span id="selChordDesc">-</span>
@@ -1059,17 +1011,6 @@
         </div>
     </div>
 
-<!-- 和弦选择模态窗口 -->
-<div class="chord-modal-overlay" id="chordModal">
-    <div class="chord-modal-card">
-        <div class="chord-modal-header">
-            <h3>🎸 选择和弦</h3>
-            <button class="chord-modal-close" id="closeChordModal" onclick="document.getElementById('chordModal').classList.remove('active')">&times;</button>
-        </div>
-        <input type="text" class="chord-modal-search" id="chordPopupSearch" placeholder="搜索和弦...">
-        <div class="chord-modal-list" id="chordPopupList"></div>
-    </div>
-</div>
     <!-- 底部详细介绍区域 -->
     <div class="chord-detail-footer" id="chordDetailFooter">
         <div class="detail-title"> 当前和弦详细介绍</div>
@@ -1091,78 +1032,35 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <!-- 原有 JS 逻辑保持不变 (确保路径正确) -->
+    <script src="https://cdn.jsdelivr.net/npm/meyda@5.5.1/dist/web/meyda.min.js"><\/script>\
+    <script src="/static/js/solo/chord_verifier.js"><\/script>' solo.html
+    <script src="/static/js/solo/fingering_detector.js"></script>
     <script src="/static/js/solo/constants.js"></script>
     <script src="/static/js/solo/filters.js"></script>
     <script src="/static/js/solo/ui_helpers.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/meyda@5.5.1/dist/web/meyda.min.js"></script>
-    <script src="/static/js/solo/chord_verifier.js"></script>
     <script src="/static/js/solo/chord_validator.js"></script>
-    <script src="/static/js/solo/fingering_detector.js"></script>
     <script src="/static/js/solo/main.js"></script>
 
     <!-- 新增：全屏按钮逻辑 -->
     <script>
-                // 点击“全屏”按钮：进入视频沉浸模式
-        document.getElementById('fullscreenVideoBtn').addEventListener('click', function(e) {
-            if (!window.guitarApp || !window.guitarApp.cameraStream) {
+        // 点击“全屏”按钮：进入视频沉浸模式（隐藏无关面板），不自动开始测试
+        document.getElementById('fullscreenVideoBtn').addEventListener('click', function(){
+            // 如果摄像头未开，提示先开摄像头
+            if (!guitarApp || !guitarApp.cameraStream) {
                 alert('请先开启摄像头');
                 return;
             }
+            // 切换 video-overlay-active 类
             document.body.classList.toggle('video-overlay-active');
-            const btn = e.currentTarget;          // 用 e.currentTarget 获取按钮
-            const icon = btn.querySelector('i');
+            const icon = this.querySelector('i');
             if (document.body.classList.contains('video-overlay-active')) {
                 icon.className = 'fas fa-compress';
-                btn.innerHTML = '<i class="fas fa-compress" aria-hidden="true"></i> 退出全屏';
+                this.innerHTML = '<i class="fas fa-compress" aria-hidden="true"></i> 退出全屏';
             } else {
                 icon.className = 'fas fa-expand';
-                btn.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
+                this.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
             }
-            // 重绘指板
-            requestAnimationFrame(() => {
-                if (window.guitarApp && window.guitarApp.currentChord) {
-                    window.guitarApp.renderStandardDots(window.guitarApp.currentChord);
-                }
-            });
         });
-
-
-            // ===== 和弦选择模态窗口控制 =====
-            (function() {
-                const chordModal = document.getElementById('chordModal');
-                const chordPopupBtn = document.getElementById('chordPopupBtn');
-                const closeBtn = document.getElementById('closeChordModal');
-                const searchInput = document.getElementById('chordPopupSearch');
-
-                function updateButtonLabel(name) {
-                    document.getElementById('chordPopupLabel').textContent = name || '选择和弦';
-                }
-
-                // 监听隐藏select的变化，同步按钮文字
-                document.getElementById('chordSelect').addEventListener('change', function() {
-                    const selected = this.options[this.selectedIndex];
-                    updateButtonLabel(selected ? selected.textContent : '');
-                });
-
-                chordPopupBtn.addEventListener('click', () => {
-                    chordModal.classList.add('active');
-                    if (window.guitarApp && window.guitarApp.renderPopupList) {
-                        window.guitarApp.renderPopupList(searchInput.value);
-                    }
-                });
-
-                closeBtn.addEventListener('click', () => chordModal.classList.remove('active'));
-                chordModal.addEventListener('click', (e) => {
-                    if (e.target === chordModal) chordModal.classList.remove('active');
-                });
-
-                searchInput.addEventListener('input', (e) => {
-                    if (window.guitarApp && window.guitarApp.renderPopupList) {
-                        window.guitarApp.renderPopupList(e.target.value);
-                    }
-                });
-            })();
-
     </script>
 
     <script>

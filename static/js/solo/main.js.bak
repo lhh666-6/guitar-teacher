@@ -210,7 +210,7 @@
                 item.addEventListener('click', () => {
                     this.elements.chordSelect.value = chord.id;
                     this.elements.chordSelect.dispatchEvent(new Event('change'));
-                    document.getElementById('chordModal').classList.remove('active');
+                    document.getElementById('chordPopupPanel').classList.remove('active');
                 });
                 popupList.appendChild(item);
             });
@@ -1214,12 +1214,12 @@
 
             // 新增弹出面板事件
             const popupBtn = document.getElementById('chordPopupBtn');
-            const chordModal = document.getElementById('chordModal');
+            const popupPanel = document.getElementById('chordPopupPanel');
             const searchInput = document.getElementById('chordPopupSearch');
             if (popupBtn) {
                 popupBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    chordModal.classList.toggle('active');
+                    popupPanel.classList.toggle('active');
                 });
             }
             if (searchInput) {
