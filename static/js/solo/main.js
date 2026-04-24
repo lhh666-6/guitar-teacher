@@ -1,8 +1,8 @@
 // ========== main.js ==========
-// 吉他训练主类，整合视觉、音频、统计与全屏控制
+// GuitarTrainApp 主类，依赖全局常量（来自 constants.js）、绘制函数（来自 ui_helpers.js）和验证模块（chord_validator.js）
 
 (function() {
-    // 浏览器兼容 getUserMedia
+    // ========== 浏览器兼容性处理 ==========
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices = navigator.mediaDevices || {};
         navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia ||
@@ -18,8 +18,16 @@
             };
     }
 
+    // ========== 主应用类 ==========
     class GuitarTrainApp {
         constructor() {
+            // 状态变量
+        
+            this.thumbnailDynamicInterval = 200;      // 初始 5帧/秒
+            this.thumbnailRttHistory = [];            // RTT 采样
+            this.thumbnailFastStartTime = null;       // 开始时间
+            this.thumbnailModeCheckTimer = null;      // 2秒定时器
+            this.thumbnailModeDecided = false;        // 评估完成标志
             this.chords = [];
             this.currentChord = null;
             this.testList = [];
@@ -36,6 +44,7 @@
             this.lastSendTime = 0;
             this.lastFrameSendTime = 0;
 
+            // 音频验证
             this.audioVerifier = new ChordVerifier();
             this.audioResultCache = null;
             this.audioWaiting = false;
@@ -48,30 +57,76 @@
             this.cooldownTimer = null;
             this.quickTimer = null;
 
+            // MediaPipe 相关
             this.hands = null;
             this.camera = null;
-            this.filters = [];
+            this.filters = [];               // 21个点的滤波器
             this.lastThumbnailTime = 0;
             this.sendingEnabled = false;
-            this.useMediaPipe = true;
+            this.useMediaPipe = true;         // 是否尝试使用 MediaPipe
 
+            // 音频预留
             this.audioContext = null;
             this.audioEnabled = false;
 
+            // 关键点发送节流
             this.lastLandmarkSendTime = 0;
+
+            // 用于实时绘制
             this.latestLocalLandmarks = null;
             this.cachedDrawingData = null;
             this.animationFrameId = null;
 
             this.fingeringDetector = new FingeringDetector();
 
+            // 调试日志锁
+            this._logMediaPipeReady = false;
+            this._logMediaPipeFallback = false;
+            this._logHandResultsFirst = false;
+            this._logCameraStartFail = false;
+            this._logSocketConnected = false;
+            this._logSocketDisconnected = false;
+            this._logSocketError = false;
+            this._logFretboardReady = false;
+            this._logFretboardMissing = false;
+            this._logThumbnailOk = false;
+            this._logThumbnailFail = false;
+            this._logFrameOk = false;
+            this._logFrameFail = false;
+            this._drawStartedLogged = false;
+            this._handModelTriggered = false;
+
+            // DOM 元素缓存
             this.cacheElements();
+
+            // 初始化粒子背景
             this.createParticles();
+
+            // 加载和弦数据
             this.loadChords();
+
+            // 绑定事件
             this.bindEvents();
 
-            window.guitarApp = this;
+            // 全屏变化监听：退出全屏时若在测试模式则停止测试并恢复界面
+            this._onFullscreenChange = this._handleFullscreenChange.bind(this);
+            document.addEventListener('fullscreenchange', this._onFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', this._onFullscreenChange);
+            document.addEventListener('msfullscreenchange', this._onFullscreenChange);
+
+            // 窗口卸载清理
             window.addEventListener('beforeunload', () => this.cleanup());
+        }
+
+        _handleFullscreenChange() {
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            if (!isFullscreen && this.testMode) {
+                console.log('[全屏] 退出全屏，自动结束测试并恢复初始界面');
+                this.stopTestAndSending();
+                if (this.cameraStream) {
+                    this._closeCamera();
+                }
+            }
         }
 
         cacheElements() {
@@ -103,6 +158,7 @@
                 difficultyBadge: document.getElementById('difficultyBadge')
             };
 
+            // 叠加画布（若不存在则创建）
             this.overlayCanvas = document.getElementById('overlayCanvas');
             if (!this.overlayCanvas) {
                 this.overlayCanvas = document.createElement('canvas');
@@ -320,7 +376,6 @@
             if (this.audioVerifier) {
                 this.audioVerifier.stop();
             }
-
             this.testMode = false;
             this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
             if (this.elements.trainLayout) {
@@ -329,8 +384,6 @@
             if (this.elements.videoContainer) {
                 this.elements.videoContainer.classList.remove('video-expanded');
             }
-
-            // 安全退出全屏（仅在活动文档全屏状态下调用）
             if (document.fullscreenElement || document.webkitFullscreenElement) {
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
@@ -340,7 +393,6 @@
                     document.msExitFullscreen();
                 }
             }
-
             if (document.body.classList.contains('video-overlay-active')) {
                 document.body.classList.remove('video-overlay-active');
                 const fullscreenBtn = document.getElementById('fullscreenVideoBtn');
@@ -351,8 +403,84 @@
             if (this.currentChord) {
                 requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
             }
+            this._resetDebugFlags();
+        }
+
+        _closeCamera() {
+            if (this.testMode) {
+                this.stopTestAndSending();
+            }
+            if (this.animationId) {
+                cancelAnimationFrame(this.animationId);
+                this.animationId = null;
+            }
+            if (this.animationFrameId) {
+                cancelAnimationFrame(this.animationFrameId);
+                this.animationFrameId = null;
+            }
+            if (this._stopHandLoop) {
+                this._stopHandLoop();
+            }
+            if (this.camera) {
+                this.camera.stop();
+            }
+            if (this.audioVerifier) {
+                this.audioVerifier.stop();
+            }
+            this._clearAllTimers();
+            if (this.cameraStream) {
+                this.cameraStream.getTracks().forEach(t => t.stop());
+                this.cameraStream = null;
+            }
+            this.elements.cameraFeed.srcObject = null;
+            this.elements.cameraFeed.style.transform = '';
             this.elements.toggleCamera.textContent = '开启';
             this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+            document.body.classList.remove('video-overlay-active');
+            const fullscreenBtn = document.getElementById('fullscreenVideoBtn');
+            if (fullscreenBtn) {
+                fullscreenBtn.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
+            }
+            if (this.elements.trainLayout) {
+                this.elements.trainLayout.classList.remove('test-mode');
+            }
+            if (this.elements.videoContainer) {
+                this.elements.videoContainer.classList.remove('video-expanded');
+            }
+            if (this.socket) {
+                this.socket.disconnect();
+                if (this.socket.close) this.socket.close();
+                this.socket = null;
+            }
+            this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+            this.filters = [];
+            this.latestLocalLandmarks = null;
+            this.cachedDrawingData = null;
+            this.sendingEnabled = false;
+            this._resetDebugFlags();
+            if (this.currentChord) {
+                requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
+            }
+        }
+
+        _resetDebugFlags() {
+            this._logFretboardReady = false;
+            this._logFretboardMissing = false;
+            this._drawStartedLogged = false;
+            this._handModelTriggered = false;
+            this._logThumbnailOk = false;
+            this._logThumbnailFail = false;
+            this._logFrameOk = false;
+            this._logFrameFail = false;
         }
 
         goToTestIndex(index) {
@@ -397,12 +525,14 @@
         moveToNextTest() {
             if (this.currentTestIndex + 1 >= this.testList.length) {
                 this.stopTestAndSending();
-                this.testMode = false;
                 const total = this.stats.correct + this.stats.wrong;
                 const avgTime = this.testResults.filter(r => r && r.correct).reduce((acc, r) => acc + r.time, 0) / (this.stats.correct || 1);
                 alert(`✅ 测试完成！\n正确: ${this.stats.correct}, 错误: ${this.stats.wrong}\n平均正确用时: ${avgTime.toFixed(2)} 秒`);
                 this.elements.progressDisplay.textContent = `${this.testList.length}/${this.testList.length}`;
                 this.elements.currentTimeDisplay.textContent = '0.0 s';
+                if (this.cameraStream) {
+                    this._closeCamera();
+                }
                 return;
             }
             this.currentTestIndex++;
@@ -536,7 +666,7 @@
                 dot.className = `dot ${p.type === 'standard' ? 'standard' : (p.correct ? 'user-correct' : 'user-wrong')}`;
                 dot.style.left = (x - DOT_RADIUS) + 'px';
                 if (p.type === 'standard') {
-                    dot.style.top = (y - DOT_RADIUS + DOT_RADIUS) + 'px'; // 对齐弦线
+                    dot.style.top = (y - DOT_RADIUS + DOT_RADIUS) + 'px';
                 } else {
                     dot.style.top = (y - DOT_RADIUS) + 'px';
                 }
@@ -571,23 +701,40 @@
             });
         }
 
+        // ================= 核心绘制函数（回归简单，永不偏移） =================
         drawAll() {
             if (!this.overlayCanvas) return;
             const ctx = this.overlayCtx;
+            // 直接使用画布的固有像素尺寸（在 loadedmetadata 中已设为视频原始分辨率）
             const w = this.overlayCanvas.width;
             const h = this.overlayCanvas.height;
+
             ctx.clearRect(0, 0, w, h);
+
+            // 诊断红框，用于验证对齐（正式发布可注释）
+            // ctx.strokeStyle = 'red';
+            // ctx.lineWidth = 4;
+            // ctx.strokeRect(0, 0, w, h);
+
             if (this.cachedDrawingData) {
-                console.log('🖌️ 绘制背景，弦线:', this.cachedDrawingData.strings.length);
+                if (!this._drawStartedLogged) {
+                    console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
+                    this._drawStartedLogged = true;
+                }
                 drawOverlay(ctx, w, h, this.cachedDrawingData);
             } else {
-                console.warn('⚠️ cachedDrawingData 为空，无法绘制弦线和品丝');
+                if (this._drawStartedLogged) {
+                    console.warn('⚠️ cachedDrawingData 丢失，停止绘制指板');
+                    this._drawStartedLogged = false;
+                }
             }
+
             if (this.latestLocalLandmarks) {
                 drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
             }
         }
 
+        // ================= 其他功能方法（保持不变） =================
         _recordUnstable() {
             this.testResults[this.currentTestIndex] = {
                 correct: false,
@@ -621,6 +768,28 @@
             this.audioWaiting = false;
         }
 
+        recordWrong() {
+            if (!this.testMode || this.recordedForCurrentChord) return;
+            this.testResults[this.currentTestIndex] = { correct: false, time: null };
+            this.stats.wrong++;
+            this.updateStats();
+            this.recordedForCurrentChord = true;   // 标记已记录，防止重复记录
+            this.renderTestList();
+
+            fetch('/api/save_record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chord_name: this.currentChord.name,
+                    correct: false,
+                    time_spent: 0.0,
+                    mode: QUICK_MODE ? 'quick' : 'normal'
+                })
+            }).catch(err => console.error('保存记录失败:', err));
+
+            // 关键：不调用 this.moveToNextTest()
+        }
+
         _finalizeChord(result, options = {}) {
             if (!this.testMode || this.recordedForCurrentChord) return;
             this._clearAllTimers();
@@ -633,13 +802,14 @@
                     this._recordUnstable();
                     break;
                 case 'wrong':
-                    this.recordSkip();
-                    if (!options.forceSkip) {
-                        return;
+                    if (options.forceSkip) {
+                        this.recordSkip();
+                    } else {
+                        this.recordWrong();
                     }
                     break;
             }
-            this.cooldownTimer = setTimeout(() => this.moveToNextTest(), 1000);
+            // 不再有任何延迟跳转
         }
 
         _handleAudioReady() {
@@ -665,9 +835,7 @@
             const receiveTime = performance.now();
             if (this.lastFrameSendTime > 0) {
                 const totalDelay = receiveTime - this.lastFrameSendTime;
-                console.log(`📡 总延迟: ${totalDelay.toFixed(1)} ms`);
             }
-            console.log('收到检测结果:', data);
             if (data.drawing_data) {
                 this.cachedDrawingData = data.drawing_data;
             }
@@ -703,8 +871,6 @@
                         visualResult.barre.endString === this.currentChord.barre.endString;
                     userBarre = { ...visualResult.barre, correct };
                 }
-                const processEnd = performance.now();
-                console.log(`⚙️ 结果处理耗时: ${(processEnd - processStart).toFixed(2)} ms`);
                 this.renderStandardDots(this.currentChord, userPositions, userBarre);
                 if (this._visualStableReady && !this.recordedForCurrentChord) {
                     if (this.audioResultCache) {
@@ -717,9 +883,14 @@
         };
 
         onHandResults(results) {
+            if (!this._handModelTriggered) {
+                console.log('✅ MediaPipe 手部模型首次成功调用，返回手部数据');
+                this._handModelTriggered = true;
+            }
+
             const now = performance.now();
 
-            // 选择目标手部 (与之前相同)
+            // 选择目标手部
             let targetHandIndex = -1;
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const screenMidX = 0.5;
@@ -747,6 +918,7 @@
                 return;
             }
 
+            // 手部切换防抖
             if (this._lastTargetHandIndex !== undefined && this._lastTargetHandIndex !== targetHandIndex) {
                 this._handSwitchCounter = (this._handSwitchCounter || 0) + 1;
                 if (this._handSwitchCounter < 2) {
@@ -784,17 +956,10 @@
             }
             this.latestLocalLandmarks = smoothed;
 
-            // 非测试模式下仅更新骨骼绘制，不进行按弦检测和远程发送
-            if (!this.testMode || !this.sendingEnabled) {
-                this.drawAll();
-                if (now - this.lastThumbnailTime > THUMBNAIL_INTERVAL) {
-                    this.sendThumbnail();
-                    this.lastThumbnailTime = now;
-                }
-                return;
-            }
+            // 每帧绘制，确保骨骼实时显示
+            this.drawAll();
 
-            // 测试模式下的发送和检测
+            // 测试模式下的按弦检测与发送（受频率限制）
             if (now - this.lastLandmarkSendTime < LANDMARK_SEND_INTERVAL) return;
             this.lastLandmarkSendTime = now;
 
@@ -812,30 +977,79 @@
                 };
                 this.handleDetectionResult(result);
             } else {
-                console.warn('指板参数未就绪，无法进行本地按弦检测');
+                if (this.testMode) {
+                    if (!this._logFretboardMissing) {
+                        console.warn('⚠️ 指板参数未就绪，无法进行本地按弦检测');
+                        this._logFretboardMissing = true;
+                    }
+                }
             }
 
-            if (now - this.lastThumbnailTime > THUMBNAIL_INTERVAL) {
-                this.sendThumbnail();
-                this.lastThumbnailTime = now;
+        if (now - this.lastThumbnailTime > this.thumbnailDynamicInterval) {
+            this.sendThumbnail();
+            this.lastThumbnailTime = now;
+        }
+
+        }
+
+        _updateThumbnailRtt(rtt) {
+            this.thumbnailRttHistory.push(rtt);
+            if (this.thumbnailRttHistory.length > 5) {
+                this.thumbnailRttHistory.shift();  // 保留最近 5 个样本
             }
+        }
+
+        _evaluateThumbnailMode() {
+            this.thumbnailModeDecided = true;
+            if (this.thumbnailModeCheckTimer) {
+                clearTimeout(this.thumbnailModeCheckTimer);
+                this.thumbnailModeCheckTimer = null;
+            }
+
+            if (this.thumbnailRttHistory.length === 0) return;
+
+            const avgRtt = this.thumbnailRttHistory.reduce((a, b) => a + b, 0) / this.thumbnailRttHistory.length;
+
+            if (avgRtt > 300) {
+                this.thumbnailDynamicInterval = 500;  // 降为 2 帧/秒
+            } else {
+                this.thumbnailDynamicInterval = 200;  // 保持 5 帧/秒
+            }
+            // 之后不再改变，舍弃多余帧的逻辑由降低发送频率自然实现
         }
 
         sendThumbnail() {
             if (!this.socket || !this.socket.connected) return;
             const video = this.elements.cameraFeed;
             if (!video.videoWidth) return;
+
+            const now = performance.now();
+
+            // 首次发送时启动 2 秒评估定时器
+            if (!this.thumbnailModeDecided && this.thumbnailFastStartTime === null) {
+             this.thumbnailFastStartTime = now;
+             this.thumbnailModeCheckTimer = setTimeout(() => {
+              this._evaluateThumbnailMode();
+           }, 2000);
+       }
+
+            const sendTime = now;
             const targetHeight = Math.round(THUMBNAIL_WIDTH * video.videoHeight / video.videoWidth);
             const canvas = document.createElement('canvas');
             canvas.width = THUMBNAIL_WIDTH;
             canvas.height = targetHeight;
+
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, THUMBNAIL_WIDTH, targetHeight);
             const imageBase64 = canvas.toDataURL('image/jpeg', THUMBNAIL_QUALITY);
-            this.socket.emit('thumbnail', { image: imageBase64 });
+
+            this.socket.emit('thumbnail', { image: imageBase64 }, (response) => {
+                const rtt = performance.now() - sendTime;
+                this._updateThumbnailRtt(rtt);
+            });
         }
 
-        sendAudio() {}
+
 
         _handleStreamEnded() {
             console.warn('摄像头流意外终止');
@@ -843,75 +1057,19 @@
                 this.cameraStream.getTracks().forEach(t => t.stop());
                 this.cameraStream = null;
             }
-            this.elements.cameraFeed.srcObject = null;
-            this.elements.toggleCamera.textContent = '开启';
-            this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
-            if (document.body.classList.contains('video-overlay-active')) {
-                document.body.classList.remove('video-overlay-active');
-                const fullscreenBtn = document.getElementById('fullscreenVideoBtn');
-                if (fullscreenBtn) {
-                    fullscreenBtn.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
-                }
-            }
-            this.sendingEnabled = false;
-            if (this.audioVerifier) this.audioVerifier.stop();
-            this._clearAllTimers();
-            this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
-            if (this.elements.trainLayout) this.elements.trainLayout.classList.remove('test-mode');
-            this.testMode = false;
+            this._closeCamera();
         }
 
         async toggleCamera() {
             if (this.cameraStream) {
-                this.sendingEnabled = false;
-                if (this.animationId) {
-                    cancelAnimationFrame(this.animationId);
-                    this.animationId = null;
-                }
-                if (this.animationFrameId) {
-                    cancelAnimationFrame(this.animationFrameId);
-                    this.animationFrameId = null;
-                }
-                if (this.camera) {
-                    this.camera.stop();
-                }
-                if (this.audioVerifier) {
-                    this.audioVerifier.stop();
-                }
-                this._clearAllTimers();
-                this.cameraStream.getTracks().forEach(t => t.stop());
-                this.cameraStream = null;
-                this.elements.cameraFeed.srcObject = null;
-                if (document.body.classList.contains('video-overlay-active')) {
-                    document.body.classList.remove('video-overlay-active');
-                    const fullscreenBtn = document.getElementById('fullscreenVideoBtn');
-                    if (fullscreenBtn) {
-                        fullscreenBtn.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
-                    }
-                    if (this.currentChord) {
-                        requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
-                    }
-                }
-                this.elements.cameraFeed.style.transform = '';
-                this.elements.toggleCamera.textContent = '开启';
-                this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
-                if (this.socket) {
-                    this.socket.disconnect();
-                    if (this.socket.close) this.socket.close();
-                    this.socket = null;
-                }
-                this.testMode = false;
-                this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
-                if (this.elements.trainLayout) {
-                    this.elements.trainLayout.classList.remove('test-mode');
-                }
-                this.filters = [];
-                this.latestLocalLandmarks = null;
-                this.cachedDrawingData = null;
+                this._closeCamera();
             } else {
                 try {
                     if (typeof Hands === 'undefined') {
-                        console.warn('MediaPipe Hands 库未加载，将使用降级模式');
+                        if (!this._logMediaPipeFallback) {
+                            console.warn('⚠️ MediaPipe Hands 库未加载，将使用降级模式');
+                            this._logMediaPipeFallback = true;
+                        }
                         this.useMediaPipe = false;
                     } else {
                         if (!this.hands) {
@@ -924,11 +1082,14 @@
                                 minDetectionConfidence: 0.12,
                                 minTrackingConfidence: 0.12
                             });
-                            // 修复：直接赋值回调
-                            this.hands.onResults = (results) => this.onHandResults(results);
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                            this.useMediaPipe = true;
+                            this.hands.onResults((results) => this.onHandResults(results));
+                            if (!this._logMediaPipeReady) {
+                                console.log('✅ MediaPipe Hands 已成功加载，等待首次调用');
+                                this._logMediaPipeReady = true;
+                            }
                         }
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        this.useMediaPipe = true;
                     }
 
                     this.cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -955,29 +1116,57 @@
                         reconnection: false,
                         timeout: 20000
                     });
+
+                    this.socket.on('connect', () => {
+                        if (!this._logSocketConnected) {
+                            console.log('✅ WebSocket 连接成功，ID:', this.socket.id);
+                            this._logSocketConnected = true;
+                            this._logSocketDisconnected = false;
+                            this._logSocketError = false;
+                        }
+                    });
+
+                    this.socket.on('disconnect', (reason) => {
+                        if (!this._logSocketDisconnected) {
+                            console.log('❌ WebSocket 断开，原因:', reason);
+                            this._logSocketDisconnected = true;
+                            this._logSocketConnected = false;
+                            this._logFrameOk = false;
+                            this._logThumbnailOk = false;
+                        }
+                    });
+
+                    this.socket.on('connect_error', (err) => {
+                        if (!this._logSocketError) {
+                            console.error('🚫 WebSocket 连接错误:', err);
+                            this._logSocketError = true;
+                            this._logFrameFail = true;
+                            this._logThumbnailFail = true;
+                        }
+                    });
+
+                    this.socket.on('error', (err) => {
+                        if (!this._logSocketError) {
+                            console.error('🚫 WebSocket 错误:', err);
+                            this._logSocketError = true;
+                        }
+                    });
+
                     this.socket.on('fretboard_params', (params) => {
-                        console.log('📐 收到指板参数', params);
+                        if (!this._logFretboardReady) {
+                            console.log('✅ 指板参数已就绪，弦线/品丝绘制可用');
+                            this._logFretboardReady = true;
+                            this._logFretboardMissing = false;
+                        }
                         this.fingeringDetector.setParams(params);
                         const drawingData = this._buildDrawingDataFromParams(params);
                         this.cachedDrawingData = drawingData;
-                        console.log('🎨 已生成 drawing_data，弦线数:', drawingData.strings.length, '品丝数:', drawingData.frets.length);
                         this.drawAll();
                     });
 
-                    this.socket.on('connect', () => {
-                        console.log('✅ WebSocket 连接成功，ID:', this.socket.id);
-                    });
-                    this.socket.on('disconnect', (reason) => {
-                        console.log('❌ WebSocket 断开，原因:', reason);
-                    });
-                    this.socket.on('connect_error', (err) => {
-                        console.error('🚫 WebSocket 连接错误:', err);
-                    });
-                    this.socket.on('error', (err) => {
-                        console.error('🚫 WebSocket 错误:', err);
-                    });
                     this.socket.on('detection_result', this.handleDetectionResult);
 
+                    // 等待视频元数据，固定画布像素尺寸为视频原始分辨率（不修改CSS）
                     await new Promise((resolve) => {
                         this.elements.cameraFeed.addEventListener('loadedmetadata', () => {
                             this.overlayCanvas.width = this.elements.cameraFeed.videoWidth;
@@ -987,28 +1176,46 @@
                         }, { once: true });
                     });
 
+                    // MediaPipe 循环
                     if (this.useMediaPipe && this.hands) {
-                        this.camera = new Camera(this.elements.cameraFeed, {
-                            onFrame: async () => {
-                                await this.hands.send({ image: this.elements.cameraFeed });
-                            },
-                            width: 1920,
-                            height: 1080
-                        });
-                        this.camera.start();
+                        let handLoopRunning = true;
+                        const handLoop = async () => {
+                            if (!handLoopRunning || !this.hands || !this.cameraStream) return;
+                            const video = this.elements.cameraFeed;
+                            if (video.readyState >= 2) {
+                                try {
+                                    await this.hands.send({ image: video });
+                                } catch (e) {
+                                    if (!this._logCameraStartFail) {
+                                        console.error('❌ MediaPipe hands.send() 调用失败:', e);
+                                        this._logCameraStartFail = true;
+                                    }
+                                }
+                            }
+                            if (handLoopRunning) {
+                                this.animationFrameId = requestAnimationFrame(handLoop);
+                            }
+                        };
+                        this.animationFrameId = requestAnimationFrame(handLoop);
 
-                        if (this.animationFrameId) {
-                            cancelAnimationFrame(this.animationFrameId);
-                        }
                         const animate = () => {
                             this.drawAll();
-                            this.animationFrameId = requestAnimationFrame(animate);
+                            if (handLoopRunning) {
+                                this.animationId = requestAnimationFrame(animate);
+                            }
                         };
-                        this.animationFrameId = requestAnimationFrame(animate);
+                        this.animationId = requestAnimationFrame(animate);
+
+                        this._handLoopRunning = () => handLoopRunning;
+                        this._stopHandLoop = () => { handLoopRunning = false; };
                     } else {
-                        console.log('使用降级图像发送模式');
+                        if (!this._logMediaPipeFallback) {
+                            console.log('使用降级图像发送模式');
+                            this._logMediaPipeFallback = true;
+                        }
                     }
                 } catch (err) {
+                    console.error('无法访问摄像头：' + err.message);
                     alert('无法访问摄像头：' + err.message);
                 }
             }
@@ -1021,7 +1228,6 @@
             const thumbW = 960;
             const scale = videoW / thumbW;
             const scaleY = scale;
-            console.log(`📐 绘制缩放: scale=${scale.toFixed(3)}, 视频尺寸: ${videoW}x${videoH}`);
             const strings = params.strings.map(s => ({
                 string: s.string,
                 start: [s.nut[0] * scale, s.nut[1] * scaleY],
@@ -1060,7 +1266,7 @@
             if (stateSpan) {
                 stateSpan.textContent = QUICK_MODE ? '开' : '关';
             }
-            if (this.animationId) cancelAnimationFrame(this.animationId);
+            // 不再取消 animationId，保持绘制循环运行
             if (this.timerInterval) clearInterval(this.timerInterval);
 
             this.sendingEnabled = true;
@@ -1094,9 +1300,6 @@
             this.recordedForCurrentChord = false;
             this.goToTestIndex(0);
 
-            if (!this.useMediaPipe || !this.hands) {
-                this.sendFrame();
-            }
 
             this.timerInterval = setInterval(() => {
                 if (this.testMode && this.chordStartTime) {
@@ -1125,56 +1328,6 @@
                 layout.msRequestFullscreen();
             }
         }
-
-        sendFrame = () => {
-            if (!this.sendingEnabled) return;
-            if (!this.elements.cameraFeed.videoWidth || !this.socket || !this.socket.connected) {
-                this.animationId = requestAnimationFrame(this.sendFrame);
-                return;
-            }
-
-            const now = Date.now();
-            const HIGH_FPS_INTERVAL = 200;
-            const LOW_FPS_INTERVAL = 500;
-
-            if (!this.dynamicFrameInterval) {
-                this.dynamicFrameInterval = LOW_FPS_INTERVAL;
-            }
-
-            if (now - this.lastSendTime < this.dynamicFrameInterval) {
-                this.animationId = requestAnimationFrame(this.sendFrame);
-                return;
-            }
-            this.lastSendTime = now;
-
-            const frameStart = performance.now();
-
-            const canvas = document.createElement('canvas');
-            canvas.width = this.elements.cameraFeed.videoWidth;
-            canvas.height = this.elements.cameraFeed.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(this.elements.cameraFeed, 0, 0, canvas.width, canvas.height);
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
-
-            this.socket.emit('frame', { image: imageBase64 }, (response) => {
-                const rtt = performance.now() - frameStart;
-                if (!this.rttHistory) this.rttHistory = [];
-                this.rttHistory.push(rtt);
-                if (this.rttHistory.length > 5) this.rttHistory.shift();
-                const avgRtt = this.rttHistory.reduce((a, b) => a + b, 0) / this.rttHistory.length;
-
-                if (avgRtt > 300) {
-                    this.dynamicFrameInterval = LOW_FPS_INTERVAL;
-                } else {
-                    this.dynamicFrameInterval = HIGH_FPS_INTERVAL;
-                }
-            });
-
-            this.animationId = requestAnimationFrame(this.sendFrame);
-        };
 
         bindEvents() {
             const quickBtn = document.getElementById('toggleQuickMode');
@@ -1278,6 +1431,9 @@
                 cancelAnimationFrame(this.animationFrameId);
                 this.animationFrameId = null;
             }
+            if (this._stopHandLoop) {
+                this._stopHandLoop();
+            }
             if (this.timerInterval) clearInterval(this.timerInterval);
             if (this.camera) {
                 this.camera.stop();
@@ -1289,8 +1445,13 @@
                 this.socket.disconnect();
             }
             if (this.audioVerifier) this.audioVerifier.stop();
+            this._resetDebugFlags();
+            document.removeEventListener('fullscreenchange', this._onFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', this._onFullscreenChange);
+            document.removeEventListener('msfullscreenchange', this._onFullscreenChange);
         }
     }
 
+    // 启动应用
     new GuitarTrainApp();
 })();

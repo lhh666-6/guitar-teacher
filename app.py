@@ -150,22 +150,25 @@ def handle_thumbnail(data):
     image_base64 = data.get('image')
     if not image_base64:
         logger.warning("收到空缩略图数据")
-        return
+        return  # 如果没有 callback，就不用调用
 
     frame = base64_to_cv2(image_base64)
     if frame is None:
         logger.warning("缩略图解码失败")
-        return
+        # 即使失败也回调，让前端能测量 RTT
+        return False
 
     success = recognizer.update_fretboard(frame)
     if success:
         logger.info("指板参数更新成功")
-        # 新增：向前端推送指板参数
         params = recognizer.get_fretboard_params()
         if params:
             socketio.emit('fretboard_params', params, room=request.sid)
     else:
         logger.warning("指板参数更新失败（可能未检测到琴枕/琴桥）")
+
+    # 返回 True 作为回调结果（ack）
+    return True
 
 @socketio.on('frame')
 def handle_frame(data, callback=None):
