@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>🎸 专业调音器 · 典藏版 · 动效优化</title>
+    <title>专业调音器 · 典藏版 · 动效优化</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         /* ========== 全局变量 ========== */
         :root {
@@ -127,8 +128,8 @@
         .header {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 40px;
+            gap: 12px;
+            margin-bottom: 24px;
             animation: fadeIn 0.7s cubic-bezier(0.2,0.9,0.4,1);
             will-change: opacity;
         }
@@ -162,6 +163,9 @@
         }
         .auto-icon {
             font-size: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             filter: drop-shadow(0 0 4px gold);
         }
         .auto-text {
@@ -183,6 +187,9 @@
         }
 
         .header h2 {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
             font-size: 2rem;
             font-weight: 600;
             background: linear-gradient(135deg, #ffd966, #ffb347);
@@ -194,7 +201,18 @@
             margin-right: auto;
         }
 
+        .header-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
         .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             padding: 8px 20px;
             background: linear-gradient(135deg, var(--wood-dark), #2b1e16);
             color: var(--gold-primary);
@@ -202,7 +220,7 @@
             border-radius: var(--border-radius);
             cursor: pointer;
             backdrop-filter: blur(10px);
-            transition: transform 0.2s cubic-bezier(0.2,0.9,0.4,1), 
+            transition: transform 0.2s cubic-bezier(0.2,0.9,0.4,1),
                         box-shadow 0.2s ease,
                         background 0.25s;
             font-weight: 600;
@@ -224,29 +242,29 @@
         .string-select {
             display: flex;
             justify-content: center;
-            gap: 15px;
-            margin-bottom: 40px;
+            gap: 12px;
+            margin-bottom: 24px;
             flex-wrap: wrap;
             animation: slideUp 0.7s cubic-bezier(0.2,0.9,0.4,1);
             will-change: transform, opacity;
         }
         .string-btn {
-            padding: 12px 28px;
+            padding: 10px 24px;
             border: none;
             border-radius: var(--border-radius);
             background: linear-gradient(135deg, rgba(60,43,33,0.6), rgba(43,30,22,0.4));
             color: var(--text-light);
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             backdrop-filter: blur(10px);
-            transition: transform 0.2s cubic-bezier(0.2,0.9,0.4,1), 
+            transition: transform 0.2s cubic-bezier(0.2,0.9,0.4,1),
                         box-shadow 0.2s,
                         background 0.25s;
             position: relative;
             overflow: hidden;
             border: 1px solid var(--border-gold);
-            min-width: 100px;
+            min-width: 92px;
             will-change: transform;
             backface-visibility: hidden;
         }
@@ -296,16 +314,16 @@
             backdrop-filter: blur(20px);
             border: 1px solid var(--border-gold);
             border-radius: var(--panel-radius);
-            padding: 40px;
+            padding: 28px 32px;
             box-shadow: var(--shadow-heavy);
             animation: popIn 0.8s cubic-bezier(0.2,0.9,0.4,1);
             will-change: transform, opacity;
         }
         .string-name {
-            font-size: 32px;
+            font-size: 30px;
             font-weight: 700;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             text-shadow: 0 2px 10px rgba(0,0,0,0.3);
             background: linear-gradient(90deg, var(--gold-primary), var(--gold-secondary));
             -webkit-background-clip: text;
@@ -325,7 +343,7 @@
         .wave-bar {
             width: 4px;
             height: 20px;
-            background: linear-gradient(to top, #2196F3, var(--gold-primary));
+            background: linear-gradient(to top, #8b5a2b, var(--gold-primary));
             border-radius: 2px;
             animation: wave 1s infinite ease-in-out;
             will-change: height;
@@ -394,7 +412,7 @@
             will-change: height;
         }
         .trend-bar.positive { background: #ff5722; }
-        .trend-bar.negative { background: #2196f3; }
+        .trend-bar.negative { background: #8b5a2b; }
 
         .pitch-gauge {
             height: 60px;
@@ -462,6 +480,10 @@
             color: var(--text-light);
         }
         .guide-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
             text-align: center;
             font-size: 18px;
             font-weight: 600;
@@ -484,17 +506,17 @@
             width: 100%;
             padding: 18px;
             margin-top: 30px;
-            background: linear-gradient(135deg, #2196F3, #9C27B0);
+            background: linear-gradient(135deg, #b97734, #8b5a2b);
             color: white;
             border: none;
             border-radius: var(--border-radius);
             font-size: 20px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s cubic-bezier(0.2,0.9,0.4,1), 
+            transition: transform 0.2s cubic-bezier(0.2,0.9,0.4,1),
                         box-shadow 0.2s ease,
                         background 0.25s;
-            box-shadow: 0 10px 30px rgba(33, 150, 243, 0.4);
+            box-shadow: 0 10px 30px rgba(139, 90, 43, 0.35);
             position: relative;
             overflow: hidden;
             border: 1px solid var(--border-gold);
@@ -515,7 +537,7 @@
         }
         .start-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(33, 150, 243, 0.6);
+            box-shadow: 0 15px 40px rgba(139, 90, 43, 0.45);
             border-color: rgba(255,215,0,0.4);
         }
         .start-btn:active {
@@ -568,6 +590,7 @@
             .header {
                 flex-wrap: wrap;
                 gap: 10px;
+                justify-content: center;
             }
             .auto-mode-btn {
                 order: 1;
@@ -576,9 +599,17 @@
             .header h2 {
                 order: 2;
                 font-size: 1.6rem;
+                width: 100%;
+                justify-content: center;
+                margin-right: 0;
+            }
+            .header-actions {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                gap: 8px;
             }
             .back-btn {
-                order: 3;
                 padding: 6px 15px;
                 font-size: 14px;
             }
@@ -598,25 +629,30 @@
 
     <div class="header">
         <div class="auto-mode-btn" id="auto-mode-btn">
-            <span class="auto-icon">🎯</span>
+            <span class="auto-icon"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i></span>
             <span class="auto-text">自动模式</span>
             <span class="auto-status" id="auto-status">关闭</span>
         </div>
-        <h2>🎸 专业调音台</h2>
-        <button class="back-btn" onclick="window.location.href='/'">← 返回主页</button>
+        <h2><i class="fas fa-guitar" aria-hidden="true"></i> 专业调音台</h2>
+        <div class="header-actions">
+            <button class="back-btn" onclick="window.location.href='/solo'"><i class="fas fa-music" aria-hidden="true"></i> 进入 SOLO</button>
+            <button class="back-btn" onclick="window.location.href='/'"><i class="fas fa-arrow-left" aria-hidden="true"></i> 返回主页</button>
+        </div>
     </div>
 
     <div class="string-select">
-        <button class="string-btn active" data-string="1">1弦 (E)</button>
-        <button class="string-btn" data-string="2">2弦 (B)</button>
-        <button class="string-btn" data-string="3">3弦 (G)</button>
-        <button class="string-btn" data-string="4">4弦 (D)</button>
+        <button class="string-btn active" data-string="6">6弦 (E)</button>
         <button class="string-btn" data-string="5">5弦 (A)</button>
-        <button class="string-btn" data-string="6">6弦 (E)</button>
+        <button class="string-btn" data-string="4">4弦 (D)</button>
+        <button class="string-btn" data-string="3">3弦 (G)</button>
+        <button class="string-btn" data-string="2">2弦 (B)</button>
+        <button class="string-btn" data-string="1">1弦 (E)</button>
     </div>
 
     <div class="tuning-panel">
-        <div class="string-name" id="current-string">1弦 (E)</div>
+        <div class="string-name" id="current-string">6弦 (E)</div>
+
+        <!-- 波形可视化 -->
         <div class="waveform">
             <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
             <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
@@ -635,8 +671,9 @@
             <div class="pitch-needle" id="pitch-needle"></div>
             <div class="gauge-center-number" id="gauge-center-number">0</div>
         </div>
-        <div class="tuning-info" id="deviation">当前偏差：0 音分</div>
-        <div class="guide-text" id="guide">音调准确 ✅</div>
+
+        <div class="tuning-info" id="deviation">当前偏差：未开始调弦</div>
+        <div class="guide-text" id="guide"><i class="fas fa-hand-pointer" aria-hidden="true"></i> 未开始调弦</div>
         <div class="info-note">注：由于环境噪音和算法误差，偏差在±8音分内可视为调音完成。</div>
 
         <button class="start-btn" id="start-tuning">开始调这根弦</button>
@@ -855,7 +892,7 @@
 
         // ==================== 页面逻辑 ====================
         (function() {
-            let currentString = 1;
+            let currentString = 6;
             let isTuning = false;
             let tuner = new YINTuner();
 
@@ -879,6 +916,21 @@
 
             let centsHistory = [];
             const maxHistory = 10;
+
+            const defaultDeviationText = '当前偏差：未开始调弦';
+            const defaultGuideText = '<i class="fas fa-hand-pointer" aria-hidden="true"></i> 未开始调弦';
+
+            function resetTuningDisplay() {
+                needle.style.left = '50%';
+                deviationEl.textContent = defaultDeviationText;
+                gaugeCenterNumber.textContent = '0';
+                guideEl.innerHTML = defaultGuideText;
+                guideEl.style.color = '';
+                lastSpokenGuide = '';
+                centsHistory = [];
+                volumeBar.style.width = '0%';
+                drawTrendChart();
+            }
 
             function createFirework() {
                 fireworksDiv.style.display = 'block';
@@ -930,14 +982,7 @@
                     const note = ['E','B','G','D','A','E'][currentString-1];
                     document.getElementById('current-string').textContent = `${currentString}弦 (${note})`;
 
-                    needle.style.left = '50%';
-                    deviationEl.textContent = '当前偏差：0 音分';
-                    gaugeCenterNumber.textContent = '0';
-                    guideEl.textContent = '音调准确 ✅';
-                    guideEl.style.color = '';
-                    lastSpokenGuide = '';
-                    centsHistory = [];
-                    drawTrendChart();
+                    resetTuningDisplay();
                 });
             });
 
@@ -979,22 +1024,22 @@
                             let voiceText = '';
 
                             if (fire) {
-                                guideText = '音调准确 ✅ 恭喜！';
+                                guideText = '<i class="fas fa-circle-check" aria-hidden="true"></i> 音调准确，恭喜！';
                                 voiceText = '音调准确，恭喜';
                                 createFirework();
                                 tuner.accurateCount = 0;
                             } else if (Math.abs(cents) <= 8) {
-                                guideText = '音调准确 ✅';
+                                guideText = '<i class="fas fa-circle-check" aria-hidden="true"></i> 音调准确';
                                 voiceText = '音调准确';
                             } else if (cents > 8) {
-                                guideText = `音调偏高 ← 逆时针调${cents.toFixed(1)}音分`;
+                                guideText = `<i class="fas fa-arrow-rotate-left" aria-hidden="true"></i> 音调偏高，逆时针调${cents.toFixed(1)}音分`;
                                 voiceText = '偏高';
                             } else if (cents < -8) {
-                                guideText = `音调偏低 → 顺时针调${Math.abs(cents).toFixed(1)}音分`;
+                                guideText = `<i class="fas fa-arrow-rotate-right" aria-hidden="true"></i> 音调偏低，顺时针调${Math.abs(cents).toFixed(1)}音分`;
                                 voiceText = '偏低';
                             }
 
-                            guideEl.textContent = guideText;
+                            guideEl.innerHTML = guideText;
                             const now = Date.now();
                             if (voiceText && voiceText !== lastSpokenGuide && now - lastVoiceTime > voiceCooldown) {
                                 VoiceGuide.speak(voiceText, { rate: 1.0, pitch: 1.0 });
@@ -1027,7 +1072,7 @@
                         } else if (status === 'invalid') {
                             vibrateString.classList.remove('vibrating');
                         } else if (status === 'noSignal') {
-                            guideEl.textContent = '⚠️ 没有检测到琴声，请拨动琴弦';
+                            guideEl.innerHTML = '<i class="fas fa-triangle-exclamation" aria-hidden="true"></i> 没有检测到琴声，请拨动琴弦';
                             guideEl.style.color = '#ffaa00';
                             vibrateString.classList.remove('vibrating');
                             const now = Date.now();
@@ -1050,16 +1095,8 @@
                     startBtn.textContent = '开始调这根弦';
                     startBtn.classList.remove('tuning');
                     vibrateString.classList.remove('vibrating');
-                    needle.style.left = '50%';
-                    deviationEl.textContent = '当前偏差：0 音分';
-                    gaugeCenterNumber.textContent = '0';
-                    guideEl.textContent = '音调准确 ✅';
-                    guideEl.style.color = '';
                     VoiceGuide.stop();
-                    lastSpokenGuide = '';
-                    volumeBar.style.width = '0%';
-                    centsHistory = [];
-                    drawTrendChart();
+                    resetTuningDisplay();
                 }
             });
 
@@ -1104,4 +1141,3 @@
     <script src="/static/js/voice_guide.js"></script>
 </body>
 </html>
-```

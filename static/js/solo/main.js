@@ -385,13 +385,13 @@
                 if (this.audioVerifier && this.audioVerifier.isRunning()) {
                     this.audioVerifier.setTargetChord(this.currentChord.name);
                 }
-                if (QUICK_MODE) {
-                    this.quickTimer = setTimeout(() => {
-                        if (this.testMode && !this.recordedForCurrentChord) {
-                            this._finalizeChord('wrong');
-                        }
-                    }, 5000);
-                }
+            if (QUICK_MODE) {
+                this.quickTimer = setTimeout(() => {
+                    if (this.testMode && !this.recordedForCurrentChord) {
+                        this._finalizeChord('wrong', { forceSkip: true });   // 强制跳过
+                    }
+                }, 5000);
+            }
                 this.updateProgress();
             }
         }
@@ -639,9 +639,10 @@
             this.audioWaiting = false;
         }
 
-        _finalizeChord(result) {
+        _finalizeChord(result, options = {}) {
             if (!this.testMode || this.recordedForCurrentChord) return;
             this._clearAllTimers();
+
             switch (result) {
                 case 'correct':
                     this.recordCorrect();
@@ -651,8 +652,15 @@
                     break;
                 case 'wrong':
                     this.recordSkip();
+                    // 如果是强制跳过（快速模式超时），继续执行后面的自动切换
+                    // 否则直接 return，停留在当前和弦
+                    if (!options.forceSkip) {
+                        return;
+                    }
                     break;
             }
+
+            // 正确、不稳、或强制跳过的错误才到这里
             this.cooldownTimer = setTimeout(() => this.moveToNextTest(), 1000);
         }
 
@@ -1059,7 +1067,11 @@
                 alert('摄像头未就绪，请稍后再试');
                 return;
             }
-
+            // 初始化快速模式按钮状态
+            const stateSpan = document.getElementById('quickModeState');
+            if (stateSpan) {
+                stateSpan.textContent = window.QUICK_MODE ? '开' : '关';
+            }
             if (this.animationId) cancelAnimationFrame(this.animationId);
             if (this.timerInterval) clearInterval(this.timerInterval);
 
@@ -1153,6 +1165,17 @@
         }
 
         bindEvents() {
+
+            const quickBtn = document.getElementById('toggleQuickMode');
+            const quickState = document.getElementById('quickModeState');
+            if (quickBtn && quickState) {
+                quickState.textContent = QUICK_MODE ? '开' : '关'; // 初始化显示
+                quickBtn.addEventListener('click', () => {
+                    QUICK_MODE = !QUICK_MODE;
+                    quickState.textContent = QUICK_MODE ? '开' : '关';
+                    console.log('快速模式', QUICK_MODE ? '已开启' : '已关闭');
+                });
+            }
             this.elements.chordSelect.addEventListener('change', () => {
                 const id = this.elements.chordSelect.value;
                 this.currentChord = this.chords.find(c => c.id === id);
@@ -1227,10 +1250,10 @@
                     this.renderPopupList(e.target.value);
                 });
             }
-            document.addEventListener('click', (e) => {
-                if (popupPanel && !popupPanel.contains(e.target) && e.target !== popupBtn) {
-                    popupPanel.classList.remove('active');
-                }
+        document.addEventListener('click', (e) => {
+            if (chordModal && chordModal.classList.contains('active') && !chordModal.contains(e.target) && e.target !== popupBtn) {
+                chordModal.classList.remove('active');
+            }
             });
         }
 
@@ -1257,6 +1280,5 @@
             if (this.audioVerifier) this.audioVerifier.stop();
         }
     }
-
     new GuitarTrainApp();
 })();
