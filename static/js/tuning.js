@@ -14,19 +14,23 @@ class YINTuner {
 
         // 平滑滤波
         this.smoothedCents = 0;
-        this.smoothingFactor = 0.3; // 指数移动平均系数
+        this.smoothingFactor = 0.3;
 
         // 准确计数
         this.accurateCount = 0;
-        this.requiredAccurate = 5; // 需要连续5次准确才触发烟花
+        this.requiredAccurate = 5;
 
         // 无信号超时
         this.lastValidTime = 0;
-        this.timeoutDuration = 5000; // 5秒无有效音高提示
+        this.timeoutDuration = 5000;
         this.noSignalTimer = null;
 
         // 音量自适应阈值
-        this.rmsThreshold = 500; // 初始值，会根据环境自动调整
+        this.rmsThreshold = 500;
+
+        // 自动模式暂停（0.5秒）
+        this.isPaused = false;
+        this.pauseTimer = null;
     }
 
     async start(stringNumber, callback) {
@@ -71,6 +75,12 @@ class YINTuner {
             this.audioContext.close();
             this.audioContext = null;
         }
+        // 清除暂停
+        this.isPaused = false;
+        if (this.pauseTimer) {
+            clearTimeout(this.pauseTimer);
+            this.pauseTimer = null;
+        }
         if (this.noSignalTimer) {
             clearTimeout(this.noSignalTimer);
             this.noSignalTimer = null;
@@ -98,6 +108,12 @@ class YINTuner {
     detectLoop() {
         if (!this.isActive) return;
 
+        // 暂停期间跳过检测，但继续循环（不释放麦克风）
+        if (this.isPaused) {
+            this.animationFrame = requestAnimationFrame(() => this.detectLoop());
+            return;
+        }
+
         const buffer = new Float32Array(this.analyser.fftSize);
         this.analyser.getFloatTimeDomainData(buffer);
 
@@ -106,7 +122,7 @@ class YINTuner {
         for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
         const rms = Math.sqrt(sum / buffer.length) * 32768;
 
-        // 动态调整阈值 (取最近最大值的70%)
+        // 动态调整阈值
         if (rms > this.rmsThreshold * 1.5) {
             this.rmsThreshold = rms * 0.7;
         }
@@ -137,7 +153,6 @@ class YINTuner {
             const fire = this.accurateCount >= this.requiredAccurate;
             if (this.onPitchDetected) this.onPitchDetected(pitch, this.smoothedCents, 'valid', fire, rms);
         } else {
-            // 无有效音高
             if (this.onPitchDetected) this.onPitchDetected(null, null, 'invalid', false, rms);
         }
 
@@ -169,7 +184,6 @@ class YINTuner {
             const cm = numerator / denominator * 2;
 
             if (tau > minLag && cm < threshold) {
-                // 抛物线插值提高精度
                 const betterTau = tau - 0.5 * (cm - prevDiff) / ((cm + prevDiff) - 2 * cm);
                 lag = betterTau;
                 break;
@@ -190,28 +204,28 @@ let currentString = 1;
 let isTuning = false;
 let tuner = new YINTuner();
 
-// 语音相关：记录上次朗读的状态，避免重复
-let lastSpokenGuide = '';  // 上次朗读的指导文本
+// 语音相关
+let lastSpokenGuide = '';
 let lastVoiceTime = 0;
-const voiceCooldown = 2000; // 2秒内不重复相同内容
+const voiceCooldown = 2000;
 
-// 新增 DOM 元素
+// DOM 元素
 const needle = document.getElementById('pitch-needle');
 const deviationEl = document.getElementById('deviation');
 const guideEl = document.getElementById('guide');
 const startBtn = document.getElementById('start-tuning');
 const fireworksDiv = document.getElementById('fireworks');
-const waveCircle = document.getElementById('wave-circle'); // 注意原HTML中使用了wave-circle，但我们改为波形条，此处保留兼容
+const waveCircle = document.getElementById('wave-circle');
 const vibrateString = document.getElementById('vibrate-string');
 const volumeBar = document.getElementById('volume-bar');
 const trendChart = document.getElementById('trend-chart');
 const autoModeToggle = document.getElementById('auto-mode-toggle');
 const gaugeCenterNumber = document.getElementById('gauge-center-number');
 
-// 新增变量
-let centsHistory = []; // 存储最近10次偏差值
+// 图表相关
+let centsHistory = [];
 const maxHistory = 10;
-let autoMode = false; // 自动模式状态
+let autoMode = false;
 
 // 烟花粒子
 function createFirework() {
@@ -236,14 +250,12 @@ function createFirework() {
 
 // 绘制偏差趋势图
 function drawTrendChart() {
-    trendChart.innerHTML = ''; // 清空
+    trendChart.innerHTML = '';
     centsHistory.forEach(cents => {
         const bar = document.createElement('div');
         bar.className = 'trend-bar';
-        // 计算高度：偏差越大高度越高，最大30音分对应100%高度
-        const height = Math.min(100, Math.abs(cents) * 3); // 3倍系数可调
+        const height = Math.min(100, Math.abs(cents) * 3);
         bar.style.height = height + '%';
-        // 根据正负添加颜色类
         if (cents > 0) bar.classList.add('positive');
         else if (cents < 0) bar.classList.add('negative');
         trendChart.appendChild(bar);
@@ -259,7 +271,7 @@ document.querySelectorAll('.string-btn').forEach(btn => {
             startBtn.textContent = '开始调这根弦';
             startBtn.classList.remove('tuning');
             vibrateString.classList.remove('vibrating');
-            VoiceGuide.stop(); // 停止语音
+            VoiceGuide.stop();
         }
         document.querySelectorAll('.string-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
@@ -267,13 +279,13 @@ document.querySelectorAll('.string-btn').forEach(btn => {
         const note = ['E','B','G','D','A','E'][currentString-1];
         document.getElementById('current-string').textContent = `${currentString}弦 (${note})`;
 
-        // 重置指针到中间
+        // 重置UI
         needle.style.left = '50%';
         deviationEl.textContent = '当前偏差：0 音分';
         gaugeCenterNumber.textContent = '0';
         guideEl.textContent = '音调准确 ✅';
         guideEl.style.color = '';
-        lastSpokenGuide = ''; // 重置语音记录
+        lastSpokenGuide = '';
         centsHistory = [];
         drawTrendChart();
     });
@@ -282,23 +294,36 @@ document.querySelectorAll('.string-btn').forEach(btn => {
 // 自动模式开关
 autoModeToggle.addEventListener('change', function() {
     autoMode = this.checked;
-    if (autoMode && isTuning) {
-        // 如果正在调音，提示已开启自动模式
+    if (autoMode) {
+        // 如果当前未调音，自动开始
+        if (!isTuning) {
+            startBtn.click();
+        }
+        // 语音提示
         VoiceGuide.speak('自动模式已开启', { rate: 0.9 });
+    } else {
+        // 关闭自动模式，清除可能存在的暂停
+        tuner.isPaused = false;
+        if (tuner.pauseTimer) {
+            clearTimeout(tuner.pauseTimer);
+            tuner.pauseTimer = null;
+        }
+        // 如果仍在调音状态，保持继续（不强制停）
     }
 });
 
-// 开始/停止调音
+// 开始/停止调音按钮
 startBtn.addEventListener('click', function() {
     if (!isTuning) {
+        // 开始调音
         tuner.start(currentString, (freq, cents, status, fire, rms) => {
             // 更新音量条
-            const volumePercent = Math.min(100, (rms / 5000) * 100); // 分母根据实际调整
+            const volumePercent = Math.min(100, (rms / 5000) * 100);
             volumeBar.style.width = volumePercent + '%';
 
             if (status === 'valid') {
-                // 更新指针位置：左边界0%对应-50音分，右边界100%对应+50音分，中心50%对应0音分
-                let leftPercent = 50 + (cents / 50) * 25; // 范围 0%～100%
+                // 指针位置
+                let leftPercent = 50 + (cents / 50) * 25;
                 leftPercent = Math.max(0, Math.min(100, leftPercent));
                 needle.style.left = leftPercent + '%';
 
@@ -310,15 +335,38 @@ startBtn.addEventListener('click', function() {
                 if (centsHistory.length > maxHistory) centsHistory.shift();
                 drawTrendChart();
 
-                // 确定指导文本和语音内容
+                // 指导文本与语音
                 let guideText = '';
                 let voiceText = '';
 
                 if (fire) {
                     guideText = '音调准确 ✅ 恭喜！';
                     voiceText = '音调准确，恭喜';
-                    createFirework(); // 触发烟花
-                    tuner.accurateCount = 0; // 重置计数，防止连续烟花
+                    createFirework();
+                    tuner.accurateCount = 0; // 重置计数
+
+                    if (autoMode) {
+                        // 自动模式：暂停0.5秒后继续
+                        tuner.isPaused = true;
+                        guideText += ' (暂停中...)';
+                        // 清除之前的定时器
+                        if (tuner.pauseTimer) clearTimeout(tuner.pauseTimer);
+                        tuner.pauseTimer = setTimeout(() => {
+                            tuner.isPaused = false;
+                            tuner.pauseTimer = null;
+                            // 暂停结束后更新提示（如果仍在自动模式且激活）
+                            if (autoMode && isTuning) {
+                                guideEl.textContent = '继续检测...';
+                            }
+                        }, 500); // 0.5秒 = 烟花动画时间
+                    } else {
+                        // 常规模式：调准后自动停止
+                        tuner.stop();
+                        isTuning = false;
+                        startBtn.textContent = '开始调这根弦';
+                        startBtn.classList.remove('tuning');
+                        vibrateString.classList.remove('vibrating');
+                    }
                 } else if (Math.abs(cents) <= 8) {
                     guideText = '音调准确 ✅';
                     voiceText = '音调准确';
@@ -338,12 +386,11 @@ startBtn.addEventListener('click', function() {
                     lastVoiceTime = now;
                 }
 
-                // 激活动画
-                vibrateString.classList.add('vibrating');
+                // 激活动画（常规模式调准会stop，动画会被移除，所以仅在非停止时添加）
+                if (isTuning) vibrateString.classList.add('vibrating');
 
-                // 自动模式匹配
+                // 自动模式：匹配最近弦（无阈值）
                 if (autoMode && freq) {
-                    // 找到最接近的标准弦
                     let minDiff = Infinity;
                     let matchedString = currentString;
                     for (let s in tuner.stringFreqs) {
@@ -353,21 +400,18 @@ startBtn.addEventListener('click', function() {
                             matchedString = parseInt(s);
                         }
                     }
-                    // 如果匹配到不同弦，且偏差足够小（避免误切）
-                    if (matchedString !== currentString && minDiff < 10) { // 10Hz阈值可调
+                    // 只在匹配的弦与当前不同，且未暂停时切换
+                    if (matchedString !== currentString && !tuner.isPaused) {
                         currentString = matchedString;
-                        // 更新UI
                         document.querySelectorAll('.string-btn').forEach(b => b.classList.remove('active'));
                         document.querySelector(`.string-btn[data-string="${currentString}"]`).classList.add('active');
                         const note = ['E','B','G','D','A','E'][currentString-1];
                         document.getElementById('current-string').textContent = `${currentString}弦 (${note})`;
-                        // 可选语音提示
                         VoiceGuide.speak(`请调${currentString}弦`, { rate: 0.9 });
                     }
                 }
             } else if (status === 'invalid') {
                 vibrateString.classList.remove('vibrating');
-                // 无有效音高时不更新其他UI，但可以保持音量条
             } else if (status === 'noSignal') {
                 guideEl.textContent = '⚠️ 没有检测到琴声，请拨动琴弦';
                 guideEl.style.color = '#ffaa00';
@@ -384,8 +428,9 @@ startBtn.addEventListener('click', function() {
         isTuning = true;
         startBtn.textContent = '停止调音';
         startBtn.classList.add('tuning');
-        lastSpokenGuide = ''; // 重置语音记录
+        lastSpokenGuide = '';
     } else {
+        // 停止调音
         tuner.stop();
         isTuning = false;
         startBtn.textContent = '开始调这根弦';
@@ -396,13 +441,14 @@ startBtn.addEventListener('click', function() {
         gaugeCenterNumber.textContent = '0';
         guideEl.textContent = '音调准确 ✅';
         guideEl.style.color = '';
-        VoiceGuide.stop(); // 停止语音
+        VoiceGuide.stop();
         lastSpokenGuide = '';
         volumeBar.style.width = '0%';
         centsHistory = [];
         drawTrendChart();
+        // 即使关闭手动停止，自动模式仍保留开关状态，下次启动时自动模式继续生效
     }
 });
 
-// 初始化：重置趋势图
+// 初始化
 drawTrendChart();

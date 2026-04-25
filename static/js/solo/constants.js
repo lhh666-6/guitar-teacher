@@ -18,10 +18,10 @@ const THUMBNAIL_QUALITY = 0.9;
 
 // -------------------- 手部关键点滤波参数 --------------------
 // OneEuroFilter 最小截止频率，越小越平滑（建议范围 0.5 ~ 3.0）
-const FILTER_MIN_CUTOFF = 2.0;
+const FILTER_MIN_CUTOFF = 1.2;
 
 // 速度系数，越大对快速运动响应越快，但可能引入抖动（建议范围 0.01 ~ 0.1）
-const FILTER_BETA = 0.1;
+const FILTER_BETA = 0.05;
 
 // 导数截止频率，通常无需修改
 const FILTER_DCUTOFF = 1.0;

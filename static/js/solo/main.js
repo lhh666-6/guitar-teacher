@@ -113,7 +113,7 @@
             document.addEventListener('fullscreenchange', this._onFullscreenChange);
             document.addEventListener('webkitfullscreenchange', this._onFullscreenChange);
             document.addEventListener('msfullscreenchange', this._onFullscreenChange);
-
+             this._startRttLogging();
             // 窗口卸载清理
             window.addEventListener('beforeunload', () => this.cleanup());
         }
@@ -881,7 +881,6 @@
                 }
             }
         };
-
         onHandResults(results) {
             if (!this._handModelTriggered) {
                 console.log('✅ MediaPipe 手部模型首次成功调用，返回手部数据');
@@ -890,7 +889,7 @@
 
             const now = performance.now();
 
-            // 选择目标手部
+            // 选择目标手部 (保持不变)
             let targetHandIndex = -1;
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const screenMidX = 0.5;
@@ -918,7 +917,7 @@
                 return;
             }
 
-            // 手部切换防抖
+            // 手部切换防抖 (保持不变)
             if (this._lastTargetHandIndex !== undefined && this._lastTargetHandIndex !== targetHandIndex) {
                 this._handSwitchCounter = (this._handSwitchCounter || 0) + 1;
                 if (this._handSwitchCounter < 2) {
@@ -938,28 +937,69 @@
                 return;
             }
 
-            // 平滑滤波
+            // ──────────────────────────────────────
+            // 新增：自适应参数计算
+            // ──────────────────────────────────────
+            // 使用默认参数，若 constants.js 未定义则回退
+            const BASE_MIN_CUTOFF = (typeof FILTER_MIN_CUTOFF !== 'undefined') ? FILTER_MIN_CUTOFF : 1.0;
+            const BASE_BETA = (typeof FILTER_BETA !== 'undefined') ? FILTER_BETA : 0.03;
+            const DCUTOFF = (typeof FILTER_DCUTOFF !== 'undefined') ? FILTER_DCUTOFF : 1.0;
+
+            // 计算手部所有关键点的平均帧间位移（速度指标）
+            let totalSpeed = 0;
+            if (this._prevLandmarks && this._prevLandmarks.length === landmarks.length) {
+                for (let i = 0; i < landmarks.length; i++) {
+                    const dx = landmarks[i].x - this._prevLandmarks[i].x;
+                    const dy = landmarks[i].y - this._prevLandmarks[i].y;
+                    const dz = landmarks[i].z - this._prevLandmarks[i].z;
+                    totalSpeed += Math.sqrt(dx*dx + dy*dy + dz*dz);
+                }
+            }
+            const avgSpeed = totalSpeed / landmarks.length;
+
+            // 动态映射：速度越小 → mincutoff 越小，beta 越小 (更强平滑)
+            // 静止时 avgSpeed ≈ 0 → mincutoff 取 BASE_MIN_CUTOFF * 0.5
+            // 快速运动时 avgSpeed > 阈值 → 恢复原始值
+            const speedThreshold = 0.02;   // 经验阈值，可调
+            const speedRatio = Math.min(1, avgSpeed / speedThreshold);
+            const dynamicMinCutoff = BASE_MIN_CUTOFF * (0.5 + 0.5 * speedRatio);
+            const dynamicBeta = BASE_BETA * (0.3 + 0.7 * speedRatio);
+
+            // 保存本帧原始点，供下一帧计算速度
+            this._prevLandmarks = landmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z }));
+
+            // ──────────────────────────────────────
+            // 平滑滤波（扩展为 x,y,z 三维）
+            // ──────────────────────────────────────
             const smoothed = [];
             for (let i = 0; i < landmarks.length; i++) {
                 const lm = landmarks[i];
                 if (!this.filters[i]) {
+                    // 首次创建滤波器，使用动态参数初始化
                     this.filters[i] = {
-                        x: new OneEuroFilter(now, lm.x, FILTER_MIN_CUTOFF, FILTER_BETA, FILTER_DCUTOFF),
-                        y: new OneEuroFilter(now, lm.y, FILTER_MIN_CUTOFF, FILTER_BETA, FILTER_DCUTOFF)
+                        x: new OneEuroFilter(now, lm.x, dynamicMinCutoff, dynamicBeta, DCUTOFF),
+                        y: new OneEuroFilter(now, lm.y, dynamicMinCutoff, dynamicBeta, DCUTOFF),
+                        z: new OneEuroFilter(now, lm.z, dynamicMinCutoff, dynamicBeta, DCUTOFF)
                     };
-                    smoothed.push({ x: lm.x, y: lm.y });
+                    smoothed.push({ x: lm.x, y: lm.y, z: lm.z });
                 } else {
+                    // 更新每个滤波器的参数（因为它们是动态的）
+                    ['x', 'y', 'z'].forEach(axis => {
+                        this.filters[i][axis].mincutoff = dynamicMinCutoff;
+                        this.filters[i][axis].beta = dynamicBeta;
+                    });
                     const sx = this.filters[i].x.filter(now, lm.x);
                     const sy = this.filters[i].y.filter(now, lm.y);
-                    smoothed.push({ x: sx, y: sy });
+                    const sz = this.filters[i].z.filter(now, lm.z);
+                    smoothed.push({ x: sx, y: sy, z: sz });
                 }
             }
             this.latestLocalLandmarks = smoothed;
 
-            // 每帧绘制，确保骨骼实时显示
+            // 每帧绘制
             this.drawAll();
 
-            // 测试模式下的按弦检测与发送（受频率限制）
+            // 测试模式下的发送与按弦检测（保持原有逻辑）
             if (now - this.lastLandmarkSendTime < LANDMARK_SEND_INTERVAL) return;
             this.lastLandmarkSendTime = now;
 
@@ -985,11 +1025,29 @@
                 }
             }
 
-        if (now - this.lastThumbnailTime > this.thumbnailDynamicInterval) {
-            this.sendThumbnail();
-            this.lastThumbnailTime = now;
+            // 缩略图发送 (保持原样)
+            if (now - this.lastThumbnailTime > this.thumbnailDynamicInterval) {
+                this.sendThumbnail();
+                this.lastThumbnailTime = now;
+            }
         }
 
+        _startRttLogging() {
+            this._rttLogTimer = setInterval(() => {
+                if (this.thumbnailRttHistory && this.thumbnailRttHistory.length > 0) {
+                    const avg = this.thumbnailRttHistory.reduce((a, b) => a + b, 0) / this.thumbnailRttHistory.length;
+                    console.log(`📊 [RTT] 最近 ${this.thumbnailRttHistory.length} 次缩略图平均延迟: ${avg.toFixed(1)} ms`);
+                } else {
+                    console.log('📊 [RTT] 暂无缩略图数据');
+                }
+            }, 3000);
+        }
+
+        _stopRttLogging() {
+            if (this._rttLogTimer) {
+                clearInterval(this._rttLogTimer);
+                this._rttLogTimer = null;
+            }
         }
 
         _updateThumbnailRtt(rtt) {
@@ -1077,10 +1135,10 @@
                                 locateFile: (file) => `https://fastly.jsdelivr.net/npm/@mediapipe/hands/${file}`
                             });
                             this.hands.setOptions({
-                                maxNumHands: 2,
+                                maxNumHands: 1,
                                 modelComplexity: 1,
-                                minDetectionConfidence: 0.12,
-                                minTrackingConfidence: 0.12
+                                minDetectionConfidence: 0.2,
+                                minTrackingConfidence: 0.2
                             });
                             this.hands.onResults((results) => this.onHandResults(results));
                             if (!this._logMediaPipeReady) {
@@ -1165,7 +1223,7 @@
                     });
 
                     this.socket.on('detection_result', this.handleDetectionResult);
-
+                    this._startRttLogging();   // ✅ 开启 RTT 日志定时器
                     // 等待视频元数据，固定画布像素尺寸为视频原始分辨率（不修改CSS）
                     await new Promise((resolve) => {
                         this.elements.cameraFeed.addEventListener('loadedmetadata', () => {
@@ -1423,6 +1481,7 @@
 
         cleanup() {
             this.sendingEnabled = false;
+            this._stopRttLogging();
             if (this.animationId) {
                 cancelAnimationFrame(this.animationId);
                 this.animationId = null;

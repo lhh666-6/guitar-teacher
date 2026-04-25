@@ -224,7 +224,10 @@ class GuitarFingeringRecognizer:
         """接收一帧图像，运行YOLO检测琴枕和琴桥，更新指板几何参数"""
         with self.fretboard_lock:
             h_img, w_img = frame.shape[:2]
+            t0 = time.time()
             results = self.yolo_model(frame, conf=self.YOLO_CONF, verbose=False)
+            t1 = time.time()
+            logger.info(f"YOLO 推理耗时: {(t1 - t0) * 1000:.1f} ms")
 
             nut_center = None
             bridge_center = None
