@@ -595,7 +595,7 @@
                         if (this.testMode && !this.recordedForCurrentChord) {
                             this._finalizeChord('wrong', { forceSkip: true });
                         }
-                    }, 5000);
+                    }, 3000);
                 }
                 this.updateProgress();
             }
@@ -626,6 +626,7 @@
             this.updateStats();
             this.recordedForCurrentChord = true;
             this.renderTestList();
+            this._showResultFlash(true);
             fetch('/api/save_record', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -636,6 +637,27 @@
                     mode: QUICK_MODE ? 'quick' : 'normal'
                 })
             }).catch(err => console.error('保存记录失败:', err));
+
+            if (QUICK_MODE) {
+                setTimeout(() => this.moveToNextTest(), 1200);
+            }
+        }
+
+        _showResultFlash(isCorrect) {
+            const flash = document.getElementById('resultFlash');
+            if (!flash) return;
+            flash.className = 'result-flash ' + (isCorrect ? 'correct' : 'wrong');
+            flash.textContent = isCorrect ? '✓' : '✗';
+            flash.classList.add('show');
+            setTimeout(() => flash.classList.remove('show'), 900);
+
+            const fretboard = document.getElementById('fretboardMini');
+            if (fretboard) {
+                const cls = isCorrect ? 'flash-correct' : 'flash-wrong';
+                fretboard.classList.remove('flash-correct', 'flash-wrong');
+                void fretboard.offsetWidth;
+                fretboard.classList.add(cls);
+            }
         }
 
         recordSkip() {
@@ -852,8 +874,9 @@
             this.testResults[this.currentTestIndex] = { correct: false, time: null };
             this.stats.wrong++;
             this.updateStats();
-            this.recordedForCurrentChord = true;   // 标记已记录，防止重复记录
+            this.recordedForCurrentChord = true;
             this.renderTestList();
+            this._showResultFlash(false);
 
             fetch('/api/save_record', {
                 method: 'POST',
@@ -866,7 +889,9 @@
                 })
             }).catch(err => console.error('保存记录失败:', err));
 
-            // 关键：不调用 this.moveToNextTest()
+            if (QUICK_MODE) {
+                setTimeout(() => this.moveToNextTest(), 1200);
+            }
         }
 
         _finalizeChord(result, options = {}) {

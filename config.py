@@ -1,12 +1,15 @@
 # config.py
 # 吉他指法识别系统配置参数
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 # ---------- 日志调试 ----------
 DEBUG = True                     # 控制日志输出级别
 
 # ---------- 模型路径 ----------
-YOLO_MODEL_PATH = "models/best_n.pt"                     # YOLO检测琴枕琴桥的模型
-HAND_MODEL_PATH = "models/hand_landmarker.task"        # MediaPipe手部关键点模型
+YOLO_MODEL_PATH = "models/best.pt"                     # YOLO检测琴枕琴桥的模型
 
 # ---------- 检测参数 ----------
 NUM_STRINGS = 6                                         # 吉他弦数
@@ -83,9 +86,5 @@ SMTP_PORT = 465
 SMTP_USER = os.getenv('SMTP_USER', '2741554524@qq.com')
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', 'yuvmgretufqvdecd')
 # ---------- 数据库配置 ----------
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
 SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://guitar_user:Lhh815815@127.0.0.1:3306/guitar_db?charset=utf8mb4'
 SQLALCHEMY_TRACK_MODIFICATIONS = False

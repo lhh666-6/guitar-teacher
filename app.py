@@ -81,19 +81,16 @@ def check_model_files():
     missing = []
     if not os.path.exists(config.YOLO_MODEL_PATH):
         missing.append(config.YOLO_MODEL_PATH)
-    if not os.path.exists(config.HAND_MODEL_PATH):
-        missing.append(config.HAND_MODEL_PATH)
     if missing:
         logger.error(f"模型文件缺失: {missing}")
         raise FileNotFoundError(f"模型文件缺失: {missing}")
-    logger.info("所有模型文件已找到")
+    logger.info("模型文件已找到")
 
 check_model_files()
 
 # ---------- 识别器初始化 ----------
 recognizer = GuitarFingeringRecognizer(
-    yolo_model_path=config.YOLO_MODEL_PATH,
-    hand_model_path=config.HAND_MODEL_PATH
+    yolo_model_path=config.YOLO_MODEL_PATH
 )
 
 executor = ThreadPoolExecutor(max_workers=2)
@@ -265,8 +262,7 @@ def health_check():
         "status": "ok",
         "message": "吉他AI服务运行正常",
         "models": {
-            "yolo": os.path.exists(config.YOLO_MODEL_PATH),
-            "hand": os.path.exists(config.HAND_MODEL_PATH)
+            "yolo": os.path.exists(config.YOLO_MODEL_PATH)
         }
     })
 

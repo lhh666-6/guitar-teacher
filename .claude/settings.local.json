@@ -17,7 +17,9 @@
       "WebFetch(domain:cdn.jsdelivr.net)",
       "WebFetch(domain:cdn.socket.io)",
       "Bash(curl -sI --connect-timeout 5 \"https://cdn.socket.io/4.5.4/socket.io.min.js\")",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(git add *)",
+      "Bash(git rm *)"
     ]
   }
 }
