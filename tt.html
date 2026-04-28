@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🎸 和弦验证器 · 最终修复版</title>
+    <!-- 主线程 Meyda（降级备用） -->
+    <script src="https://cdn.jsdelivr.net/npm/meyda@5.0.0/dist/web/meyda.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #0b0f1a 0%, #1a1f2e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        .card {
+            max-width: 820px;
+            width: 100%;
+            background: rgba(22, 28, 40, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 36px;
+            padding: 28px 24px;
+            box-shadow: 0 25px 40px -10px rgba(0, 0, 0, 0.6);
+            color: #eef2fb;
+        }
+        h1 {
+            margin: 0 0 8px;
+            font-weight: 600;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        h1 span {
+            background: #2e3a5c;
+            padding: 2px 12px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            color: #aac8ff;
+            border: 1px solid #3f5a8c;
+        }
+        .sub {
+            color: #9aabcf;
+            margin-bottom: 24px;
+            border-left: 4px solid #3f7ee6;
+            padding-left: 16px;
+        }
+        .control-panel {
+            background: #111722;
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid #2a334a;
+        }
+        .chord-selector {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        select {
+            flex: 2;
+            min-width: 200px;
+            padding: 12px 18px;
+            background: #1e2538;
+            border: 1px solid #35416b;
+            border-radius: 48px;
+            color: white;
+            font-size: 1.1rem;
+            cursor: pointer;
+            outline: none;
+        }
+        .target-badge {
+            background: #1f3a6b;
+            padding: 6px 16px;
+            border-radius: 40px;
+            color: #c6ddff;
+            border: 1px solid #3e6ab0;
+        }
+        .slider-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px 30px;
+            margin: 20px 0;
+        }
+        .slider-item {
+            flex: 1;
+            min-width: 180px;
+        }
+        .slider-item label {
+            display: flex;
+            justify-content: space-between;
+            color: #b0c2e8;
+        }
+        input[type=range] {
+            width: 100%;
+            accent-color: #3f7ee6;
+        }
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .btn {
+            background: #28324e;
+            border: 1px solid #40537c;
+            border-radius: 60px;
+            padding: 12px 24px;
+            font-weight: 600;
+            color: #e0ecff;
+            cursor: pointer;
+            transition: 0.15s;
+            flex: 1 0 120px;
+        }
+        .btn-primary {
+            background: #2d6ad3;
+            border-color: #7aa5ff;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .status-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #0f1622;
+            border-radius: 20px;
+            padding: 14px;
+            border: 1px solid #2c3853;
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #8699cc;
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #e1edff;
+        }
+        .result-area {
+            background: #0b101c;
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid #2e3f62;
+        }
+        .match-indicator {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .match-badge {
+            font-size: 2rem;
+            font-weight: 800;
+            padding: 4px 18px;
+            border-radius: 60px;
+            background: #1e2b45;
+        }
+        .match-true {
+            background: #0f6e3f;
+            color: #b6ffcf;
+        }
+        .match-false {
+            background: #822a2a;
+            color: #ffc2c2;
+        }
+        canvas {
+            width: 100%;
+            height: 80px;
+            background: #0a0f18;
+            border-radius: 16px;
+            border: 1px solid #2e4168;
+            margin-top: 18px;
+        }
+        .log-box {
+            background: #03060b;
+            border-radius: 14px;
+            padding: 12px;
+            margin-top: 16px;
+            max-height: 120px;
+            overflow-y: auto;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.8rem;
+            color: #adc6ff;
+            border: 1px solid #2b3b5e;
+        }
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #1f2a40;
+        }
+        .footnote {
+            margin-top: 16px;
+            text-align: right;
+            font-size: 0.75rem;
+            color: #5f72a0;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>🎵 ChordVerifier <span>最终修复版</span></h1>
+    <div class="sub">AudioWorklet (模拟 window) · 降级 ScriptProcessor</div>
+
+    <div class="control-panel">
+        <div class="chord-selector">
+            <label>🎯 目标和弦</label>
+            <select id="chordSelect"></select>
+            <div class="target-badge" id="currentTargetDisplay">未设置</div>
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-item">
+                <label>📊 相似度阈值 <span id="simThresholdVal">0.55</span></label>
+                <input type="range" id="simThreshold" min="0.4" max="0.95" step="0.01" value="0.55">
+            </div>
+            <div class="slider-item">
+                <label>⚡ 触发能量阈值 <span id="energyThresholdVal">0.50</span></label>
+                <input type="range" id="energyThreshold" min="0.20" max="0.80" step="0.01" value="0.50">
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn btn-primary" id="startBtn">🎤 开始监听</button>
+            <button class="btn btn-outline" id="stopBtn" disabled>⏹️ 停止</button>
+            <button class="btn btn-outline" id="resetBtn">🔄 强制重置</button>
+        </div>
+        <div style="font-size:0.8rem; margin-top:12px; color:#8aa0d4;">
+            ⏱️ 录音保持: 1.0秒 · 引擎: <span id="engineType">未启动</span>
+        </div>
+    </div>
+
+    <div class="status-board">
+        <div class="stat-card"><div class="stat-label">系统状态</div><div class="stat-value" id="sysState">⚪ 待命</div></div>
+        <div class="stat-card"><div class="stat-label">等待触发</div><div class="stat-value" id="waitingState">—</div></div>
+        <div class="stat-card"><div class="stat-label">录音中</div><div class="stat-value" id="recordingState">❌</div></div>
+        <div class="stat-card"><div class="stat-label">实时能量</div><div class="stat-value" id="energyDisplay">0.000</div></div>
+    </div>
+
+    <div class="result-area">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-weight:600;">📋 验证结果</div>
+            <div class="match-indicator">
+                <span style="color:#b0c6ff;">相似度</span>
+                <span class="match-badge" id="similarityDisplay">0.000</span>
+                <span id="matchResultLabel" class="match-badge match-false">❌ 未匹配</span>
+            </div>
+        </div>
+        <canvas id="chromaCanvas" width="600" height="80"></canvas>
+    </div>
+
+    <div class="log-box" id="logContainer">
+        <div class="log-entry">🟢 页面就绪，等待操作</div>
+    </div>
+    <div class="footnote">
+        ⚡ 余弦相似度 · 根音加权1.2 · 内置 Meyda
+    </div>
+</div>
+
+<script>
+    (function(){
+        "use strict";
+
+        // ---------- 修复版 ChordVerifier (解决 self 未定义) ----------
+        class ChordVerifier {
+            constructor() {
+                this._engine = null;
+                this._debug = true;
+                this.audioContext = null;
+                this.mediaStream = null;
+                this.workletNode = null;
+                this.scriptProcessor = null;
+                this.meydaAnalyzer = null;
+                this.isActive = false;
+                this.isWaitingForTrigger = true;
+                this.isRecording = false;
+                this.recordingChunks = [];
+                this.triggerTimer = null;
+                this.similarityThreshold = 0.55;
+                this.energyThreshold = 0.3;
+                this.triggerEnergyThreshold = 0.5;
+                this.holdDuration = 1.0;
+                this.lastEnergy = 0;
+                this.targetChord = null;
+                this.targetTemplate = null;
+                this.onResult = null;
+                this.onError = null;
+                this.onStartListening = null;
+                this.onStopListening = null;
+                this.templates = this._buildTemplates();
+                this._log(`初始化完成，模板数: ${Object.keys(this.templates).length}`);
+            }
+
+            _log(msg, isError = false) {
+                if (!this._debug) return;
+                const prefix = '[ChordVerifier]';
+                const fullMsg = `${prefix} ${isError ? '❌' : 'ℹ️'} ${msg}`;
+                if (isError) console.error(fullMsg);
+                else console.log(fullMsg);
+                if (typeof window !== 'undefined' && window.dispatchEvent) {
+                    window.dispatchEvent(new CustomEvent('chordverifier-log', { detail: { msg, isError } }));
+                }
+            }
+
+            _warn(msg) {
+                if (this._debug) console.warn(`[ChordVerifier] ⚠️ ${msg}`);
+                if (typeof window !== 'undefined' && window.dispatchEvent) {
+                    window.dispatchEvent(new CustomEvent('chordverifier-log', { detail: { msg: '⚠️ ' + msg, isError: false } }));
+                }
+            }
+
+            _applyLowFreqWeight(chroma) {
+                const lowIndices = [0, 2, 4, 5, 7, 9];
+                const weighted = [...chroma];
+                for (let i of lowIndices) weighted[i] *= 1.05;
+                return weighted;
+            }
+
+            _isAttack(currentEnergy) {
+                if (this.lastEnergy === 0) { this.lastEnergy = currentEnergy; return false; }
+                const ratio = currentEnergy / (this.lastEnergy + 0.01);
+                this.lastEnergy = currentEnergy;
+                return ratio > 1.5 && currentEnergy > this.triggerEnergyThreshold;
+            }
+
+            _rootMap() { return {'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11}; }
+            _qualityIntervals() { return {'':[0,4,7], 'm':[0,3,7], '7':[0,4,7,10], 'm7':[0,3,7,10], 'maj7':[0,4,7,11], '6':[0,4,7,9], 'm6':[0,3,7,9], '9':[0,4,7,10,14], 'add9':[0,4,7,14], 'sus2':[0,2,7], 'sus4':[0,5,7], '7sus4':[0,5,7,10]}; }
+
+            _getChordTemplate(root, quality) {
+                const rootIdx = this._rootMap()[root];
+                if (rootIdx === undefined) return null;
+                const intervals = this._qualityIntervals()[quality];
+                if (!intervals) return null;
+                const template = new Array(12).fill(0);
+                for (let interval of intervals) {
+                    let weight = (interval === 0) ? 1.2 : 1.0;
+                    const idx = (rootIdx + interval) % 12;
+                    template[idx] += weight;
+                }
+                const norm = Math.hypot(...template);
+                return norm === 0 ? template : template.map(v => v / norm);
+            }
+
+            _buildTemplates() {
+                const roots = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+                const quals = ['','m','7','m7','maj7','6','m6','9','add9','sus2','sus4','7sus4'];
+                const templates = {};
+                for (let r of roots) for (let q of quals) { const name = r+q; const tpl = this._getChordTemplate(r,q); if(tpl) templates[name]=tpl; }
+                const aliases = { 'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#' };
+                for (let [alias, orig] of Object.entries(aliases)) templates[alias] = templates[orig];
+                return templates;
+            }
+
+            _cosineSimilarity(a, b) {
+                let dot=0, na=0, nb=0;
+                for(let i=0;i<12;i++){ dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
+                return (na===0||nb===0)?0:dot/(Math.sqrt(na)*Math.sqrt(nb));
+            }
+
+            _chromaEnergy(chroma) { return chroma.reduce((s,v)=>s+v*v,0); }
+
+            setTargetChord(chordName) {
+                this._log(`设置目标: ${chordName}`);
+                if (!this.templates[chordName]) { this._log(`模板不存在: ${chordName}`, true); return false; }
+                this.targetChord = chordName;
+                this.targetTemplate = this.templates[chordName];
+                this._resetForNext();
+                return true;
+            }
+
+            setThreshold(value) { this.similarityThreshold = Math.min(1, Math.max(0.4, value)); this._log(`相似度阈值 = ${this.similarityThreshold}`); }
+            setTriggerSensitivity(value) { this.triggerEnergyThreshold = Math.min(0.8, Math.max(0.2, value)); this._log(`触发能量阈值 = ${this.triggerEnergyThreshold}`); }
+
+            async start(onResultCallback, onErrorCallback) {
+                this._log('启动验证器...');
+                if (this.isActive) await this.stop();
+                if (!this.targetTemplate) { const err='未设置目标和弦'; this._log(err, true); if(onErrorCallback) onErrorCallback(err); return; }
+                this.onResult = onResultCallback;
+                this.onError = onErrorCallback;
+                try {
+                    this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+                    const workletSuccess = await this._tryStartWorklet();
+                    if (workletSuccess) {
+                        this._engine = 'worklet';
+                        this._log('✅ 使用 AudioWorklet 引擎');
+                    } else {
+                        this._log('⚠️ AudioWorklet 失败，降级到 ScriptProcessorNode');
+                        this._startScriptProcessor();
+                        this._engine = 'script';
+                    }
+                    await this.audioContext.resume();
+                    this.isActive = true;
+                    this._log('验证器已激活');
+                    if (this.onStartListening) this.onStartListening();
+                } catch(err) {
+                    this._log(`启动失败: ${err.message}`, true);
+                    if (this.onError) this.onError(err.message);
+                    await this.stop();
+                }
+            }
+
+            async _tryStartWorklet() {
+                try {
+                    if (!this.audioContext.audioWorklet) { this._warn('浏览器不支持 AudioWorklet'); return false; }
+                    // 获取 Meyda 代码并创建内联 Blob
+                    const meydaCode = await this._fetchMeydaCode();
+                    const blob = this._createWorkletBlob(meydaCode);
+                    const url = URL.createObjectURL(blob);
+                    await this.audioContext.audioWorklet.addModule(url);
+                    URL.revokeObjectURL(url);
+                    const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+                    this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-processor');
+                    this.workletNode.port.onmessage = (e) => this._handleAudioFrame(e.data);
+                    source.connect(this.workletNode);
+                    this.workletNode.connect(this.audioContext.destination);
+                    return true;
+                } catch(e) {
+                    this._warn(`AudioWorklet 初始化失败: ${e.message}`);
+                    return false;
+                }
+            }
+
+            async _fetchMeydaCode() {
+                const resp = await fetch('https://cdn.jsdelivr.net/npm/meyda@5.0.0/dist/web/meyda.min.js');
+                return await resp.text();
+            }
+
+            _createWorkletBlob(meydaCode) {
+                // 在 Worklet 中安全模拟 window 对象，使用 globalThis 并设置 window 为 globalThis
+                const workletCode = `
+                    // 确保 globalThis 可用，并模拟 window
+                    const globalScope = globalThis || self || this;
+                    globalScope.window = globalScope;
+                    
+                    // 内联 Meyda 库
+                    ${meydaCode}
+                    
+                    class AudioProcessor extends AudioWorkletProcessor {
+                        constructor() {
+                            super();
+                            this.bufferSize = 4096;
+                            this.hopSize = 2048;
+                            this.frameBuffer = new Float32Array(this.bufferSize);
+                            this.framePos = 0;
+                        }
+                        process(inputs) {
+                            const input = inputs[0];
+                            if (!input || !input.length) return true;
+                            const channelData = input[0];
+                            if (!channelData) return true;
+                            for (let i = 0; i < channelData.length; i++) {
+                                if (this.framePos < this.bufferSize) {
+                                    this.frameBuffer[this.framePos++] = channelData[i];
+                                }
+                                if (this.framePos === this.bufferSize) {
+                                    try {
+                                        if (typeof Meyda !== 'undefined') {
+                                            const chroma = Meyda.extract('chroma', this.frameBuffer, sampleRate);
+                                            if (chroma) {
+                                                let energy = 0;
+                                                for (let j = 0; j < chroma.length; j++) energy += chroma[j] * chroma[j];
+                                                this.port.postMessage({ chroma, energy });
+                                            }
+                                        }
+                                    } catch(e) {}
+                                    const newBuffer = new Float32Array(this.bufferSize);
+                                    newBuffer.set(this.frameBuffer.subarray(this.hopSize));
+                                    this.frameBuffer = newBuffer;
+                                    this.framePos = this.bufferSize - this.hopSize;
+                                }
+                            }
+                            return true;
+                        }
+                    }
+                    registerProcessor('audio-processor', AudioProcessor);
+                `;
+                return new Blob([workletCode], { type: 'application/javascript' });
+            }
+
+            _startScriptProcessor() {
+                if (typeof Meyda === 'undefined') throw new Error('Meyda 库未加载');
+                const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+                this.scriptProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
+                this.meydaAnalyzer = Meyda.createMeydaAnalyzer({
+                    audioContext: this.audioContext,
+                    source: source,
+                    bufferSize: 4096,
+                    hopSize: 2048,
+                    featureExtractors: ['chroma'],
+                    callback: (features) => {
+                        if (!this.isActive) return;
+                        if (features && features.chroma) {
+                            const energy = features.chroma.reduce((s,v)=>s+v*v,0);
+                            this._handleAudioFrame({ chroma: features.chroma, energy });
+                        }
+                    }
+                });
+                this.meydaAnalyzer.start();
+                source.connect(this.scriptProcessor);
+                this.scriptProcessor.connect(this.audioContext.destination);
+                this._log('ScriptProcessor 引擎已启动');
+            }
+
+            _handleAudioFrame(data) {
+                if (!this.isActive) return;
+                let chroma = data.chroma;
+                const energy = data.energy;
+                if (!chroma) return;
+                chroma = this._applyLowFreqWeight(chroma);
+                if (window) window.dispatchEvent(new CustomEvent('chordverifier-energy', { detail: { energy, isRecording: this.isRecording, isWaiting: this.isWaitingForTrigger } }));
+                if (energy < this.energyThreshold) { this.lastEnergy = energy; return; }
+                const isAttack = this._isAttack(energy);
+                if (this.isWaitingForTrigger && !this.isRecording) {
+                    if (isAttack || energy >= this.triggerEnergyThreshold) {
+                        this._log(`🎤 触发录音 | 能量=${energy.toFixed(3)}`);
+                        this.isRecording = true;
+                        this.isWaitingForTrigger = false;
+                        this.recordingChunks = [];
+                        if (this.triggerTimer) clearTimeout(this.triggerTimer);
+                        this.triggerTimer = setTimeout(() => this._finalizeRecording(), this.holdDuration * 1000);
+                    }
+                }
+                if (this.isRecording) this.recordingChunks.push({ chroma, energy });
+            }
+
+            _finalizeRecording() {
+                if (!this.isRecording) return;
+                this.isRecording = false;
+                if (this.triggerTimer) clearTimeout(this.triggerTimer);
+                const frames = this.recordingChunks.length;
+                this._log(`录音结束，共 ${frames} 帧`);
+                if (frames === 0) { this.isWaitingForTrigger = true; if (this.onResult) this.onResult(false, 0, null); return; }
+                let totalWeight = 0;
+                const avgChroma = new Array(12).fill(0);
+                for (const f of this.recordingChunks) {
+                    totalWeight += f.energy;
+                    for (let i = 0; i < 12; i++) avgChroma[i] += f.chroma[i] * f.energy;
+                }
+                for (let i = 0; i < 12; i++) avgChroma[i] /= totalWeight;
+                const energy = this._chromaEnergy(avgChroma);
+                if (energy < this.energyThreshold) {
+                    this._log(`平均能量过低 (${energy.toFixed(3)})，判定为无效`);
+                    this.isWaitingForTrigger = true;
+                    if (this.onResult) this.onResult(false, 0, avgChroma);
+                    return;
+                }
+                const similarity = this._cosineSimilarity(avgChroma, this.targetTemplate);
+                const isMatch = similarity >= this.similarityThreshold;
+                this._log(`相似度: ${similarity.toFixed(4)} → ${isMatch ? '✅ 正确' : '❌ 错误'}`);
+                if (this.onResult) this.onResult(isMatch, similarity, avgChroma);
+                this.isWaitingForTrigger = true;
+                this.recordingChunks = [];
+            }
+
+            async stop() {
+                this._log('停止验证器');
+                this.isActive = false;
+                if (this.workletNode) this.workletNode.disconnect();
+                if (this.meydaAnalyzer) this.meydaAnalyzer.stop();
+                if (this.scriptProcessor) this.scriptProcessor.disconnect();
+                if (this.audioContext) await this.audioContext.close();
+                if (this.mediaStream) this.mediaStream.getTracks().forEach(t => t.stop());
+                this.workletNode = this.scriptProcessor = this.meydaAnalyzer = null;
+                this.audioContext = this.mediaStream = null;
+                this._resetForNext();
+                if (this.onStopListening) this.onStopListening();
+                this._log('已停止');
+            }
+
+            _resetForNext() {
+                this.isWaitingForTrigger = true;
+                this.isRecording = false;
+                this.recordingChunks = [];
+                if (this.triggerTimer) clearTimeout(this.triggerTimer);
+                this.lastEnergy = 0;
+            }
+
+            forceReset() { this._resetForNext(); }
+            isRunning() { return this.isActive; }
+            getEngineType() { return this._engine; }
+        }
+
+        // ---------- UI 初始化 ----------
+        const verifier = new ChordVerifier();
+        verifier._debug = true;
+
+        const chordSelect = document.getElementById('chordSelect');
+        const currentTarget = document.getElementById('currentTargetDisplay');
+        const simInput = document.getElementById('simThreshold');
+        const simVal = document.getElementById('simThresholdVal');
+        const energyInput = document.getElementById('energyThreshold');
+        const energyVal = document.getElementById('energyThresholdVal');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const sysState = document.getElementById('sysState');
+        const waitingState = document.getElementById('waitingState');
+        const recordingState = document.getElementById('recordingState');
+        const energyDisplay = document.getElementById('energyDisplay');
+        const simDisplay = document.getElementById('similarityDisplay');
+        const matchLabel = document.getElementById('matchResultLabel');
+        const logContainer = document.getElementById('logContainer');
+        const engineSpan = document.getElementById('engineType');
+        const canvas = document.getElementById('chromaCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function addUILog(msg, isError = false) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = (isError ? '❌ ' : 'ℹ️ ') + msg;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            if (logContainer.children.length > 8) logContainer.removeChild(logContainer.children[0]);
+        }
+
+        window.addEventListener('chordverifier-log', e => addUILog(e.detail.msg, e.detail.isError));
+        window.addEventListener('chordverifier-energy', e => {
+            const { energy, isRecording, isWaiting } = e.detail;
+            energyDisplay.textContent = energy.toFixed(4);
+            waitingState.textContent = isWaiting ? '✅ 等待触发' : '⏳ 触发中';
+            recordingState.textContent = isRecording ? '🔴 录音中' : '⚫ 否';
+        });
+
+        function populateChords() {
+            const sorted = Object.keys(verifier.templates).sort();
+            chordSelect.innerHTML = sorted.map(c => `<option value="${c}">${c}</option>`).join('');
+            if (verifier.templates['C']) chordSelect.value = 'C';
+            updateTarget();
+        }
+
+        function updateTarget() {
+            const chord = chordSelect.value;
+            const ok = verifier.setTargetChord(chord);
+            currentTarget.textContent = ok ? `🎯 ${chord}` : '⚠️ 无效';
+        }
+
+        function drawChroma(chroma) {
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            const barW = w / 12;
+            const notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+            const max = Math.max(...chroma, 0.01);
+            for (let i = 0; i < 12; i++) {
+                const val = chroma[i] / max;
+                const barH = val * h * 0.8;
+                ctx.fillStyle = i === 0 ? '#e08f5c' : '#5f9ef0';
+                ctx.fillRect(i * barW + 2, h - barH, barW - 4, barH);
+                ctx.fillStyle = '#ccd9ff';
+                ctx.font = 'bold 10px "Segoe UI"';
+                ctx.textAlign = 'center';
+                ctx.fillText(notes[i], i * barW + barW / 2, h - 4);
+            }
+        }
+
+        simInput.addEventListener('input', () => {
+            const v = +simInput.value;
+            simVal.textContent = v.toFixed(2);
+            verifier.setThreshold(v);
+        });
+        energyInput.addEventListener('input', () => {
+            const v = +energyInput.value;
+            energyVal.textContent = v.toFixed(2);
+            verifier.setTriggerSensitivity(v);
+        });
+
+        verifier.onStartListening = () => {
+            sysState.innerHTML = '🟢 监听中';
+            stopBtn.disabled = false;
+            startBtn.disabled = true;
+            engineSpan.textContent = verifier.getEngineType() || 'unknown';
+            addUILog('麦克风已激活，等待弹奏');
+        };
+        verifier.onStopListening = () => {
+            sysState.innerHTML = '⚪ 已停止';
+            stopBtn.disabled = true;
+            startBtn.disabled = false;
+            waitingState.textContent = '—';
+            recordingState.textContent = '❌';
+            energyDisplay.textContent = '0.000';
+            engineSpan.textContent = '未启动';
+            addUILog('已停止监听');
+        };
+        verifier.onError = msg => {
+            addUILog('错误: ' + msg, true);
+            sysState.innerHTML = '🔴 错误';
+        };
+        verifier.onResult = (isMatch, sim, chroma) => {
+            simDisplay.textContent = sim.toFixed(4);
+            matchLabel.className = `match-badge ${isMatch ? 'match-true' : 'match-false'}`;
+            matchLabel.textContent = isMatch ? '✅ 正确' : '❌ 错误';
+            if (chroma) drawChroma(chroma);
+        };
+
+        startBtn.onclick = async () => {
+            if (!verifier.targetTemplate) { alert('请先选择目标和弦'); return; }
+            try {
+                await verifier.start(
+                    () => {},
+                    err => addUILog('启动错误: ' + err, true)
+                );
+            } catch (e) {
+                addUILog('启动异常: ' + e.message, true);
+            }
+        };
+        stopBtn.onclick = () => verifier.stop();
+        resetBtn.onclick = () => {
+            verifier.forceReset();
+            waitingState.textContent = '✅ 等待触发';
+            recordingState.textContent = '❌';
+            addUILog('强制重置');
+        };
+        chordSelect.onchange = updateTarget;
+
+        // 初始化显示
+        simVal.textContent = verifier.similarityThreshold.toFixed(2);
+        energyVal.textContent = verifier.triggerEnergyThreshold.toFixed(2);
+        populateChords();
+        drawChroma(new Array(12).fill(0.1));
+        addUILog('最终修复版已就绪');
+
+        window.addEventListener('beforeunload', () => {
+            if (verifier.isActive) verifier.stop();
+        });
+    })();
+</script>
+</body>
+</html>

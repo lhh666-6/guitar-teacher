@@ -4,13 +4,11 @@ import os
 import threading
 import time
 import io
-import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import wraps
 
-import random
-from api.chords import chords_bp, chords_data   # 新增 chords_data
+from api.chords import chords_bp
 
 import cv2
 import numpy as np
@@ -28,6 +26,11 @@ from core.llm_service import LLMService
 from models import db, TrainingRecord, User
 from core.tts_service import VolcTTS
 from api.auth import auth_bp
+from core.voice_commands import (
+    process_teach_command, process_tuning_command, process_solo_command,
+    process_general_command
+)
+from core.recommendation import generate_smart_recommendations
 
 # ---------- 日志配置 ----------
 logging.basicConfig(
@@ -155,8 +158,7 @@ def handle_thumbnail(data):
     frame = base64_to_cv2(image_base64)
     if frame is None:
         logger.warning("缩略图解码失败")
-        # 即使失败也回调，让前端能测量 RTT
-        return False
+        return
 
     success = recognizer.update_fretboard(frame)
     if success:
@@ -398,93 +400,6 @@ def history_stats():
     })
 # ---------- 教学驾驶舱 API ----------
 llm_service = LLMService()
-def _generate_smart_recommendations(user_id, count=5):
-    """
-    基于用户练习数据和和弦难度生成智能推荐（带理由），每次调用结果具有随机性。
-    返回格式: [{"name": "C", "reason": "基础和弦，适合巩固"}, ...]
-    """
-    overview = user_stats.get_overview(user_id)
-    recent = user_stats.get_recent_records(user_id, limit=20)
-    
-    practiced_chords = set()
-    chord_accuracies = {}
-    for r in recent:
-        chord = r.get('chord')
-        acc = r.get('accuracy', 0)
-        if chord:
-            practiced_chords.add(chord)
-            chord_accuracies.setdefault(chord, []).append(acc)
-    
-    chord_avg_acc = {c: sum(accs)/len(accs) for c, accs in chord_accuracies.items()}
-    weak_chords = [c for c, acc in chord_avg_acc.items() if acc < 60]
-    
-    chords_info = {c['name']: c for c in chords_data}
-    all_chord_names = list(chords_info.keys())
-    unpracticed = [c for c in all_chord_names if c not in practiced_chords]
-    
-    recommendations = []
-    
-    # 1. 随机选择1~2个薄弱和弦（如果有）
-    if weak_chords:
-        sample_size = min(2, len(weak_chords))
-        selected_weak = random.sample(weak_chords, sample_size)
-        for chord in selected_weak:
-            recommendations.append({
-                'name': chord,
-                'reason': f"你在{chord}上正确率偏低，加强练习能有效提升"
-            })
-    
-    # 2. 从未练习过的和弦中随机选1~2个（优先低难度，但加入随机性）
-    if unpracticed:
-        # 按难度排序，但从中随机抽取，难度越低的被抽中概率可以稍高（可选）
-        # 这里简单起见，直接随机抽取
-        sample_size = min(2, len(unpracticed))
-        selected_unpracticed = random.sample(unpracticed, sample_size)
-        for chord in selected_unpracticed:
-            diff = chords_info[chord]['difficulty']
-            if diff == 1:
-                reason = f"{chord}是基础开放和弦，适合新手入门"
-            elif diff == 2:
-                reason = f"{chord}稍有难度，但值得尝试拓展指法"
-            else:
-                reason = f"{chord}和弦，挑战一下提升技巧"
-            recommendations.append({'name': chord, 'reason': reason})
-    
-    # 3. 剩余名额根据平均正确率随机抽取
-    remaining = count - len(recommendations)
-    if remaining > 0:
-        avg_accuracy = overview.get('avg_accuracy', 0)
-        if avg_accuracy < 50:
-            pool = [c for c in all_chord_names if chords_info[c]['difficulty'] == 1]
-        else:
-            pool = [c for c in all_chord_names if chords_info[c]['difficulty'] >= 2]
-        
-        # 排除已选中的和弦
-        pool = [c for c in pool if c not in [r['name'] for r in recommendations]]
-        if pool:
-            selected = random.sample(pool, min(remaining, len(pool)))
-            for chord in selected:
-                diff = chords_info[chord]['difficulty']
-                if diff == 1:
-                    reason = f"{chord}和弦，巩固基础指法"
-                elif diff == 2:
-                    reason = f"{chord}和弦，提升和弦转换熟练度"
-                else:
-                    reason = f"{chord}和弦，适合高阶练习"
-                recommendations.append({'name': chord, 'reason': reason})
-    
-    # 如果还不够，从所有和弦中随机补全
-    if len(recommendations) < count:
-        remaining = count - len(recommendations)
-        remaining_pool = [c for c in all_chord_names if c not in [r['name'] for r in recommendations]]
-        if remaining_pool:
-            extra = random.sample(remaining_pool, min(remaining, len(remaining_pool)))
-            for chord in extra:
-                recommendations.append({'name': chord, 'reason': '根据你的练习记录智能推荐'})
-    
-    # 最后打乱顺序，让每次结果看起来都不一样
-    random.shuffle(recommendations)
-    return recommendations[:count]
 
 @app.route('/api/teach/dashboard')
 @login_required
@@ -555,7 +470,7 @@ def generate_advice():
 def recommend_chords():
     """基于用户练习数据生成智能推荐和弦（带理由）"""
     try:
-        recommendations = _generate_smart_recommendations(current_user.id, count=5)
+        recommendations = generate_smart_recommendations(current_user.id, count=5)
         return jsonify({'chords': recommendations})
     except Exception as e:
         logger.exception("生成推荐和弦失败")
@@ -591,62 +506,6 @@ def tts_speak():
         return jsonify({'error': 'synthesis failed'}), 500
 
 # ---------- 语音指令处理 ----------
-TEACH_COMMANDS = [
-    {'patterns': ['显示掌握度', '掌握度'], 'action': 'show_radar', 'text': '已显示和弦掌握度'},
-    {'patterns': ['显示进步曲线', '进步曲线'], 'action': 'show_progress', 'text': '已显示进步趋势'},
-    {'patterns': ['朗读指导'], 'action': 'read_advice', 'text': None},
-    {'patterns': ['生成新建议', '生成指导'], 'action': 'generate_advice', 'text': '正在生成新建议'},
-    {'patterns': [r'练习\s*([A-G#b]+)'], 'action': 'goto_solo', 'text': None, 'extract': lambda m: {'chord': m[1]}},
-]
-
-TUNING_COMMANDS = [
-    {'patterns': [r'调([一二三四五六1-6])弦'], 'action': 'select_string', 'text': None,
-     'extract': lambda m: {'string': {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6}.get(m[1])}},
-    {'patterns': ['开始调音'], 'action': 'start_tuning', 'text': '开始调音'},
-    {'patterns': ['停止调音'], 'action': 'stop_tuning', 'text': '停止调音'},
-    {'patterns': ['打开自动模式', '开启自动模式'], 'action': 'auto_mode', 'text': '自动模式已开启', 'extract': lambda m: {'enable': True}},
-    {'patterns': ['关闭自动模式'], 'action': 'auto_mode', 'text': '自动模式已关闭', 'extract': lambda m: {'enable': False}},
-]
-
-def match_command(command, commands):
-    for cmd in commands:
-        for pattern in cmd['patterns']:
-            if isinstance(pattern, str):
-                if pattern in command:
-                    result = {'action': cmd['action'], 'text': cmd.get('text')}
-                    if 'extract' in cmd:
-                        result.update(cmd['extract']({}))
-                    return result
-            elif isinstance(pattern, re.Pattern):
-                match = pattern.search(command)
-                if match:
-                    result = {'action': cmd['action'], 'text': cmd.get('text')}
-                    if 'extract' in cmd:
-                        result.update(cmd['extract'](match))
-                    return result
-    return None
-
-def process_teach_command(command):
-    return match_command(command, TEACH_COMMANDS)
-
-def process_tuning_command(command):
-    return match_command(command, TUNING_COMMANDS)
-
-def process_solo_command(command):
-    return None
-
-def process_general_command(command, session_id):
-    try:
-        conv = llm_service.get_conversation(session_id)
-        original_prompt = conv.system_prompt
-        conv.set_system_prompt("你是一个吉他教学助手。用户提问时，请用最简洁的语言回答，不超过30字，直接给出建议，不要啰嗦，不要解释背景。")
-        reply = llm_service.chat(session_id, command)
-        conv.set_system_prompt(original_prompt)
-        return {'text': reply}
-    except Exception as e:
-        logger.error(f"LLM 问答失败: {e}")
-        return {'text': '抱歉，我暂时无法回答。'}
-
 @socketio.on('voice_command')
 def handle_voice_command(data):
     sid = request.sid
@@ -667,7 +526,7 @@ def handle_voice_command(data):
         result = None
 
     if result is None:
-        result = process_general_command(command, session_id)
+        result = process_general_command(command, session_id, llm_service)
 
     if result and result.get('text'):
         audio = tts_service.synthesize(result['text'])

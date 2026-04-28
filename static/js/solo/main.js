@@ -22,20 +22,16 @@
     class GuitarTrainApp {
         constructor() {
             // 状态变量
-        
-            this.thumbnailDynamicInterval = 200;      // 初始 5帧/秒
-            this.thumbnailRttHistory = [];            // RTT 采样
-            this.thumbnailFastStartTime = null;       // 开始时间
-            this.thumbnailModeCheckTimer = null;      // 2秒定时器
-            this.thumbnailModeDecided = false;        // 评估完成标志
+            this.thumbnailDynamicInterval = 200;
+            this.thumbnailRttHistory = [];
+            this.thumbnailFastStartTime = null;
+            this.thumbnailModeCheckTimer = null;
+            this.thumbnailModeDecided = false;
             this.chords = [];
             this.currentChord = null;
             this.testList = [];
             this.testResults = [];
             this.testMode = false;
-            this.cameraStream = null;
-            this.socket = null;
-            this.animationId = null;
             this.timerInterval = null;
             this.stats = { correct: 0, wrong: 0 };
             this.currentTestIndex = 0;
@@ -57,17 +53,10 @@
             this.cooldownTimer = null;
             this.quickTimer = null;
 
-            // MediaPipe 相关
-            this.hands = null;
-            this.camera = null;
-            this.filters = [];               // 21个点的滤波器
+            // 滤波器
+            this.filters = [];
             this.lastThumbnailTime = 0;
             this.sendingEnabled = false;
-            this.useMediaPipe = true;         // 是否尝试使用 MediaPipe
-
-            // 音频预留
-            this.audioContext = null;
-            this.audioEnabled = false;
 
             // 关键点发送节流
             this.lastLandmarkSendTime = 0;
@@ -75,18 +64,11 @@
             // 用于实时绘制
             this.latestLocalLandmarks = null;
             this.cachedDrawingData = null;
-            this.animationFrameId = null;
 
             this.fingeringDetector = new FingeringDetector();
 
             // 调试日志锁
-            this._logMediaPipeReady = false;
-            this._logMediaPipeFallback = false;
             this._logHandResultsFirst = false;
-            this._logCameraStartFail = false;
-            this._logSocketConnected = false;
-            this._logSocketDisconnected = false;
-            this._logSocketError = false;
             this._logFretboardReady = false;
             this._logFretboardMissing = false;
             this._logThumbnailOk = false;
@@ -99,6 +81,20 @@
             // DOM 元素缓存
             this.cacheElements();
 
+            // 相机管理器
+            this.cameraManager = new CameraManager({
+                videoElement: this.elements.cameraFeed,
+                onResults: (results) => this.onHandResults(results),
+                onStreamEnded: () => this._handleStreamEnded(),
+                onError: (err) => console.error('摄像头错误:', err)
+            });
+
+            // Socket 管理器
+            this.socketManager = new SocketManager({
+                onFretboardParams: (params) => this._onFretboardParams(params),
+                onDetectionResult: (data) => this.handleDetectionResult(data)
+            });
+
             // 初始化粒子背景
             this.createParticles();
 
@@ -108,23 +104,26 @@
             // 绑定事件
             this.bindEvents();
 
-            // 全屏变化监听：退出全屏时若在测试模式则停止测试并恢复界面
+            // 全屏变化监听
             this._onFullscreenChange = this._handleFullscreenChange.bind(this);
             document.addEventListener('fullscreenchange', this._onFullscreenChange);
             document.addEventListener('webkitfullscreenchange', this._onFullscreenChange);
             document.addEventListener('msfullscreenchange', this._onFullscreenChange);
-             this._startRttLogging();
-            // 窗口卸载清理
+            this._startRttLogging();
             window.addEventListener('beforeunload', () => this.cleanup());
         }
 
         _handleFullscreenChange() {
             const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
             if (!isFullscreen && this.testMode) {
-                console.log('[全屏] 退出全屏，自动结束测试并恢复初始界面');
-                this.stopTestAndSending();
-                if (this.cameraStream) {
-                    this._closeCamera();
+                console.log('[全屏] 退出全屏，测试继续进行');
+                document.body.classList.remove('video-overlay-active');
+                const fullscreenBtn = document.getElementById('fullscreenVideoBtn');
+                if (fullscreenBtn) {
+                    fullscreenBtn.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
+                }
+                if (this.elements.videoContainer) {
+                    this.elements.videoContainer.classList.remove('video-expanded');
                 }
             }
         }
@@ -355,87 +354,7 @@
             }
         }
 
-        stopTestAndSending() {
-            this.sendingEnabled = false;
-            if (this.animationId) {
-                cancelAnimationFrame(this.animationId);
-                this.animationId = null;
-            }
-            if (this.animationFrameId) {
-                cancelAnimationFrame(this.animationFrameId);
-                this.animationFrameId = null;
-            }
-            if (this.camera) {
-                this.camera.stop();
-            }
-            if (this.timerInterval) {
-                clearInterval(this.timerInterval);
-                this.timerInterval = null;
-            }
-            this._clearAllTimers();
-            if (this.audioVerifier) {
-                this.audioVerifier.stop();
-            }
-            this.testMode = false;
-            this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
-            if (this.elements.trainLayout) {
-                this.elements.trainLayout.classList.remove('test-mode');
-            }
-            if (this.elements.videoContainer) {
-                this.elements.videoContainer.classList.remove('video-expanded');
-            }
-            if (document.fullscreenElement || document.webkitFullscreenElement) {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                } else if (document.msExitFullscreen) {
-                    document.msExitFullscreen();
-                }
-            }
-            if (document.body.classList.contains('video-overlay-active')) {
-                document.body.classList.remove('video-overlay-active');
-                const fullscreenBtn = document.getElementById('fullscreenVideoBtn');
-                if (fullscreenBtn) {
-                    fullscreenBtn.innerHTML = '<i class="fas fa-expand" aria-hidden="true"></i> 全屏';
-                }
-            }
-            if (this.currentChord) {
-                requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
-            }
-            this._resetDebugFlags();
-        }
-
-        _closeCamera() {
-            if (this.testMode) {
-                this.stopTestAndSending();
-            }
-            if (this.animationId) {
-                cancelAnimationFrame(this.animationId);
-                this.animationId = null;
-            }
-            if (this.animationFrameId) {
-                cancelAnimationFrame(this.animationFrameId);
-                this.animationFrameId = null;
-            }
-            if (this._stopHandLoop) {
-                this._stopHandLoop();
-            }
-            if (this.camera) {
-                this.camera.stop();
-            }
-            if (this.audioVerifier) {
-                this.audioVerifier.stop();
-            }
-            this._clearAllTimers();
-            if (this.cameraStream) {
-                this.cameraStream.getTracks().forEach(t => t.stop());
-                this.cameraStream = null;
-            }
-            this.elements.cameraFeed.srcObject = null;
-            this.elements.cameraFeed.style.transform = '';
-            this.elements.toggleCamera.textContent = '开启';
-            this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
+        _exitFullscreenAndCleanUI() {
             if (document.fullscreenElement || document.webkitFullscreenElement) {
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
@@ -456,20 +375,60 @@
             if (this.elements.videoContainer) {
                 this.elements.videoContainer.classList.remove('video-expanded');
             }
-            if (this.socket) {
-                this.socket.disconnect();
-                if (this.socket.close) this.socket.close();
-                this.socket = null;
+        }
+
+        _cleanupCoreState() {
+            if (this.timerInterval) {
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
             }
+            this._clearAllTimers();
+            if (this.audioVerifier) this.audioVerifier.stop();
+            this._resetDebugFlags();
+        }
+
+        stopTestAndSending() {
+            this.sendingEnabled = false;
+            this._cleanupCoreState();
+            this.testMode = false;
+            this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+            this._exitFullscreenAndCleanUI();
+            if (this.currentChord) {
+                requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
+            }
+        }
+
+        _closeCamera() {
+            if (this.testMode) {
+                this.stopTestAndSending();
+            } else {
+                this._cleanupCoreState();
+            }
+            this.cameraManager.close();
+            this.elements.toggleCamera.textContent = '开启';
+            this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
+            this._exitFullscreenAndCleanUI();
+            this.socketManager.disconnect();
             this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
             this.filters = [];
             this.latestLocalLandmarks = null;
             this.cachedDrawingData = null;
             this.sendingEnabled = false;
-            this._resetDebugFlags();
             if (this.currentChord) {
                 requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
             }
+        }
+
+        _onFretboardParams(params) {
+            if (!this._logFretboardReady) {
+                console.log('✅ 指板参数已就绪，弦线/品丝绘制可用');
+                this._logFretboardReady = true;
+                this._logFretboardMissing = false;
+            }
+            this.fingeringDetector.setParams(params);
+            const drawingData = this._buildDrawingDataFromParams(params);
+            this.cachedDrawingData = drawingData;
+            this.drawAll();
         }
 
         _resetDebugFlags() {
@@ -530,7 +489,7 @@
                 alert(`✅ 测试完成！\n正确: ${this.stats.correct}, 错误: ${this.stats.wrong}\n平均正确用时: ${avgTime.toFixed(2)} 秒`);
                 this.elements.progressDisplay.textContent = `${this.testList.length}/${this.testList.length}`;
                 this.elements.currentTimeDisplay.textContent = '0.0 s';
-                if (this.cameraStream) {
+                if (this.cameraManager.stream) {
                     this._closeCamera();
                 }
                 return;
@@ -1077,7 +1036,7 @@
         }
 
         sendThumbnail() {
-            if (!this.socket || !this.socket.connected) return;
+            if (!this.socketManager.isConnected) return;
             const video = this.elements.cameraFeed;
             if (!video.videoWidth) return;
 
@@ -1101,7 +1060,7 @@
             ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, THUMBNAIL_WIDTH, targetHeight);
             const imageBase64 = canvas.toDataURL('image/jpeg', THUMBNAIL_QUALITY);
 
-            this.socket.emit('thumbnail', { image: imageBase64 }, (response) => {
+            this.socketManager.emit('thumbnail', { image: imageBase64 }, (response) => {
                 const rtt = performance.now() - sendTime;
                 this._updateThumbnailRtt(rtt);
             });
@@ -1111,120 +1070,23 @@
 
         _handleStreamEnded() {
             console.warn('摄像头流意外终止');
-            if (this.cameraStream) {
-                this.cameraStream.getTracks().forEach(t => t.stop());
-                this.cameraStream = null;
-            }
+            this.cameraManager.close();
             this._closeCamera();
         }
 
         async toggleCamera() {
-            if (this.cameraStream) {
+            if (this.cameraManager.stream) {
                 this._closeCamera();
             } else {
                 try {
-                    if (typeof Hands === 'undefined') {
-                        if (!this._logMediaPipeFallback) {
-                            console.warn('⚠️ MediaPipe Hands 库未加载，将使用降级模式');
-                            this._logMediaPipeFallback = true;
-                        }
-                        this.useMediaPipe = false;
-                    } else {
-                        if (!this.hands) {
-                            this.hands = new Hands({
-                                locateFile: (file) => `https://fastly.jsdelivr.net/npm/@mediapipe/hands/${file}`
-                            });
-                            this.hands.setOptions({
-                                maxNumHands: 1,
-                                modelComplexity: 1,
-                                minDetectionConfidence: 0.2,
-                                minTrackingConfidence: 0.2
-                            });
-                            this.hands.onResults((results) => this.onHandResults(results));
-                            if (!this._logMediaPipeReady) {
-                                console.log('✅ MediaPipe Hands 已成功加载，等待首次调用');
-                                this._logMediaPipeReady = true;
-                            }
-                        }
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        this.useMediaPipe = true;
-                    }
-
-                    this.cameraStream = await navigator.mediaDevices.getUserMedia({
-                        video: { width: 1920, height: 1080 }
-                    });
-                    this.elements.cameraFeed.srcObject = this.cameraStream;
-                    this.elements.cameraFeed.style.transform = 'scaleX(-1)';
+                    await this.cameraManager.open();
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
 
-                    this.cameraStream.getTracks().forEach(track => {
-                        track.addEventListener('ended', () => {
-                            if (this.cameraStream.getTracks().every(t => t.readyState === 'ended')) {
-                                this._handleStreamEnded();
-                            }
-                        });
-                    });
+                    this.socketManager.connect();
+                    this._startRttLogging();
 
-                    this.socket = io("https://www.hnuguitarteacher.xyz", {
-                        path: '/socket.io',
-                        transports: ['websocket'],
-                        secure: true,
-                        rejectUnauthorized: false,
-                        reconnection: false,
-                        timeout: 20000
-                    });
-
-                    this.socket.on('connect', () => {
-                        if (!this._logSocketConnected) {
-                            console.log('✅ WebSocket 连接成功，ID:', this.socket.id);
-                            this._logSocketConnected = true;
-                            this._logSocketDisconnected = false;
-                            this._logSocketError = false;
-                        }
-                    });
-
-                    this.socket.on('disconnect', (reason) => {
-                        if (!this._logSocketDisconnected) {
-                            console.log('❌ WebSocket 断开，原因:', reason);
-                            this._logSocketDisconnected = true;
-                            this._logSocketConnected = false;
-                            this._logFrameOk = false;
-                            this._logThumbnailOk = false;
-                        }
-                    });
-
-                    this.socket.on('connect_error', (err) => {
-                        if (!this._logSocketError) {
-                            console.error('🚫 WebSocket 连接错误:', err);
-                            this._logSocketError = true;
-                            this._logFrameFail = true;
-                            this._logThumbnailFail = true;
-                        }
-                    });
-
-                    this.socket.on('error', (err) => {
-                        if (!this._logSocketError) {
-                            console.error('🚫 WebSocket 错误:', err);
-                            this._logSocketError = true;
-                        }
-                    });
-
-                    this.socket.on('fretboard_params', (params) => {
-                        if (!this._logFretboardReady) {
-                            console.log('✅ 指板参数已就绪，弦线/品丝绘制可用');
-                            this._logFretboardReady = true;
-                            this._logFretboardMissing = false;
-                        }
-                        this.fingeringDetector.setParams(params);
-                        const drawingData = this._buildDrawingDataFromParams(params);
-                        this.cachedDrawingData = drawingData;
-                        this.drawAll();
-                    });
-
-                    this.socket.on('detection_result', this.handleDetectionResult);
-                    this._startRttLogging();   // ✅ 开启 RTT 日志定时器
-                    // 等待视频元数据，固定画布像素尺寸为视频原始分辨率（不修改CSS）
+                    // 等待视频元数据，固定画布像素尺寸
                     await new Promise((resolve) => {
                         this.elements.cameraFeed.addEventListener('loadedmetadata', () => {
                             this.overlayCanvas.width = this.elements.cameraFeed.videoWidth;
@@ -1234,42 +1096,14 @@
                         }, { once: true });
                     });
 
-                    // MediaPipe 循环
-                    if (this.useMediaPipe && this.hands) {
-                        let handLoopRunning = true;
-                        const handLoop = async () => {
-                            if (!handLoopRunning || !this.hands || !this.cameraStream) return;
-                            const video = this.elements.cameraFeed;
-                            if (video.readyState >= 2) {
-                                try {
-                                    await this.hands.send({ image: video });
-                                } catch (e) {
-                                    if (!this._logCameraStartFail) {
-                                        console.error('❌ MediaPipe hands.send() 调用失败:', e);
-                                        this._logCameraStartFail = true;
-                                    }
-                                }
-                            }
-                            if (handLoopRunning) {
-                                this.animationFrameId = requestAnimationFrame(handLoop);
-                            }
-                        };
-                        this.animationFrameId = requestAnimationFrame(handLoop);
-
-                        const animate = () => {
-                            this.drawAll();
-                            if (handLoopRunning) {
-                                this.animationId = requestAnimationFrame(animate);
-                            }
-                        };
-                        this.animationId = requestAnimationFrame(animate);
-
-                        this._handLoopRunning = () => handLoopRunning;
-                        this._stopHandLoop = () => { handLoopRunning = false; };
+                    // 启动 MediaPipe 手部跟踪循环
+                    if (this.cameraManager.useMediaPipe) {
+                        this.cameraManager.startHandLoop(this.elements.cameraFeed);
+                        this.cameraManager.startDrawLoop(() => this.drawAll());
                     } else {
-                        if (!this._logMediaPipeFallback) {
+                        if (!this.cameraManager._logMediaPipeFallback) {
                             console.log('使用降级图像发送模式');
-                            this._logMediaPipeFallback = true;
+                            this.cameraManager._logMediaPipeFallback = true;
                         }
                     }
                 } catch (err) {
@@ -1312,7 +1146,7 @@
                 alert('测试列表为空');
                 return;
             }
-            if (!this.cameraStream) {
+            if (!this.cameraManager.stream) {
                 alert('请先开启摄像头');
                 return;
             }
@@ -1331,6 +1165,7 @@
             this.audioResultCache = null;
             this.audioWaiting = false;
             if (this.audioVerifier) {
+                this.audioVerifier.setHoldDuration(QUICK_MODE ? 0.6 : 1.0);
                 this.audioVerifier.setTargetChord(this.currentChord.name);
                 this.audioVerifier.start((isMatch, similarity) => {
                     this.audioResultCache = {
@@ -1482,28 +1317,10 @@
         cleanup() {
             this.sendingEnabled = false;
             this._stopRttLogging();
-            if (this.animationId) {
-                cancelAnimationFrame(this.animationId);
-                this.animationId = null;
-            }
-            if (this.animationFrameId) {
-                cancelAnimationFrame(this.animationFrameId);
-                this.animationFrameId = null;
-            }
-            if (this._stopHandLoop) {
-                this._stopHandLoop();
-            }
-            if (this.timerInterval) clearInterval(this.timerInterval);
-            if (this.camera) {
-                this.camera.stop();
-            }
-            if (this.cameraStream) {
-                this.cameraStream.getTracks().forEach(t => t.stop());
-            }
-            if (this.socket) {
-                this.socket.disconnect();
-            }
-            if (this.audioVerifier) this.audioVerifier.stop();
+            this._cleanupCoreState();
+            this.cameraManager.close();
+            this.socketManager.disconnect();
+            if (this.audioVerifier) this.audioVerifier.destroy();
             this._resetDebugFlags();
             document.removeEventListener('fullscreenchange', this._onFullscreenChange);
             document.removeEventListener('webkitfullscreenchange', this._onFullscreenChange);

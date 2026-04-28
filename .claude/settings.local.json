@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la .cursor)",
+      "Bash(ls -la .claude)",
+      "Bash(python3 -c \"from PIL import Image; img = Image.open\\('static/images/guitar-notes.png'\\); print\\(f'Size: {img.size}, Mode: {img.mode}, Format: {img.format}'\\)\")",
+      "Bash(python -c \"from PIL import Image; img = Image.open\\('static/images/guitar-notes.png'\\); print\\(f'Size: {img.size}, Mode: {img.mode}, Format: {img.format}'\\)\")",
+      "Bash(python3 *)",
+      "Bash(python -m py_compile core/user_stats.py)",
+      "Bash(python -m py_compile app.py)",
+      "Bash(node *)",
+      "Bash(python -m py_compile core/voice_commands.py)",
+      "Bash(python -m py_compile core/recommendation.py)",
+      "Bash(python -m py_compile core/detector.py)",
+      "Bash(python -m py_compile core/tts_service.py)"
+    ]
+  }
+}

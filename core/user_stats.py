@@ -39,7 +39,7 @@ def get_chord_mastery(user_id):
         func.avg(TrainingRecord.correct).label('acc')
     ).filter(TrainingRecord.user_id == user_id)\
      .group_by(TrainingRecord.chord_name).all()
-    chords = [{'name': row.chord_name, 'value': int(row.acc * 100)} for row in chord_query]
+    chords = [{'name': row.chord_name, 'value': int((row.acc or 0) * 100)} for row in chord_query]
     return {
         'chords': chords,
         'values': [c['value'] for c in chords]

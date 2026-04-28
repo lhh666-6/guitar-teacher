@@ -7,7 +7,11 @@ class ChordVerifier {
     constructor() {
         // 引擎状态
         this._engine = null;
-        this._debug = true; // 可在实例化后关闭
+        this._debug = true;
+        this._meydaCodeCache = null;
+        this._meydaBlobUrl = null;
+        this._energyBaseline = 0;
+        this._emaAlpha = 0.3;
 
         this.audioContext = null;
         this.mediaStream = null;
@@ -60,13 +64,16 @@ class ChordVerifier {
     }
 
     _isAttack(currentEnergy) {
-        if (this.lastEnergy === 0) {
-            this.lastEnergy = currentEnergy;
+        if (this._energyBaseline === 0) {
+            this._energyBaseline = currentEnergy;
             return false;
         }
-        const ratio = currentEnergy / (this.lastEnergy + 0.01);
-        this.lastEnergy = currentEnergy;
-        return ratio > 1.5 && currentEnergy > this.triggerEnergyThreshold;
+        const ratio = currentEnergy / (this._energyBaseline + 0.01);
+        const isAttack = ratio > 1.5 && currentEnergy > this.triggerEnergyThreshold;
+        if (!isAttack) {
+            this._energyBaseline = this._emaAlpha * currentEnergy + (1 - this._emaAlpha) * this._energyBaseline;
+        }
+        return isAttack;
     }
 
     // ================== 和弦模板 ==================
@@ -113,7 +120,11 @@ class ChordVerifier {
             }
         }
         const aliases = { 'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#' };
-        for (let [alias, orig] of Object.entries(aliases)) templates[alias] = templates[orig];
+        for (let q of quals) {
+            for (let [alias, orig] of Object.entries(aliases)) {
+                templates[alias + q] = templates[orig + q];
+            }
+        }
         return templates;
     }
 
@@ -155,6 +166,11 @@ class ChordVerifier {
         this._log(`触发能量阈值 = ${this.triggerEnergyThreshold}`);
     }
 
+    setHoldDuration(value) {
+        this.holdDuration = Math.min(2.0, Math.max(0.4, value));
+        this._log(`录音时长 = ${this.holdDuration}s`);
+    }
+
     async start(onResultCallback, onErrorCallback) {
         this._log('启动验证器...');
         if (this.isActive) await this.stop();
@@ -168,19 +184,30 @@ class ChordVerifier {
         this.onError = onErrorCallback;
         try {
             this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
 
-            const workletSuccess = await this._tryStartWorklet();
-            if (workletSuccess) {
-                this._engine = 'worklet';
-                this._log('✅ 使用 AudioWorklet 引擎');
+            const needNewContext = !this.audioContext || this.audioContext.state === 'closed';
+            if (needNewContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+            }
+
+            if (this.audioContext.audioWorklet) {
+                const workletSuccess = await this._tryStartWorklet();
+                if (workletSuccess) {
+                    this._engine = 'worklet';
+                    this._log('✅ 使用 AudioWorklet 引擎');
+                } else {
+                    this._log('⚠️ AudioWorklet 失败，降级到 ScriptProcessorNode');
+                    this._startScriptProcessor();
+                    this._engine = 'script';
+                }
             } else {
-                this._log('⚠️ AudioWorklet 失败，降级到 ScriptProcessorNode');
                 this._startScriptProcessor();
                 this._engine = 'script';
             }
 
-            await this.audioContext.resume();
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
             this.isActive = true;
             this._log('验证器已激活');
             if (this.onStartListening) this.onStartListening();
@@ -197,12 +224,12 @@ class ChordVerifier {
                 this._warn('浏览器不支持 AudioWorklet');
                 return false;
             }
-            // 获取 Meyda 源码并内联
-            const meydaCode = await this._fetchMeydaCode();
-            const blob = this._createWorkletBlob(meydaCode);
-            const url = URL.createObjectURL(blob);
-            await this.audioContext.audioWorklet.addModule(url);
-            URL.revokeObjectURL(url);
+            if (!this._meydaBlobUrl) {
+                const meydaCode = await this._fetchMeydaCode();
+                const blob = this._createWorkletBlob(meydaCode);
+                this._meydaBlobUrl = URL.createObjectURL(blob);
+            }
+            await this.audioContext.audioWorklet.addModule(this._meydaBlobUrl);
 
             const source = this.audioContext.createMediaStreamSource(this.mediaStream);
             this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-processor');
@@ -217,8 +244,10 @@ class ChordVerifier {
     }
 
     async _fetchMeydaCode() {
+        if (this._meydaCodeCache) return this._meydaCodeCache;
         const resp = await fetch('https://cdn.jsdelivr.net/npm/meyda@5.0.0/dist/web/meyda.min.js');
-        return await resp.text();
+        this._meydaCodeCache = await resp.text();
+        return this._meydaCodeCache;
     }
 
     _createWorkletBlob(meydaCode) {
@@ -303,7 +332,7 @@ class ChordVerifier {
         chroma = this._applyLowFreqWeight(chroma);
 
         if (energy < this.energyThreshold) {
-            this.lastEnergy = energy;
+            this._energyBaseline = this._emaAlpha * energy + (1 - this._emaAlpha) * this._energyBaseline;
             return;
         }
 
@@ -367,16 +396,30 @@ class ChordVerifier {
     async stop() {
         this._log('停止验证器');
         this.isActive = false;
-        if (this.workletNode) this.workletNode.disconnect();
-        if (this.meydaAnalyzer) this.meydaAnalyzer.stop();
-        if (this.scriptProcessor) this.scriptProcessor.disconnect();
-        if (this.audioContext) await this.audioContext.close();
-        if (this.mediaStream) this.mediaStream.getTracks().forEach(t => t.stop());
-        this.workletNode = this.scriptProcessor = this.meydaAnalyzer = null;
-        this.audioContext = this.mediaStream = null;
+        if (this.workletNode) { this.workletNode.disconnect(); this.workletNode = null; }
+        if (this.meydaAnalyzer) { this.meydaAnalyzer.stop(); this.meydaAnalyzer = null; }
+        if (this.scriptProcessor) { this.scriptProcessor.disconnect(); this.scriptProcessor = null; }
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            try { await this.audioContext.suspend(); } catch (e) { /* 忽略 */ }
+        }
+        if (this.mediaStream) { this.mediaStream.getTracks().forEach(t => t.stop()); this.mediaStream = null; }
         this._resetForNext();
         if (this.onStopListening) this.onStopListening();
         this._log('已停止');
+    }
+
+    destroy() {
+        this._log('销毁验证器');
+        this.isActive = false;
+        if (this.workletNode) { this.workletNode.disconnect(); this.workletNode = null; }
+        if (this.meydaAnalyzer) { this.meydaAnalyzer.stop(); this.meydaAnalyzer = null; }
+        if (this.scriptProcessor) { this.scriptProcessor.disconnect(); this.scriptProcessor = null; }
+        if (this.audioContext) { this.audioContext.close(); this.audioContext = null; }
+        if (this.mediaStream) { this.mediaStream.getTracks().forEach(t => t.stop()); this.mediaStream = null; }
+        if (this._meydaBlobUrl) { URL.revokeObjectURL(this._meydaBlobUrl); this._meydaBlobUrl = null; }
+        this._meydaCodeCache = null;
+        this._resetForNext();
+        if (this.onStopListening) this.onStopListening();
     }
 
     _resetForNext() {
@@ -384,6 +427,7 @@ class ChordVerifier {
         this.isRecording = false;
         this.recordingChunks = [];
         if (this.triggerTimer) clearTimeout(this.triggerTimer);
+        this._energyBaseline = 0;
         this.lastEnergy = 0;
     }
 

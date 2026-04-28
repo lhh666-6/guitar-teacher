@@ -31,21 +31,8 @@ class VolcTTS:
         return os.path.join(self.cache_dir, f"{self._get_cache_key(text, voice, emotion)}.mp3")
 
     def _synthesize_sync(self, text: str, voice: str) -> Optional[bytes]:
-        """
-        同步合成：在事件循环中运行异步函数
-        """
-        loop = None
-        try:
-            # 尝试获取当前事件循环
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # 没有运行中的循环，创建一个新循环
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
         async def _async_synth():
             communicate = edge_tts.Communicate(text, voice)
-            # 收集音频数据
             audio_bytes = b""
             async for chunk in communicate.stream():
                 if chunk["type"] == "audio":
@@ -53,18 +40,13 @@ class VolcTTS:
             return audio_bytes
 
         try:
-            # 如果已有循环在运行，则使用 run_coroutine_threadsafe（但这里简单起见，直接 run_until_complete）
-            # 注意：如果在已有的异步环境中调用，可能会报错，但我们的 Flask 是同步的，所以安全。
-            if loop.is_running():
-                # 如果循环已在运行，需要跨线程调用，但 Flask 主线程不是异步的，这里一般不会发生
-                # 简单处理：新开线程运行新循环
-                def target():
-                    new_loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(new_loop)
-                    return new_loop.run_until_complete(_async_synth())
-                return target()
-            else:
-                return loop.run_until_complete(_async_synth())
+            return asyncio.run(_async_synth())
+        except RuntimeError:
+            # 已有事件循环在运行（eventlet 猴子补丁场景），在新线程中执行
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(asyncio.run, _async_synth())
+                return future.result(timeout=30)
         except Exception as e:
             logger.error(f"Edge TTS 合成失败: {e}")
             return None

@@ -1103,13 +1103,15 @@
     <script src="/static/js/solo/chord_verifier.js"></script>
     <script src="/static/js/solo/chord_validator.js"></script>
     <script src="/static/js/solo/fingering_detector.js"></script>
+    <script src="/static/js/solo/camera_manager.js"></script>
+    <script src="/static/js/solo/socket_manager.js"></script>
     <script src="/static/js/solo/main.js"></script>
 
     <!-- 新增：全屏按钮逻辑 -->
     <script>
                 // 点击“全屏”按钮：进入视频沉浸模式
         document.getElementById('fullscreenVideoBtn').addEventListener('click', function(e) {
-            if (!window.guitarApp || !window.guitarApp.cameraStream) {
+            if (!window.guitarApp || !window.guitarApp.cameraManager || !window.guitarApp.cameraManager.stream) {
                 alert('请先开启摄像头');
                 return;
             }

@@ -549,107 +549,20 @@ class GuitarFingeringRecognizer:
     def process_frame(self, frame, timestamp=None):
         """
         处理完整图像帧（传统模式）。由于后端不再运行MediaPipe，此方法仅更新指板参数，
-        并返回空的手部检测结果。如果你仍需要通过frame事件识别，请改用混合模式（前端发送landmarks）。
+        并返回空的手部检测结果。
         """
-        with self.fretboard_lock:
-            # 仅执行YOLO指板参数更新（如果检测到琴枕/琴桥）
-            h_img, w_img = frame.shape[:2]
-            results = self.yolo_model(frame, conf=self.YOLO_CONF, verbose=False)
-            nut_center = None
-            bridge_center = None
-            nut_box = None
-            bridge_box = None
-            for r in results:
-                for box in r.boxes:
-                    cls_id = int(box.cls[0])
-                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                    cx, cy = (x1+x2)/2, (y1+y2)/2
-                    if cls_id == 0:
-                        nut_center = np.array([cx, cy])
-                        nut_box = (x1, y1, x2, y2)
-                    elif cls_id == 1:
-                        bridge_center = np.array([cx, cy])
-                        bridge_box = (x1, y1, x2, y2)
-            if nut_center is not None and bridge_center is not None:
-                nut_height = nut_box[3] - nut_box[1]
-                bridge_height = bridge_box[3] - bridge_box[1]
-                if nut_height > self.MIN_BOX_WIDTH and bridge_height > self.MIN_BOX_WIDTH:
-                    # 复用 update_fretboard 内部逻辑（为避免重复，直接调用内部方法）
-                    # 简化：直接更新全局参数
-                    if self.force_nut_left and nut_center[0] > bridge_center[0]:
-                        nut_center, bridge_center = bridge_center, nut_center
-                        nut_box, bridge_box = bridge_box, nut_box
-                    self.last_nut_center = nut_center
-                    self.last_bridge_center = bridge_center
-                    self.last_nut_box = nut_box
-                    self.last_bridge_box = bridge_box
+        h_img, w_img = frame.shape[:2]
+        update_success = self.update_fretboard(frame)
+        if update_success:
+            logger.info("传统模式：指板参数更新成功")
 
-                    line_vec = bridge_center - nut_center
-                    perp_vec = np.array([-line_vec[1], line_vec[0]])
-                    perp_len = np.linalg.norm(perp_vec)
-                    perp_unit = perp_vec / perp_len if perp_len > 0 else np.array([0, 0])
-                    v_len = np.linalg.norm(line_vec)
-                    v_unit = line_vec / v_len if v_len > 0 else np.array([1, 0])
-                    self.global_nut_center = nut_center
-                    self.global_bridge_center = bridge_center
-                    self.global_v_unit = v_unit
-                    self.global_v_len = v_len
-                    self.global_perp_unit = perp_unit
-
-                    nut_h = nut_box[3] - nut_box[1]
-                    bridge_h = bridge_box[3] - bridge_box[1]
-                    nut_top = nut_center + perp_unit * (nut_h / 2)
-                    nut_bottom = nut_center - perp_unit * (nut_h / 2)
-                    bridge_top = bridge_center + perp_unit * (bridge_h / 2)
-                    bridge_bottom = bridge_center - perp_unit * (bridge_h / 2)
-
-                    self.fret_lines = []
-                    for n in range(1, self.NUM_FRETS + 1):
-                        fret_ratio = self._get_fret_position_ratio(n)
-                        if 0 <= fret_ratio <= 1:
-                            fret_center = self._get_point_on_line(nut_center, bridge_center, fret_ratio)
-                            fret_p1 = fret_center + perp_unit * (max(nut_h, bridge_h) * 0.85 / 2)
-                            fret_p2 = fret_center - perp_unit * (max(nut_h, bridge_h) * 0.85 / 2)
-                            self.fret_lines.append((n, fret_p1, fret_p2, fret_center))
-                    self.fret_p1s = np.array([p1 for _, p1, _, _ in self.fret_lines], dtype=np.float32)
-                    self.fret_p2s = np.array([p2 for _, _, p2, _ in self.fret_lines], dtype=np.float32)
-
-                    self.string_lines = []
-                    shrink_nut_top = self._get_point_on_line(nut_top, nut_bottom, self.STRING_EDGE_SHRINK_RATIO)
-                    shrink_nut_bottom = self._get_point_on_line(nut_bottom, nut_top, self.STRING_EDGE_SHRINK_RATIO)
-                    shrink_bridge_top = self._get_point_on_line(bridge_top, bridge_bottom, self.STRING_EDGE_SHRINK_RATIO)
-                    shrink_bridge_bottom = self._get_point_on_line(bridge_bottom, bridge_top, self.STRING_EDGE_SHRINK_RATIO)
-                    for i in range(self.NUM_STRINGS):
-                        t = i / (self.NUM_STRINGS - 1) if self.NUM_STRINGS > 1 else 0.5
-                        string_nut = self._get_point_on_line(shrink_nut_top, shrink_nut_bottom, t)
-                        string_bridge = self._get_point_on_line(shrink_bridge_top, shrink_bridge_bottom, t)
-                        self.string_lines.append((i+1, string_nut, string_bridge))
-                    self.string_nut_pts = np.array([p_nut for _, p_nut, _ in self.string_lines], dtype=np.float32)
-                    self.string_bridge_pts = np.array([p_bridge for _, _, p_bridge in self.string_lines], dtype=np.float32)
-
-                    fret_ratios = [0.0] * (self.NUM_FRETS + 1)
-                    for n in range(1, self.NUM_FRETS + 1):
-                        fret_ratios[n] = self._get_fret_position_ratio(n)
-                    self.global_fret_ratios = fret_ratios
-
-                    if self.string_lines:
-                        mid_y = [(p_nut[1] + p_bridge[1]) / 2 for _, p_nut, p_bridge in self.string_lines]
-                        sorted_indices = np.argsort(mid_y)[::-1]
-                        self.string_no_map = {}
-                        for new_no, orig_idx in enumerate(sorted_indices, start=1):
-                            orig_no = self.string_lines[orig_idx][0]
-                            self.string_no_map[orig_no] = new_no
-                        logger.info(f"传统模式弦号映射: {self.string_no_map}")
-                    logger.info("传统模式：指板参数更新成功")
-
-            # 不再进行手部检测，直接返回空结果
-            result = {
-                'status': 'success',
-                'positions': [],
-                'barre': None,
-                'drawing_data': self._build_drawing_data(w_img, h_img, [])
-            }
-            return frame, result
+        result = {
+            'status': 'success',
+            'positions': [],
+            'barre': None,
+            'drawing_data': self._build_drawing_data(w_img, h_img, [])
+        }
+        return frame, result
 
     # ---------- 构建绘图数据 ----------
     def _build_drawing_data(self, w_img, h_img, hand_landmarks_px, finger_details=None):

@@ -356,7 +356,7 @@
             height: 100vh;
             background-color: #1a120b;
             z-index: 10000;
-            display: flex;
+            display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -463,7 +463,7 @@
     <!-- 开场动画容器 -->
     <div id="intro-overlay" class="intro-overlay intro-clickable">
         <div class="intro-content" id="intro-content">
-            <img id="img-guitar-notes" src="/static/images/guitar-notes.png" alt="乐符环绕吉他" loading="eager">
+            <img id="img-guitar-notes" src="/static/images/guitar-notes.webp" alt="乐符环绕吉他" loading="eager">
         </div>
         <div class="intro-hint" id="intro-hint"> 点击进入音乐之旅 </div>
     </div>
@@ -622,12 +622,27 @@
                 return;
             }
 
-            const hasPlayed = sessionStorage.getItem('introPlayed');
-            if (hasPlayed) {
-                console.log('⏩ 开场动画已播放过，跳过');
-                overlay.style.display = 'none';
+            function showMainContent() {
                 mainContent.style.visibility = 'visible';
                 mainContent.style.opacity = '1';
+            }
+
+            function skipIntro() {
+                console.log('⏩ 开场动画已播放过，跳过');
+                showMainContent();
+            }
+
+            // bfcache 恢复时也检查一遍
+            window.addEventListener('pageshow', (e) => {
+                if (e.persisted && sessionStorage.getItem('introPlayed')) {
+                    overlay.style.display = 'none';
+                    showMainContent();
+                }
+            });
+
+            const hasPlayed = sessionStorage.getItem('introPlayed');
+            if (hasPlayed) {
+                skipIntro();
                 return;
             }
 
