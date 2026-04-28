@@ -135,12 +135,16 @@ class LLMService:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ]
-        result = self._call_api(messages, temperature, max_tokens)
-        if result and "choices" in result:
-            content = result["choices"][0]["message"]["content"]
-            if self.enable_cache:
-                self.cache.set(prompt, system_prompt, temperature, max_tokens, content)
-            return content
+
+        for attempt in range(2):
+            result = self._call_api(messages, temperature, max_tokens)
+            if result and "choices" in result:
+                content = result["choices"][0]["message"]["content"]
+                if self.enable_cache:
+                    self.cache.set(prompt, system_prompt, temperature, max_tokens, content)
+                return content
+            if attempt < 1:
+                logger.warning(f"LLM 调用失败，重试中... ({attempt+1}/2)")
         return None
 
     def get_conversation(self, session_id: str) -> Conversation:
@@ -159,7 +163,7 @@ class LLMService:
             return reply
         return "抱歉，我暂时无法回答。"
 
-    # ==================== 精简 Prompt 构建方法 ====================
+    # ==================== 增强 Prompt 构建方法 ====================
     def _build_advice_prompt(self, user_stats: Dict) -> str:
         o = user_stats.get('overview', {})
         mastery = user_stats.get('mastery', {})
@@ -169,32 +173,56 @@ class LLMService:
         unstable_ratio = user_stats.get('unstable_ratio', 0)
         trend_desc = user_stats.get('trend_desc', '未知')
 
-        # 和弦掌握度排名：最好3个 + 最差3个
-        chords_sorted = sorted(mastery.get('chords', []), key=lambda x: x['value'], reverse=True)
-        best3 = [c['name'] for c in chords_sorted[:3]] if chords_sorted else []
-        worst3 = [c['name'] for c in chords_sorted[-3:]] if chords_sorted else []
+        # 和弦掌握度排名：最好3个 + 最差3个（带分数）
+        chords_list = mastery.get('chords', [])
+        chords_sorted = sorted(chords_list, key=lambda x: x.get('value', 0), reverse=True)
+        best3 = [(c['name'], c.get('value', 0)) for c in chords_sorted[:3]] if chords_sorted else []
+        worst3 = [(c['name'], c.get('value', 0)) for c in chords_sorted[-3:]] if chords_sorted else []
+        best3_str = ', '.join([f"{n}({v}%)" for n, v in best3]) if best3 else '无'
+        worst3_str = ', '.join([f"{n}({v}%)" for n, v in worst3]) if worst3 else '无'
 
-        # 最近练习记录摘要
+        # 最近练习记录摘要（带时间）
         recent_summary = []
-        for r in recent_records[:5]:
-            recent_summary.append(f"{r['chord']}({r['accuracy']}%)")
+        for r in recent_records[:7]:
+            time_val = r.get('time', '')
+            recent_summary.append(f"{r['chord']}({r['accuracy']}%{'|稳' if not r.get('is_unstable') else '|不稳'})")
         recent_str = ' → '.join(recent_summary) if recent_summary else '无'
 
-        # 模式使用
+        # 模式使用比例
         quick = mode_ratio.get('quick', 0)
         normal = mode_ratio.get('normal', 0)
-        mode_desc = f"快速:{quick}次 普通:{normal}次"
+        total_mode = quick + normal
+        if total_mode > 0:
+            mode_desc = f"快速模式:{quick}次({quick*100//total_mode}%) 普通模式:{normal}次({normal*100//total_mode}%)"
+        else:
+            mode_desc = "暂无"
+
+        # 错误统计
+        total_sessions = o.get('total_sessions', 0)
+        avg_accuracy = o.get('avg_accuracy', 0)
+        error_count = int(total_sessions * (1 - avg_accuracy / 100)) if total_sessions else 0
+
+        # 进步趋势详细数据
+        rates = progress.get('rates', [])
+        rate_trend = ''
+        if len(rates) >= 3:
+            rate_trend = f"近3次正确率: {' → '.join([str(r)+'%' for r in rates[-3:]])}"
+        elif rates:
+            rate_trend = f"最近正确率: {rates[-1]}%"
 
         return (
-            f"【数据概览】总练习{o.get('total_sessions',0)}次 | "
-            f"平均正确率{o.get('avg_accuracy',0)}% | "
+            f"【数据概览】总练习{total_sessions}次 | "
+            f"正确{o.get('avg_accuracy',0)}% | "
+            f"错误约{error_count}次 | "
             f"总时长{o.get('total_duration',0)}分钟\n"
-            f"【掌握度排名】最佳:{','.join(best3) or '无'} | "
-            f"薄弱:{','.join(o.get('weak_chords',['无']))}\n"
-            f"【进步趋势】{trend_desc} | 不稳占比{unstable_ratio}%\n"
+            f"【掌握度最佳3】{best3_str}\n"
+            f"【掌握度薄弱3】{worst3_str}\n"
+            f"【薄弱和弦TOP3】{','.join(o.get('weak_chords',['无']))}\n"
+            f"【进步趋势】{trend_desc} | {rate_trend}\n"
+            f"【稳定性】不稳比例{unstable_ratio}% | 不稳次数{user_stats.get('unstable_count',0)}\n"
             f"【练习模式】{mode_desc}\n"
-            f"【最近练习】{recent_str}\n"
-            f"请给出3条针对性教学建议（每条20-40字，用1.2.3.格式）"
+            f"【最近7次练习】{recent_str}\n"
+            f"请基于以上数据给出3条详细教学建议。每条建议需：1)指出具体数据问题；2)分析原因；3)给出可操作的练习方法。每条40-80字，用1.2.3.编号。语气温暖鼓励，避免说教。"
         )
 
     def _build_chord_recommendation_prompt(self, user_stats: Dict) -> str:
@@ -212,14 +240,16 @@ class LLMService:
 
     # ==================== 优化后的非流式方法 ====================
     def generate_advice(self, user_stats: Dict) -> Optional[str]:
-        """生成详细的教学建议（非流式），每条建议包含具体指导"""
         prompt = self._build_advice_prompt(user_stats)
         system_prompt = (
-            "你是一位经验丰富的吉他教练，请根据用户数据提供3条详细的教学建议。"
-            "每条建议应包含：1）指出具体问题或方向；2）给出可操作的练习方法或技巧。"
-            "每条建议字数在20-40字之间，用1.2.3.格式输出，语气鼓励且专业。"
+            "你是经验丰富的吉他教练，擅长用数据指导学生。"
+            "你需要：1)精确引用数据中的具体数字来佐证判断；"
+            "2)将薄弱和弦与掌握度排名关联起来给建议；"
+            "3)如果进步趋势下降或不稳比例高，要优先给出稳定性训练建议；"
+            "4)如果用户快速模式使用频繁，可建议适当用普通模式加深练习；"
+            "5)语气温暖鼓励，用「你」称呼，每条建议40-80字，用1.2.3.编号格式。"
         )
-        return self.generate(prompt, system_prompt, temperature=0.5, max_tokens=250)
+        return self.generate(prompt, system_prompt, temperature=0.5, max_tokens=500)
 
     def generate_chord_recommendations(self, user_stats: Dict) -> Optional[List[str]]:
         """极速生成和弦推荐（非流式），<2秒返回"""

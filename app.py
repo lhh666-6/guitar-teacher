@@ -482,6 +482,7 @@ def generate_advice():
         'recent_records': recent,
         'mode_ratio': mode_ratio,
         'unstable_ratio': unstable_ratio,
+        'unstable_count': unstable_count,
         'trend_desc': trend_desc
     }
     advice = llm_service.generate_advice(stats)

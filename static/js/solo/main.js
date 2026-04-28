@@ -111,6 +111,8 @@
             document.addEventListener('msfullscreenchange', this._onFullscreenChange);
             this._startRttLogging();
             window.addEventListener('beforeunload', () => this.cleanup());
+
+            window.guitarApp = this;
         }
 
         _handleFullscreenChange() {

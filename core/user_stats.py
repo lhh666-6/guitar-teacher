@@ -126,6 +126,8 @@ def get_recent_records(user_id, limit=10):
             'time': r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '',
             'chord': r.chord_name,
             'accuracy': int(r.correct * 100) if r.correct is not None else 0,
-            'duration': round(r.time_spent or 0, 1)
+            'duration': round(r.time_spent or 0, 1),
+            'is_unstable': bool(r.is_unstable) if r.is_unstable is not None else False,
+            'mode': r.mode or 'normal'
         })
     return records

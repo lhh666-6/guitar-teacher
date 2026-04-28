@@ -28,6 +28,9 @@ var carouselTitles = {
     radar: ['和弦掌握度', '难度分布', '练习频次'],
     progress: ['进步趋势', '正确率趋势', '相似度趋势']
 };
+var autoRotateInterval = null;
+var autoRotateTimers = {};
+var AUTO_ROTATE_MS = 4000;
 
 function showLoading() {
     if (isLoading) return;
@@ -120,6 +123,40 @@ function initCarousel() {
             switchCarouselView(panel, dashboardData);
         });
     });
+
+    // 鼠标悬停暂停当前面板轮播，离开恢复
+    ['radar', 'progress'].forEach(function (panel) {
+        var el = document.getElementById(panel + 'Panel');
+        if (!el) return;
+        el.addEventListener('mouseenter', function () { stopAutoRotate(panel); });
+        el.addEventListener('mouseleave', function () { startAutoRotate(panel); });
+    });
+}
+
+function startAutoRotate(panel) {
+    if (!panel) {
+        // 启动所有面板的轮播
+        startAutoRotate('radar');
+        startAutoRotate('progress');
+        return;
+    }
+    stopAutoRotate(panel);
+    autoRotateTimers[panel] = setInterval(function () {
+        carouselState[panel] = (carouselState[panel] + 1) % 3;
+        switchCarouselView(panel, dashboardData);
+    }, AUTO_ROTATE_MS);
+}
+
+function stopAutoRotate(panel) {
+    if (!panel) {
+        stopAutoRotate('radar');
+        stopAutoRotate('progress');
+        return;
+    }
+    if (autoRotateTimers[panel]) {
+        clearInterval(autoRotateTimers[panel]);
+        autoRotateTimers[panel] = null;
+    }
 }
 
 // ========== 加载仪表盘数据 ==========
@@ -138,6 +175,7 @@ function loadDashboardData() {
             initCarousel();
             switchCarouselView('radar', data);
             switchCarouselView('progress', data);
+            startAutoRotate(); // 启动两个面板的自动轮播
         })
         .catch(function (err) {
             console.error('加载仪表盘数据失败:', err);
@@ -356,4 +394,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     loadRecommendations();
+});
+
+window.addEventListener('beforeunload', function () {
+    stopAutoRotate();
 });

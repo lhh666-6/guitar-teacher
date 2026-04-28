@@ -1,5 +1,17 @@
 var Charts = {
     _instances: {},
+    _theme: {
+        gold: '#ffd966',
+        goldDim: '#c0a88b',
+        green: '#2ecc71',
+        blue: '#4a90e2',
+        red: '#e74c3c',
+        orange: '#e6a817',
+        text: '#ecd9b4',
+        bgGlow: 'rgba(255,215,140,0.06)',
+        gridLine: 'rgba(255,215,140,0.06)',
+        axisLine: 'rgba(255,215,140,0.15)'
+    },
 
     _initChart: function (containerId) {
         var el = document.getElementById(containerId);
@@ -7,14 +19,25 @@ var Charts = {
         if (this._instances[containerId]) {
             this._instances[containerId].dispose();
         }
-        var chart = echarts.init(el);
+        var chart = echarts.init(el, null, { devicePixelRatio: 2 });
         this._instances[containerId] = chart;
         return chart;
+    },
+
+    _animationOpts: function () {
+        return {
+            animation: true,
+            animationDuration: 800,
+            animationEasing: 'cubicInOut',
+            animationDurationUpdate: 600,
+            animationEasingUpdate: 'cubicInOut'
+        };
     },
 
     // ========== 和弦掌握度 — 雷达图 ==========
     renderMastery: function (containerId, data) {
         var chart = this._initChart(containerId);
+        var t = this._theme;
         if (!chart || !data || !data.chords || !data.chords.length) {
             var empty = document.getElementById('radarEmpty');
             if (empty) { empty.style.display = 'block'; }
@@ -28,124 +51,152 @@ var Charts = {
             return { name: c.name, max: 100 };
         });
 
-        chart.setOption({
-            radar: {
-                indicator: indicator,
-                shape: 'circle',
-                center: ['50%', '52%'],
-                radius: '62%',
-                name: { textStyle: { color: '#ecd9b4', fontSize: 12 } },
-                splitArea: {
-                    areaStyle: { color: ['rgba(255,215,140,0.06)', 'rgba(255,215,140,0.02)'] }
-                },
-                axisLine: { lineStyle: { color: 'rgba(255,215,140,0.25)' } },
-                splitLine: { lineStyle: { color: 'rgba(255,215,140,0.12)' } }
+        var opt = this._animationOpts();
+        opt.radar = {
+            indicator: indicator,
+            shape: 'circle',
+            center: ['50%', '52%'],
+            radius: '62%',
+            name: {
+                textStyle: { color: t.text, fontSize: 12, fontWeight: 500 }
             },
-            series: [{
-                type: 'radar',
-                data: [{
-                    value: data.values,
-                    name: '掌握度',
-                    areaStyle: { color: 'rgba(255, 217, 102, 0.2)' },
-                    lineStyle: { color: '#ffd966', width: 2 },
-                    itemStyle: { color: '#ffd966' },
-                    symbol: 'circle',
-                    symbolSize: 4
-                }]
-            }],
-            tooltip: {
-                trigger: 'item',
-                formatter: function (p) {
-                    return p.name + '<br/>掌握度: ' + p.value + '%';
-                }
+            splitArea: {
+                areaStyle: { color: [t.bgGlow, 'rgba(255,215,140,0.01)'] }
+            },
+            axisLine: { lineStyle: { color: t.axisLine } },
+            splitLine: { lineStyle: { color: t.gridLine } }
+        };
+        opt.tooltip = {
+            trigger: 'item',
+            backgroundColor: 'rgba(30,20,15,0.95)',
+            borderColor: 'rgba(255,215,140,0.4)',
+            textStyle: { color: t.text, fontSize: 13 },
+            formatter: function (p) {
+                return '<b>' + p.name + '</b><br/>掌握度: <b style="color:' + t.gold + '">' + p.value + '%</b>';
             }
-        });
+        };
+        opt.series = [{
+            type: 'radar',
+            symbol: 'circle',
+            symbolSize: 5,
+            lineStyle: { color: t.gold, width: 2, shadowBlur: 8, shadowColor: 'rgba(255,217,102,0.3)' },
+            itemStyle: { color: t.gold, borderColor: '#fff', borderWidth: 1 },
+            areaStyle: { color: 'rgba(255,217,102,0.12)' },
+            data: [{ value: data.values, name: '掌握度' }]
+        }];
+        chart.setOption(opt);
         return chart;
     },
 
-    // ========== 难度分布 — 饼图/玫瑰图 ==========
+    // ========== 难度分布 — 玫瑰图 ==========
     renderDifficulty: function (containerId, data) {
         var chart = this._initChart(containerId);
+        var t = this._theme;
         if (!chart || !data || !data.length) return null;
 
-        chart.setOption({
-            tooltip: {
-                trigger: 'item',
-                formatter: function (p) { return p.name + ': ' + p.value + '次 (' + p.percent + '%)'; }
+        var opt = this._animationOpts();
+        opt.tooltip = {
+            trigger: 'item',
+            backgroundColor: 'rgba(30,20,15,0.95)',
+            borderColor: 'rgba(255,215,140,0.4)',
+            textStyle: { color: t.text, fontSize: 13 },
+            formatter: function (p) { return '<b>' + p.name + '</b><br/>练习: <b>' + p.value + '次</b> (' + p.percent + '%)'; }
+        };
+        opt.series = [{
+            type: 'pie',
+            radius: ['30%', '70%'],
+            center: ['50%', '50%'],
+            roseType: 'radius',
+            label: {
+                color: t.text,
+                fontSize: 12,
+                formatter: '{b}\n{d}%',
+                distanceToLabelLine: 8
             },
-            series: [{
-                type: 'pie',
-                radius: ['35%', '65%'],
-                center: ['50%', '50%'],
-                roseType: 'radius',
-                label: {
-                    color: '#ecd9b4',
-                    fontSize: 12,
-                    formatter: '{b}\n{d}%'
-                },
-                labelLine: { lineStyle: { color: 'rgba(255,215,140,0.3)' } },
-                data: [
-                    { value: data[0] ? data[0].value : 0, name: '基础', itemStyle: { color: '#6fbf4c' } },
-                    { value: data[1] ? data[1].value : 0, name: '进阶', itemStyle: { color: '#4a90e2' } },
-                    { value: data[2] ? data[2].value : 0, name: '高级', itemStyle: { color: '#e6a817' } }
-                ],
-                emphasis: {
-                    itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' }
-                }
-            }]
-        });
+            labelLine: { lineStyle: { color: 'rgba(255,215,140,0.3)' }, smooth: 0.1 },
+            emphasis: {
+                scaleSize: 12,
+                itemStyle: { shadowBlur: 20, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.6)' }
+            },
+            itemStyle: {
+                borderColor: 'rgba(30,20,15,0.8)',
+                borderWidth: 2,
+                borderRadius: 4
+            },
+            data: [
+                { value: data[0] ? data[0].value : 0, name: '基础', itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset:0,color:'#6fbf4c'},{offset:1,color:'#3d8b2e'}]) } },
+                { value: data[1] ? data[1].value : 0, name: '进阶', itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset:0,color:'#4a90e2'},{offset:1,color:'#2563a8'}]) } },
+                { value: data[2] ? data[2].value : 0, name: '高级', itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset:0,color:'#e6a817'},{offset:1,color:'#b8860b'}]) } }
+            ]
+        }];
+        chart.setOption(opt);
         return chart;
     },
 
     // ========== 练习频次 — 日历热力图 ==========
     renderCalendar: function (containerId, data) {
         var chart = this._initChart(containerId);
+        var t = this._theme;
         if (!chart || !data || !data.length) return null;
+
+        var maxVal = Math.max.apply(null, data.map(function (d) { return d[1]; })) || 1;
 
         chart.setOption({
             tooltip: {
-                formatter: function (p) { return p.data[0] + '<br/>练习: ' + p.data[1] + '次'; }
+                backgroundColor: 'rgba(30,20,15,0.95)',
+                borderColor: 'rgba(255,215,140,0.4)',
+                textStyle: { color: t.text, fontSize: 13 },
+                formatter: function (p) { return '<b>' + p.data[0] + '</b><br/>练习 <b>' + p.data[1] + '</b> 次'; }
             },
             visualMap: {
                 min: 0,
-                max: Math.max.apply(null, data.map(function (d) { return d[1]; })) || 1,
+                max: maxVal,
                 type: 'piecewise',
                 orient: 'horizontal',
                 left: 'center',
-                bottom: 0,
-                textStyle: { color: '#c0a88b', fontSize: 10 },
+                bottom: 5,
+                textStyle: { color: t.goldDim, fontSize: 10 },
                 pieces: [
-                    { min: 1, label: '1+' },
-                    { min: 3, label: '3+' },
-                    { min: 5, label: '5+' },
-                    { min: 8, label: '8+' }
-                ],
-                inRange: { color: ['#1a3020', '#2e5c30', '#4e9a3f', '#6fbf4c', '#8edb5f'] }
+                    { min: 1, label: '1+', color: '#1e3a20' },
+                    { min: 3, label: '3+', color: '#2e5c30' },
+                    { min: 5, label: '5+', color: '#4e9a3f' },
+                    { min: 8, label: '8+', color: '#6fbf4c' },
+                    { min: 12, label: '12+', color: '#8edb5f' }
+                ]
             },
             calendar: {
-                top: 30,
+                top: 35,
                 left: 25,
                 right: 25,
+                cellSize: ['auto', 16],
                 range: '2026',
-                cellSize: ['auto', 18],
-                splitLine: { lineStyle: { color: 'rgba(255,215,140,0.08)' } },
-                dayLabel: { color: '#c0a88b', fontSize: 10 },
-                monthLabel: { color: '#ecd9b4', fontSize: 11 },
+                splitLine: { lineStyle: { color: 'rgba(255,215,140,0.05)' } },
+                dayLabel: { color: t.goldDim, fontSize: 10, margin: 6 },
+                monthLabel: { color: t.text, fontSize: 11, margin: 6 },
                 yearLabel: { show: false },
-                itemStyle: { borderColor: 'rgba(255,215,140,0.05)', borderWidth: 1 }
+                itemStyle: {
+                    color: '#1a1a15',
+                    borderColor: 'rgba(255,215,140,0.03)',
+                    borderWidth: 1,
+                    borderRadius: 3
+                }
             },
             series: [{
                 type: 'heatmap',
                 coordinateSystem: 'calendar',
-                data: data
+                data: data,
+                emphasis: {
+                    itemStyle: { shadowBlur: 8, shadowColor: 'rgba(111,191,76,0.4)' }
+                }
             }]
         });
         return chart;
     },
 
-    // ========== 进步趋势 — 双折线图（正确率 + 相似度）+ 平均线 ==========
+    // ========== 进步趋势 — 双折线图 + 平均线 ==========
     renderProgress: function (containerId, progressData, similarityData, avgAccuracy) {
         var chart = this._initChart(containerId);
+        var t = this._theme;
         if (!chart || !progressData || !progressData.dates || !progressData.dates.length) {
             var empty = document.getElementById('progressEmpty');
             if (empty) { empty.style.display = 'block'; }
@@ -160,23 +211,32 @@ var Charts = {
             name: '正确率',
             type: 'line',
             data: progressData.rates,
-            smooth: true,
-            lineStyle: { color: '#2ecc71', width: 2.5 },
-            itemStyle: { color: '#2ecc71' },
+            smooth: 0.4,
             symbol: 'circle',
-            symbolSize: 6,
+            symbolSize: 5,
+            lineStyle: { color: t.green, width: 3, shadowBlur: 6, shadowColor: 'rgba(46,204,113,0.3)' },
+            itemStyle: { color: t.green, borderColor: '#fff', borderWidth: 1 },
             areaStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: 'rgba(46,204,113,0.15)' },
-                    { offset: 1, color: 'rgba(46,204,113,0.01)' }
+                    { offset: 0, color: 'rgba(46,204,113,0.18)' },
+                    { offset: 1, color: 'rgba(46,204,113,0.0)' }
                 ])
             },
             markLine: avgAccuracy != null ? {
                 silent: true,
                 symbol: 'none',
-                lineStyle: { color: '#e6a817', type: 'dashed', width: 1.5 },
-                label: { formatter: '均值 ' + avgAccuracy + '%', color: '#e6a817', fontSize: 10 },
-                data: [{ yAxis: avgAccuracy }]
+                lineStyle: { color: t.orange, type: 'dashed', width: 2 },
+                label: {
+                    formatter: '均值 {c}%',
+                    position: 'insideEndTop',
+                    color: t.orange,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    backgroundColor: 'rgba(30,20,15,0.8)',
+                    padding: [2, 8],
+                    borderRadius: 8
+                },
+                data: [{ yAxis: avgAccuracy, name: '平均正确率' }]
             } : undefined
         }];
 
@@ -185,158 +245,178 @@ var Charts = {
                 name: '相似度',
                 type: 'line',
                 data: similarityData.map(function (v) { return +(v * 100).toFixed(1); }),
-                smooth: true,
-                lineStyle: { color: '#4a90e2', width: 2, type: 'dashed' },
-                itemStyle: { color: '#4a90e2' },
+                smooth: 0.4,
                 symbol: 'diamond',
-                symbolSize: 5
+                symbolSize: 5,
+                lineStyle: { color: t.blue, width: 2.5, type: 'solid', shadowBlur: 4, shadowColor: 'rgba(74,144,226,0.2)' },
+                itemStyle: { color: t.blue, borderColor: '#fff', borderWidth: 1 }
             });
         }
 
-        chart.setOption({
-            tooltip: {
-                trigger: 'axis',
-                formatter: function (params) {
-                    var date = formatDate(params[0].axisValue);
-                    var html = date + '<br/>';
-                    params.forEach(function (p) {
-                        html += p.marker + ' ' + p.seriesName + ': ' + p.value + '%<br/>';
-                    });
-                    return html;
-                }
-            },
-            legend: {
-                data: series.map(function (s) { return s.name; }),
-                textStyle: { color: '#ecd9b4', fontSize: 11 },
-                top: 0
-            },
-            xAxis: {
-                type: 'category',
-                data: progressData.dates,
-                axisLabel: {
-                    color: '#c0a88b',
-                    fontSize: 10,
-                    formatter: formatDate
-                },
-                axisLine: { lineStyle: { color: 'rgba(255,215,140,0.2)' } }
-            },
-            yAxis: {
-                type: 'value',
-                min: 0,
-                max: 100,
-                name: '%',
-                nameTextStyle: { color: '#c0a88b', fontSize: 11 },
-                axisLabel: { color: '#c0a88b', fontSize: 10 },
-                splitLine: { lineStyle: { color: 'rgba(255,215,140,0.08)' } }
-            },
-            series: series,
-            grid: { containLabel: true, left: '6%', right: '6%', top: 40, bottom: 10 }
-        });
+        var opt = this._animationOpts();
+        opt.tooltip = {
+            trigger: 'axis',
+            backgroundColor: 'rgba(30,20,15,0.95)',
+            borderColor: 'rgba(255,215,140,0.4)',
+            textStyle: { color: t.text, fontSize: 13 },
+            formatter: function (params) {
+                var html = '<b>' + formatDate(params[0].axisValue) + '</b><br/>';
+                params.forEach(function (p) {
+                    html += p.marker + ' ' + p.seriesName + ': <b>' + p.value + '%</b><br/>';
+                });
+                return html;
+            }
+        };
+        opt.legend = {
+            data: series.map(function (s) { return s.name; }),
+            textStyle: { color: t.goldDim, fontSize: 11 },
+            top: 0,
+            icon: 'roundRect'
+        };
+        opt.xAxis = {
+            type: 'category',
+            data: progressData.dates,
+            boundaryGap: false,
+            axisLabel: { color: t.goldDim, fontSize: 10, formatter: formatDate },
+            axisLine: { lineStyle: { color: t.axisLine } },
+            axisTick: { show: false }
+        };
+        opt.yAxis = {
+            type: 'value',
+            min: 0,
+            max: 100,
+            name: '%',
+            nameTextStyle: { color: t.goldDim, fontSize: 11 },
+            axisLabel: { color: t.goldDim, fontSize: 10 },
+            splitLine: { lineStyle: { color: t.gridLine } },
+            axisLine: { show: false },
+            axisTick: { show: false }
+        };
+        opt.grid = { containLabel: true, left: '4%', right: '6%', top: 40, bottom: 8 };
+        opt.series = series;
+        chart.setOption(opt);
         return chart;
     },
 
-    // ========== 仅正确率 — 单折线图 ==========
     renderAccuracyOnly: function (containerId, progressData, avgAccuracy) {
         var chart = this._initChart(containerId);
+        var t = this._theme;
         if (!chart || !progressData || !progressData.dates || !progressData.dates.length) return null;
 
-        chart.setOption({
-            tooltip: {
-                trigger: 'axis',
-                formatter: function (params) {
-                    return Charts._formatDate(params[0].axisValue) + '<br/>正确率: ' + params[0].value + '%';
-                }
+        var opt = this._animationOpts();
+        opt.tooltip = {
+            trigger: 'axis',
+            backgroundColor: 'rgba(30,20,15,0.95)',
+            borderColor: 'rgba(255,215,140,0.4)',
+            textStyle: { color: t.text, fontSize: 13 },
+            formatter: function (params) {
+                return '<b>' + Charts._formatDate(params[0].axisValue) + '</b><br/>正确率: <b style="color:' + t.green + '">' + params[0].value + '%</b>';
+            }
+        };
+        opt.xAxis = {
+            type: 'category',
+            data: progressData.dates,
+            boundaryGap: false,
+            axisLabel: { color: t.goldDim, fontSize: 10, formatter: Charts._formatDate },
+            axisLine: { lineStyle: { color: t.axisLine } },
+            axisTick: { show: false }
+        };
+        opt.yAxis = {
+            type: 'value', min: 0, max: 100,
+            axisLabel: { color: t.goldDim, fontSize: 10 },
+            splitLine: { lineStyle: { color: t.gridLine } },
+            axisLine: { show: false },
+            axisTick: { show: false }
+        };
+        opt.series = [{
+            name: '正确率',
+            type: 'line',
+            data: progressData.rates,
+            smooth: 0.4,
+            symbol: 'circle',
+            symbolSize: 5,
+            lineStyle: { color: t.green, width: 3, shadowBlur: 6, shadowColor: 'rgba(46,204,113,0.3)' },
+            itemStyle: { color: t.green, borderColor: '#fff', borderWidth: 1 },
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(46,204,113,0.2)' },
+                    { offset: 1, color: 'rgba(46,204,113,0.0)' }
+                ])
             },
-            xAxis: {
-                type: 'category',
-                data: progressData.dates,
-                axisLabel: { color: '#c0a88b', fontSize: 10, formatter: Charts._formatDate },
-                axisLine: { lineStyle: { color: 'rgba(255,215,140,0.2)' } }
-            },
-            yAxis: {
-                type: 'value', min: 0, max: 100,
-                axisLabel: { color: '#c0a88b', fontSize: 10 },
-                splitLine: { lineStyle: { color: 'rgba(255,215,140,0.08)' } }
-            },
-            series: [{
-                name: '正确率',
-                type: 'line',
-                data: progressData.rates,
-                smooth: true,
-                lineStyle: { color: '#2ecc71', width: 2.5 },
-                itemStyle: { color: '#2ecc71' },
-                symbol: 'circle', symbolSize: 6,
-                areaStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: 'rgba(46,204,113,0.2)' },
-                        { offset: 1, color: 'rgba(46,204,113,0.01)' }
-                    ])
-                },
-                markLine: avgAccuracy != null ? {
-                    silent: true, symbol: 'none',
-                    lineStyle: { color: '#e6a817', type: 'dashed', width: 1.5 },
-                    label: { formatter: '均值 ' + avgAccuracy + '%', color: '#e6a817', fontSize: 10 },
-                    data: [{ yAxis: avgAccuracy }]
-                } : undefined
-            }],
-            grid: { containLabel: true, left: '6%', right: '6%', top: 20, bottom: 10 }
-        });
+            markLine: avgAccuracy != null ? {
+                silent: true, symbol: 'none',
+                lineStyle: { color: t.orange, type: 'dashed', width: 2 },
+                label: { formatter: '均值 {c}%', color: t.orange, fontSize: 11, fontWeight: 600 },
+                data: [{ yAxis: avgAccuracy }]
+            } : undefined
+        }];
+        opt.grid = { containLabel: true, left: '4%', right: '6%', top: 20, bottom: 8 };
+        chart.setOption(opt);
         return chart;
     },
 
-    // ========== 仅相似度 — 单折线图 ==========
     renderSimilarityOnly: function (containerId, progressData, similarityData) {
         var chart = this._initChart(containerId);
+        var t = this._theme;
         if (!chart || !progressData || !progressData.dates || !progressData.dates.length) return null;
 
         var simValues = similarityData ? similarityData.map(function (v) { return +(v * 100).toFixed(1); }) : [];
-        chart.setOption({
-            tooltip: {
-                trigger: 'axis',
-                formatter: function (params) {
-                    return Charts._formatDate(params[0].axisValue) + '<br/>相似度: ' + params[0].value + '%';
-                }
-            },
-            xAxis: {
-                type: 'category',
-                data: progressData.dates,
-                axisLabel: { color: '#c0a88b', fontSize: 10, formatter: Charts._formatDate },
-                axisLine: { lineStyle: { color: 'rgba(255,215,140,0.2)' } }
-            },
-            yAxis: {
-                type: 'value', min: 0, max: 100,
-                axisLabel: { color: '#c0a88b', fontSize: 10 },
-                splitLine: { lineStyle: { color: 'rgba(255,215,140,0.08)' } }
-            },
-            series: [{
-                name: '相似度',
-                type: 'line',
-                data: simValues,
-                smooth: true,
-                lineStyle: { color: '#4a90e2', width: 2.5 },
-                itemStyle: { color: '#4a90e2' },
-                symbol: 'diamond', symbolSize: 6,
-                areaStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: 'rgba(74,144,226,0.2)' },
-                        { offset: 1, color: 'rgba(74,144,226,0.01)' }
-                    ])
-                }
-            }],
-            grid: { containLabel: true, left: '6%', right: '6%', top: 20, bottom: 10 }
-        });
+        var opt = this._animationOpts();
+        opt.tooltip = {
+            trigger: 'axis',
+            backgroundColor: 'rgba(30,20,15,0.95)',
+            borderColor: 'rgba(255,215,140,0.4)',
+            textStyle: { color: t.text, fontSize: 13 },
+            formatter: function (params) {
+                return '<b>' + Charts._formatDate(params[0].axisValue) + '</b><br/>相似度: <b style="color:' + t.blue + '">' + params[0].value + '%</b>';
+            }
+        };
+        opt.xAxis = {
+            type: 'category',
+            data: progressData.dates,
+            boundaryGap: false,
+            axisLabel: { color: t.goldDim, fontSize: 10, formatter: Charts._formatDate },
+            axisLine: { lineStyle: { color: t.axisLine } },
+            axisTick: { show: false }
+        };
+        opt.yAxis = {
+            type: 'value', min: 0, max: 100,
+            axisLabel: { color: t.goldDim, fontSize: 10 },
+            splitLine: { lineStyle: { color: t.gridLine } },
+            axisLine: { show: false },
+            axisTick: { show: false }
+        };
+        opt.series = [{
+            name: '相似度',
+            type: 'line',
+            data: simValues,
+            smooth: 0.4,
+            symbol: 'diamond',
+            symbolSize: 5,
+            lineStyle: { color: t.blue, width: 3, shadowBlur: 6, shadowColor: 'rgba(74,144,226,0.3)' },
+            itemStyle: { color: t.blue, borderColor: '#fff', borderWidth: 1 },
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(74,144,226,0.18)' },
+                    { offset: 1, color: 'rgba(74,144,226,0.0)' }
+                ])
+            }
+        }];
+        opt.grid = { containLabel: true, left: '4%', right: '6%', top: 20, bottom: 8 };
+        chart.setOption(opt);
         return chart;
     },
 
-    // ========== 稳定度 — 小型环形图 ==========
+    // ========== 稳定度 — 环形图 ==========
     renderStabilityDonut: function (containerId, correct, error, unstable) {
         var chart = this._initChart(containerId);
+        var t = this._theme;
         if (!chart) return null;
 
         var total = correct + error + unstable;
         if (total === 0) {
             chart.setOption({
-                title: { text: '无数据', left: 'center', top: 'center', textStyle: { color: '#c0a88b', fontSize: 11 } },
+                title: { text: '无数据', left: 'center', top: 'center', textStyle: { color: t.goldDim, fontSize: 11 } },
                 series: []
             });
             return chart;
@@ -345,27 +425,30 @@ var Charts = {
         chart.setOption({
             tooltip: {
                 trigger: 'item',
-                formatter: function (p) { return p.name + ': ' + p.value + '次 (' + p.percent + '%)'; }
+                backgroundColor: 'rgba(30,20,15,0.95)',
+                borderColor: 'rgba(255,215,140,0.4)',
+                textStyle: { color: t.text, fontSize: 13 },
+                formatter: function (p) { return '<b>' + p.name + '</b>: ' + p.value + '次 (' + p.percent + '%)'; }
             },
             legend: { show: false },
             series: [{
                 type: 'pie',
-                radius: ['55%', '80%'],
+                radius: ['55%', '82%'],
                 center: ['50%', '50%'],
                 avoidLabelOverlap: false,
                 label: { show: false },
                 emphasis: { scale: false },
+                itemStyle: { borderColor: 'rgba(30,20,15,0.8)', borderWidth: 2 },
                 data: [
-                    { value: correct, name: '正确', itemStyle: { color: '#2ecc71' } },
-                    { value: error, name: '错误', itemStyle: { color: '#e74c3c' } },
-                    { value: unstable, name: '不稳', itemStyle: { color: '#e6a817' } }
+                    { value: correct, name: '正确', itemStyle: { color: t.green } },
+                    { value: error, name: '错误', itemStyle: { color: t.red } },
+                    { value: unstable, name: '不稳', itemStyle: { color: t.orange } }
                 ]
             }]
         });
         return chart;
     },
 
-    // ========== 日期格式化工具 ==========
     _formatDate: function (input) {
         var str = String(input);
         var monthMap = {
