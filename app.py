@@ -19,7 +19,6 @@ from flask_login import LoginManager, login_required, current_user
 from sqlalchemy import func, case
 
 from core.detector import GuitarFingeringRecognizer
-from api.chords import chords_bp
 import config
 from core import user_stats
 from core.llm_service import LLMService
@@ -453,6 +452,7 @@ def generate_advice():
     progress = user_stats.get_progress_trend(current_user.id)
     recent = user_stats.get_recent_records(current_user.id, limit=10)
     mode_ratio = user_stats.get_mode_ratio(current_user.id)
+    chord_diff_dist = user_stats.get_chord_difficulty_distribution(current_user.id)
 
     # 不稳统计
     unstable_count = db.session.query(func.count(TrainingRecord.id))\
@@ -475,6 +475,15 @@ def generate_advice():
     else:
         trend_desc = '数据不足'
 
+    # 相似度趋势
+    recent_similarities = db.session.query(
+        TrainingRecord.similarity
+    ).filter(
+        TrainingRecord.user_id == current_user.id,
+        TrainingRecord.similarity.isnot(None)
+    ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
+    sim_trend = [float(r.similarity) for r in reversed(recent_similarities)]
+
     stats = {
         'overview': overview,
         'mastery': mastery,
@@ -483,7 +492,9 @@ def generate_advice():
         'mode_ratio': mode_ratio,
         'unstable_ratio': unstable_ratio,
         'unstable_count': unstable_count,
-        'trend_desc': trend_desc
+        'trend_desc': trend_desc,
+        'chord_difficulty': chord_diff_dist,
+        'similarity_trend': sim_trend
     }
     advice = llm_service.generate_advice(stats)
     if advice:

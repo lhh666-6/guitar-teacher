@@ -154,29 +154,32 @@ var Charts = {
                 type: 'piecewise',
                 orient: 'horizontal',
                 left: 'center',
-                bottom: 5,
+                bottom: 0,
                 textStyle: { color: t.goldDim, fontSize: 10 },
+                itemWidth: 14,
+                itemHeight: 14,
                 pieces: [
-                    { min: 1, label: '1+', color: '#1e3a20' },
-                    { min: 3, label: '3+', color: '#2e5c30' },
-                    { min: 5, label: '5+', color: '#4e9a3f' },
-                    { min: 8, label: '8+', color: '#6fbf4c' },
-                    { min: 12, label: '12+', color: '#8edb5f' }
+                    { min: 1, label: '1+', color: '#4a3518' },
+                    { min: 3, label: '3+', color: '#6b4c1e' },
+                    { min: 5, label: '5+', color: '#9b7028' },
+                    { min: 8, label: '8+', color: '#c9a02b' },
+                    { min: 12, label: '12+', color: '#ffd966' }
                 ]
             },
             calendar: {
-                top: 35,
-                left: 25,
-                right: 25,
-                cellSize: ['auto', 16],
-                range: '2026',
-                splitLine: { lineStyle: { color: 'rgba(255,215,140,0.05)' } },
-                dayLabel: { color: t.goldDim, fontSize: 10, margin: 6 },
-                monthLabel: { color: t.text, fontSize: 11, margin: 6 },
+                top: 20,
+                left: 20,
+                right: 20,
+                bottom: 50,
+                cellSize: [28, 28],
+                range: String(new Date().getFullYear()),
+                splitLine: { lineStyle: { color: 'rgba(255,215,140,0.08)', width: 1 } },
+                dayLabel: { color: t.goldDim, fontSize: 9, margin: 4 },
+                monthLabel: { color: t.text, fontSize: 10, margin: 8 },
                 yearLabel: { show: false },
                 itemStyle: {
-                    color: '#1a1a15',
-                    borderColor: 'rgba(255,215,140,0.03)',
+                    color: 'rgba(255,215,140,0.03)',
+                    borderColor: 'rgba(255,215,140,0.06)',
                     borderWidth: 1,
                     borderRadius: 3
                 }
@@ -186,7 +189,7 @@ var Charts = {
                 coordinateSystem: 'calendar',
                 data: data,
                 emphasis: {
-                    itemStyle: { shadowBlur: 8, shadowColor: 'rgba(111,191,76,0.4)' }
+                    itemStyle: { shadowBlur: 10, shadowColor: 'rgba(255,217,102,0.4)' }
                 }
             }]
         });

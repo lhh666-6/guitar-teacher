@@ -148,7 +148,6 @@
                 cameraStatus: document.getElementById('cameraStatus'),
                 startTestBtn: document.getElementById('startTestBtn'),
                 clearTestBtn: document.getElementById('clearTestBtn'),
-                addToTestBtn: document.getElementById('addToTestBtn'),
                 skipBtn: document.getElementById('skipBtn'),
                 chordDetailContent: document.getElementById('chordDetailContent'),
                 progressDisplay: document.getElementById('progressDisplay'),
@@ -286,6 +285,7 @@
                 item.dataset.chordId = chord.id;
 
                 var isChecked = window.modalIsChordSelected && window.modalIsChordSelected(chord.name);
+                var isInTestList = self.testList.includes(chord.id);
                 var desc = chord.description || chord.detail || '';
                 if (desc.length > 20) desc = desc.substring(0, 20) + '...';
 
@@ -294,26 +294,22 @@
                         (isChecked ? '✓' : '') +
                     '</div>' +
                     '<div class="popup-chord-info">' +
-                        '<div class="popup-chord-name">' + chord.name + '</div>' +
+                        '<div class="popup-chord-name">' + chord.name +
+                            (isInTestList ? ' <span style="font-size:0.7rem;color:#6fbf4c;">(已在列表)</span>' : '') +
+                        '</div>' +
                         (desc ? '<div class="popup-chord-desc">' + desc + '</div>' : '') +
                     '</div>' +
                     '<span class="popup-chord-stars">' + self.getStars(chord.difficulty || 1) + '</span>';
 
-                var checkEl = item.querySelector('.popup-chord-check');
-                checkEl.addEventListener('click', function(e) {
-                    e.stopPropagation();
+                // 整行点击 = 切换勾选（多选模式）
+                item.addEventListener('click', function(e) {
                     if (window.modalToggleChord) window.modalToggleChord(chord.name);
                     var nowChecked = window.modalIsChordSelected && window.modalIsChordSelected(chord.name);
-                    checkEl.classList.toggle('checked', nowChecked);
-                    checkEl.textContent = nowChecked ? '✓' : '';
-                });
-
-                item.addEventListener('click', function(e) {
-                    if (e.target.closest('.popup-chord-check')) return;
-                    self.elements.chordSelect.value = chord.id;
-                    self.elements.chordSelect.dispatchEvent(new Event('change'));
-                    self._addToRecent(chord.name);
-                    document.getElementById('chordModal').classList.remove('active');
+                    var checkEl = item.querySelector('.popup-chord-check');
+                    if (checkEl) {
+                        checkEl.classList.toggle('checked', nowChecked);
+                        checkEl.textContent = nowChecked ? '✓' : '';
+                    }
                 });
 
                 popupList.appendChild(item);
@@ -385,8 +381,8 @@
                 this.testResults = new Array(this.testList.length).fill(null);
                 this.renderTestList();
                 this.updateProgress();
+                this.syncTestListToLocalStorage();
             }
-            localStorage.removeItem('pendingSoloChords');
         }
 
         loadPendingChordsFromLocalStorage() {
@@ -1395,16 +1391,14 @@
                         const difficulty = this.currentChord.difficulty || 1;
                         this.elements.difficultyBadge.textContent = '难度' + difficulty;
                     }
-                }
-            });
-
-            this.elements.addToTestBtn.addEventListener('click', () => {
-                if (this.currentChord && !this.testList.includes(this.currentChord.id)) {
-                    this.testList.push(this.currentChord.id);
-                    this.testResults = new Array(this.testList.length).fill(null);
-                    this.renderTestList();
-                    this.updateProgress();
-                    this.syncTestListToLocalStorage();
+                    // 自动加入测试列表
+                    if (!this.testList.includes(this.currentChord.id)) {
+                        this.testList.push(this.currentChord.id);
+                        this.testResults = new Array(this.testList.length).fill(null);
+                        this.renderTestList();
+                        this.updateProgress();
+                        this.syncTestListToLocalStorage();
+                    }
                 }
             });
 

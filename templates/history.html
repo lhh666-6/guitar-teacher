@@ -426,13 +426,15 @@
     let scrollHandler = null;
     let resizeObserver = null;
 
-    // 虚拟滚动渲染
+    // 虚拟滚动渲染（header占一行高度，数据行从ROW_HEIGHT开始偏移）
     function renderVisibleRows() {
         const scrollTop = container.scrollTop;
         const visibleHeight = container.clientHeight;
-        const startIndex = Math.floor(scrollTop / ROW_HEIGHT);
+        const headerOffset = ROW_HEIGHT;
+        const adjustedScroll = Math.max(0, scrollTop - headerOffset);
+        const startIndex = Math.floor(adjustedScroll / ROW_HEIGHT);
         const endIndex = Math.min(startIndex + Math.ceil(visibleHeight / ROW_HEIGHT) + 1, allRecords.length);
-        
+
         // 清除旧行（保留表头）
         const rows = content.querySelectorAll('.table-row:not(.header-row)');
         rows.forEach(row => row.remove());
@@ -442,7 +444,7 @@
             const row = document.createElement('div');
             row.className = 'table-row';
             row.style.position = 'absolute';
-            row.style.top = (i * ROW_HEIGHT) + 'px';
+            row.style.top = ((i + 1) * ROW_HEIGHT) + 'px';
             row.style.width = '100%';
             row.innerHTML = `
                 <div class="table-cell col-id">${(currentPage-1)*10 + i + 1}</div>
@@ -471,7 +473,7 @@
 
     function setupVirtualScroll(records) {
         allRecords = records;
-        content.style.height = (records.length * ROW_HEIGHT) + 'px';
+        content.style.height = ((records.length + 1) * ROW_HEIGHT) + 'px';
         renderVisibleRows();
         if (scrollHandler) container.removeEventListener('scroll', scrollHandler);
         scrollHandler = () => requestAnimationFrame(renderVisibleRows);

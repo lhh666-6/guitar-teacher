@@ -934,14 +934,6 @@
             min-width: 0;
             margin: 0;
         }
-        body.video-overlay-active .train-layout.test-mode .chord-select #addToTestBtn {
-            width: auto !important;
-            flex: 0 0 auto;
-            min-width: 132px;
-            margin: 0;
-            padding: 8px 16px;
-            white-space: nowrap;
-        }
         body.video-overlay-active .train-layout.test-mode .right-panel {
             top: 390px;
         }
@@ -956,10 +948,6 @@
             body.video-overlay-active .train-layout.test-mode .chord-select {
                 gap: 8px;
                 padding: 9px 10px;
-            }
-            body.video-overlay-active .train-layout.test-mode .chord-select #addToTestBtn {
-                min-width: 118px;
-                padding: 8px 14px;
             }
             body.video-overlay-active .train-layout.test-mode .right-panel {
                 top: 378px;
@@ -1123,7 +1111,6 @@
                     和弦名称: <span id="selChordName">-</span><br>
                     简介: <span id="selChordDesc">-</span>
                 </div>
-                <button class="btn-custom" id="addToTestBtn" style="width:100%">加入测试列表</button>
             </div>
         </div>
 
@@ -1317,12 +1304,22 @@
 
                 function openModal() {
                     chordModal.classList.add('active');
+                    // 预选已在测试列表中的和弦（解决外部添加冲突）
                     selectedChords = [];
+                    if (window.guitarApp && window.guitarApp.testList) {
+                        var chordIds = window.guitarApp.testList;
+                        var allChords = window.guitarApp.chords || [];
+                        chordIds.forEach(function(id) {
+                            var found = allChords.find(function(c) { return c.id === id; });
+                            if (found && selectedChords.indexOf(found.name) < 0) {
+                                selectedChords.push(found.name);
+                            }
+                        });
+                    }
                     updateSelectedCount();
                     if (window.guitarApp && window.guitarApp.renderPopupList) {
                         window.guitarApp.renderPopupList(searchInput.value, currentCategory);
                     }
-                    // 渲染最近使用的和弦
                     if (window.guitarApp && window.guitarApp.renderRecentChords) {
                         window.guitarApp.renderRecentChords();
                     }

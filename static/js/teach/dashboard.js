@@ -28,9 +28,8 @@ var carouselTitles = {
     radar: ['和弦掌握度', '难度分布', '练习频次'],
     progress: ['进步趋势', '正确率趋势', '相似度趋势']
 };
-var autoRotateInterval = null;
 var autoRotateTimers = {};
-var AUTO_ROTATE_MS = 4000;
+var AUTO_ROTATE_MS = 2000;
 
 function showLoading() {
     if (isLoading) return;
@@ -87,29 +86,65 @@ function switchCarouselView(panel, data) {
     var state = carouselState[panel];
 
     if (panel === 'radar') {
-        document.getElementById('radarChart').style.display = state === 0 ? 'block' : 'none';
-        document.getElementById('difficultyChart').style.display = state === 1 ? 'block' : 'none';
-        document.getElementById('calendarChart').style.display = state === 2 ? 'block' : 'none';
+        var radarEls = {
+            0: document.getElementById('radarChart'),
+            1: document.getElementById('difficultyChart'),
+            2: document.getElementById('calendarChart')
+        };
+
+        // 先全部隐藏
+        Object.keys(radarEls).forEach(function(k) {
+            var el = radarEls[k];
+            if (el) { el.style.opacity = '0'; el.style.display = 'none'; }
+        });
+
+        var activeEl = radarEls[state];
+        if (activeEl) {
+            activeEl.style.display = 'block';
+            // 强制回流后再显示，触发 CSS transition
+            activeEl.offsetHeight;
+            activeEl.style.opacity = '1';
+        }
 
         if (state === 0 && data.mastery && data.mastery.chords && data.mastery.chords.length) {
-            Charts.renderMastery('radarChart', data.mastery);
+            var c = Charts.renderMastery('radarChart', data.mastery);
+            if (c) setTimeout(function() { c.resize(); }, 80);
         } else if (state === 1 && data.chord_difficulty) {
-            Charts.renderDifficulty('difficultyChart', data.chord_difficulty);
+            var c = Charts.renderDifficulty('difficultyChart', data.chord_difficulty);
+            if (c) setTimeout(function() { c.resize(); }, 80);
         } else if (state === 2 && data.daily_practice) {
-            Charts.renderCalendar('calendarChart', data.daily_practice);
+            var c = Charts.renderCalendar('calendarChart', data.daily_practice);
+            if (c) setTimeout(function() { c.resize(); }, 80);
         }
     } else if (panel === 'progress') {
-        document.getElementById('progressChart').style.display = state === 0 ? 'block' : 'none';
-        document.getElementById('accuracyOnlyChart').style.display = state === 1 ? 'block' : 'none';
-        document.getElementById('similarityOnlyChart').style.display = state === 2 ? 'block' : 'none';
+        var progEls = {
+            0: document.getElementById('progressChart'),
+            1: document.getElementById('accuracyOnlyChart'),
+            2: document.getElementById('similarityOnlyChart')
+        };
+
+        Object.keys(progEls).forEach(function(k) {
+            var el = progEls[k];
+            if (el) { el.style.opacity = '0'; el.style.display = 'none'; }
+        });
+
+        var activeEl = progEls[state];
+        if (activeEl) {
+            activeEl.style.display = 'block';
+            activeEl.offsetHeight;
+            activeEl.style.opacity = '1';
+        }
 
         var avgAcc = (data.overview && data.overview.avg_accuracy) || null;
         if (state === 0 && data.progress && data.progress.dates && data.progress.dates.length) {
-            Charts.renderProgress('progressChart', data.progress, data.similarity_trend || null, avgAcc);
+            var c = Charts.renderProgress('progressChart', data.progress, data.similarity_trend || null, avgAcc);
+            if (c) setTimeout(function() { c.resize(); }, 80);
         } else if (state === 1 && data.progress && data.progress.dates && data.progress.dates.length) {
-            Charts.renderAccuracyOnly('accuracyOnlyChart', data.progress, avgAcc);
+            var c = Charts.renderAccuracyOnly('accuracyOnlyChart', data.progress, avgAcc);
+            if (c) setTimeout(function() { c.resize(); }, 80);
         } else if (state === 2 && data.progress && data.progress.dates && data.progress.dates.length) {
-            Charts.renderSimilarityOnly('similarityOnlyChart', data.progress, data.similarity_trend || null);
+            var c = Charts.renderSimilarityOnly('similarityOnlyChart', data.progress, data.similarity_trend || null);
+            if (c) setTimeout(function() { c.resize(); }, 80);
         }
     }
 }
@@ -175,7 +210,7 @@ function loadDashboardData() {
             initCarousel();
             switchCarouselView('radar', data);
             switchCarouselView('progress', data);
-            startAutoRotate(); // 启动两个面板的自动轮播
+            startAutoRotate();
         })
         .catch(function (err) {
             console.error('加载仪表盘数据失败:', err);
@@ -184,6 +219,7 @@ function loadDashboardData() {
                 var el = document.getElementById(id);
                 if (el) el.textContent = '加载失败';
             });
+            hideLoading();
         });
 }
 
@@ -366,10 +402,14 @@ document.addEventListener('DOMContentLoaded', function () {
             body: JSON.stringify({})
         }).then(function (res) { return res.json(); })
           .then(function (data) {
-              adviceTextEl.innerText = data.advice || '暂时无法生成建议，请稍后再试。';
+              var text = data.advice || '暂时无法生成建议，请稍后再试。';
+              text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              text = text.replace(/\n/g, '<br>');
+              text = text.replace(/## (.*?)(<br>|$)/g, '<strong style="color:#ffd966;font-size:1.05em;">$1</strong><br>');
+              adviceTextEl.innerHTML = text;
           })
           .catch(function () {
-              adviceTextEl.innerText = '生成失败，请稍后重试';
+              adviceTextEl.innerHTML = '生成失败，请稍后重试';
           })
           .finally(function () {
               hideLoading();
