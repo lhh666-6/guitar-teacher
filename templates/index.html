@@ -571,6 +571,14 @@
                 return;
             }
 
+            if (typeof gsap === 'undefined') {
+                console.warn('⚠️ GSAP 未加载（CDN不可用），跳过开场动画');
+                overlay.style.display = 'none';
+                mainContent.style.visibility = 'visible';
+                mainContent.style.opacity = '1';
+                return;
+            }
+
             guitarImg.onload = () => console.log('✅ 图片加载成功:', guitarImg.src);
             guitarImg.onerror = () => console.error('❌ 图片加载失败:', guitarImg.src);
 

@@ -1,40 +1,30 @@
-# Web 框架
+# ========== Web 框架 ==========
 Flask==2.3.3
 Flask-CORS==4.0.0
 Flask-SocketIO==5.3.6
 Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.2
 eventlet==0.33.3
+Werkzeug==2.3.7
 
-# 数据库
+# ========== 数据库 ==========
 SQLAlchemy==2.0.23
+PyMySQL==1.1.0
 
-# 图像处理与计算机视觉
+# ========== 计算机视觉 ==========
 opencv-python==4.9.0.80
 numpy==1.24.3
-mediapipe==0.10.9
 ultralytics>=8.0.0
 
-# HTTP 请求
+# ========== HTTP / 工具 ==========
 requests==2.31.0
-
-# 工具库
-protobuf==3.20.3
 python-dotenv==1.0.0
 
-# TTS 服务（Edge TTS）
-edge-tts
-flask-login==0.6.2
-email-validator==2.1.0
+# ========== TTS 语音合成 ==========
+edge-tts==6.1.12
 
-# ========== PyTorch（可选，YOLO 模型需要） ==========
-# 如果您的 YOLO 模型无法加载，请根据 CUDA 版本安装 PyTorch。
-# 对于 CUDA 11.8：
-# torch==2.0.1
-# torchvision==0.15.1
-# 对于 CUDA 12.1：
-# torch==2.1.0
-# torchvision==0.16.0
-# 安装命令示例：
-# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-# 如果您不需要 GPU，可仅安装 CPU 版：
-# pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# ========== PyTorch（可选，YOLO GPU 推理需要） ==========
+# 根据 CUDA 版本选择安装：
+#   CUDA 11.8: pip install torch==2.0.1 torchvision==0.15.1 --index-url https://download.pytorch.org/whl/cu118
+#   CUDA 12.1: pip install torch==2.1.0 torchvision==0.16.0 --index-url https://download.pytorch.org/whl/cu121
+#   CPU only:  pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu

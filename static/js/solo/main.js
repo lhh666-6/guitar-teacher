@@ -243,28 +243,148 @@
             this.loadPendingChordsFromLocalStorage();
         }
 
-        renderPopupList(filterText = '') {
-            const popupList = document.getElementById('chordPopupList');
+        // 拼音首字母映射（覆盖常用和弦）
+        _pinyinMap = { 'C': 'c', 'D': 'd', 'E': 'e', 'F': 'f', 'G': 'g', 'A': 'a', 'B': 'b',
+            'Am': 'am', 'Bm': 'bm', 'Cm': 'cm', 'Dm': 'dm', 'Em': 'em', 'Fm': 'fm', 'Gm': 'gm',
+            'A7': 'a7', 'B7': 'b7', 'C7': 'c7', 'D7': 'd7', 'E7': 'e7', 'F7': 'f7', 'G7': 'g7',
+            'Am7': 'am7', 'Bm7': 'bm7', 'Cm7': 'cm7', 'Dm7': 'dm7', 'Em7': 'em7', 'Fm7': 'fm7', 'Gm7': 'gm7',
+            'Ab': 'ab', 'Bb': 'bb', 'Db': 'db', 'Eb': 'eb', 'Gb': 'gb',
+            'F#m': 'fsm', 'C#m': 'csm', 'G#m': 'gsm', 'D#m': 'dsm', 'A#m': 'asm' };
+
+        _matchesSearch(chord, searchText) {
+            if (!searchText) return true;
+            var lower = searchText.toLowerCase();
+            if (chord.name.toLowerCase().includes(lower)) return true;
+            var py = this._pinyinMap[chord.name] || chord.name.toLowerCase();
+            if (py.includes(lower)) return true;
+            return false;
+        }
+
+        renderPopupList(filterText, category) {
+            var popupList = document.getElementById('chordPopupList');
             if (!popupList) return;
-            const filtered = filterText
-                ? this.chords.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()))
-                : this.chords;
+            if (filterText === undefined) filterText = (window.modalGetSearchText && window.modalGetSearchText()) || '';
+            if (category === undefined) category = (window.modalGetCategory && window.modalGetCategory()) || 'all';
+
+            var self = this;
+            var filtered = this.chords.filter(function(c) {
+                if (category !== 'all' && String(c.difficulty) !== String(category)) return false;
+                return self._matchesSearch(c, filterText);
+            });
+
             popupList.innerHTML = '';
-            filtered.forEach(chord => {
-                const item = document.createElement('div');
+            if (!filtered.length) {
+                popupList.innerHTML = '<div style="text-align:center;color:#c0a88b;padding:20px;">没有匹配的和弦</div>';
+                return;
+            }
+
+            filtered.forEach(function(chord) {
+                var item = document.createElement('div');
                 item.className = 'popup-chord-item';
                 item.dataset.chordId = chord.id;
-                item.innerHTML = `
-                    <span class="popup-chord-name">${chord.name}</span>
-                    <span class="popup-chord-stars">${this.getStars(chord.difficulty || 1)}</span>
-                `;
-                item.addEventListener('click', () => {
-                    this.elements.chordSelect.value = chord.id;
-                    this.elements.chordSelect.dispatchEvent(new Event('change'));
+
+                var isChecked = window.modalIsChordSelected && window.modalIsChordSelected(chord.name);
+                var desc = chord.description || chord.detail || '';
+                if (desc.length > 20) desc = desc.substring(0, 20) + '...';
+
+                item.innerHTML =
+                    '<div class="popup-chord-check' + (isChecked ? ' checked' : '') + '">' +
+                        (isChecked ? '✓' : '') +
+                    '</div>' +
+                    '<div class="popup-chord-info">' +
+                        '<div class="popup-chord-name">' + chord.name + '</div>' +
+                        (desc ? '<div class="popup-chord-desc">' + desc + '</div>' : '') +
+                    '</div>' +
+                    '<span class="popup-chord-stars">' + self.getStars(chord.difficulty || 1) + '</span>';
+
+                var checkEl = item.querySelector('.popup-chord-check');
+                checkEl.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (window.modalToggleChord) window.modalToggleChord(chord.name);
+                    var nowChecked = window.modalIsChordSelected && window.modalIsChordSelected(chord.name);
+                    checkEl.classList.toggle('checked', nowChecked);
+                    checkEl.textContent = nowChecked ? '✓' : '';
+                });
+
+                item.addEventListener('click', function(e) {
+                    if (e.target.closest('.popup-chord-check')) return;
+                    self.elements.chordSelect.value = chord.id;
+                    self.elements.chordSelect.dispatchEvent(new Event('change'));
+                    self._addToRecent(chord.name);
                     document.getElementById('chordModal').classList.remove('active');
                 });
+
                 popupList.appendChild(item);
             });
+        }
+
+        _getRecentChords() {
+            try {
+                return JSON.parse(localStorage.getItem('recentSoloChords') || '[]');
+            } catch(e) { return []; }
+        }
+
+        _addToRecent(chordName) {
+            var recent = this._getRecentChords();
+            recent = recent.filter(function(n) { return n !== chordName; });
+            recent.unshift(chordName);
+            if (recent.length > 6) recent.pop();
+            localStorage.setItem('recentSoloChords', JSON.stringify(recent));
+        }
+
+        renderRecentChords() {
+            var row = document.getElementById('chordRecentRow');
+            if (!row) return;
+            var recent = this._getRecentChords();
+            row.querySelectorAll('.chord-recent-tag').forEach(function(t) { t.remove(); });
+            if (!recent.length) {
+                var span = document.createElement('span');
+                span.className = 'chord-recent-label';
+                span.textContent = '最近: 无';
+                row.appendChild(span);
+                return;
+            }
+            var self = this;
+            recent.forEach(function(name) {
+                var tag = document.createElement('span');
+                tag.className = 'chord-recent-tag';
+                tag.dataset.chord = name;
+                tag.textContent = name;
+                tag.title = '点击选择 ' + name;
+                tag.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    self.selectChordByName(name);
+                    document.getElementById('chordModal').classList.remove('active');
+                });
+                row.appendChild(tag);
+            });
+        }
+
+        selectChordByName(chordName) {
+            var chord = this.chords.find(function(c) { return c.name === chordName; });
+            if (chord) {
+                this.elements.chordSelect.value = chord.id;
+                this.elements.chordSelect.dispatchEvent(new Event('change'));
+                this._addToRecent(chordName);
+            }
+        }
+
+        addChordsToTestList(chordNames) {
+            var self = this;
+            var newIds = [];
+            chordNames.forEach(function(name) {
+                var chord = self.chords.find(function(c) { return c.name === name; });
+                if (chord && !self.testList.includes(chord.id)) {
+                    newIds.push(chord.id);
+                }
+            });
+            if (newIds.length) {
+                this.testList.push(...newIds);
+                this.testResults = new Array(this.testList.length).fill(null);
+                this.renderTestList();
+                this.updateProgress();
+            }
+            localStorage.removeItem('pendingSoloChords');
         }
 
         loadPendingChordsFromLocalStorage() {
@@ -1293,25 +1413,6 @@
                 if (this.currentChord) this.renderStandardDots(this.currentChord);
             });
 
-            const popupBtn = document.getElementById('chordPopupBtn');
-            const chordModal = document.getElementById('chordModal');
-            const searchInput = document.getElementById('chordPopupSearch');
-            if (popupBtn) {
-                popupBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    chordModal.classList.toggle('active');
-                });
-            }
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    this.renderPopupList(e.target.value);
-                });
-            }
-            document.addEventListener('click', (e) => {
-                if (chordModal && chordModal.classList.contains('active') && !chordModal.contains(e.target) && e.target !== popupBtn) {
-                    chordModal.classList.remove('active');
-                }
-            });
         }
 
         cleanup() {

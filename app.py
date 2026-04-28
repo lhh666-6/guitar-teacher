@@ -408,24 +408,26 @@ def get_teach_dashboard():
     mastery = user_stats.get_chord_mastery(current_user.id)
     progress = user_stats.get_progress_trend(current_user.id)
     recent = user_stats.get_recent_records(current_user.id)
+    mode_ratio = user_stats.get_mode_ratio(current_user.id)
+    daily_practice = user_stats.get_daily_practice_count(current_user.id)
+    chord_diff_dist = user_stats.get_chord_difficulty_distribution(current_user.id)
 
-    # 新增：不稳统计
+    # 不稳统计
     unstable_count = db.session.query(func.count(TrainingRecord.id))\
         .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.is_unstable == True).scalar()
     total_count = db.session.query(func.count(TrainingRecord.id))\
         .filter(TrainingRecord.user_id == current_user.id).scalar()
     unstable_ratio = (unstable_count / total_count * 100) if total_count else 0.0
 
-    # 新增：相似度趋势（最近20条，已调整）
+    # 相似度趋势（最近20条，已调整）
     recent_similarities = db.session.query(
         TrainingRecord.correct, TrainingRecord.similarity
     ).filter(
         TrainingRecord.user_id == current_user.id,
         TrainingRecord.similarity.isnot(None)
     ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
-    # 调整规则：正确 ×1.1 上限1，错误/不稳 ×0.9
     adjusted_trend = []
-    for correct_val, sim in reversed(recent_similarities):  # 保持时间升序
+    for correct_val, sim in reversed(recent_similarities):
         sim = float(sim)
         if correct_val:
             adjusted = min(sim * 1.1, 1.0)
@@ -433,31 +435,58 @@ def get_teach_dashboard():
             adjusted = sim * 0.9
         adjusted_trend.append(round(adjusted, 3))
 
-    # 最近一次练习的模式
-    last_record = db.session.query(TrainingRecord.mode)\
-        .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.mode.isnot(None))\
-        .order_by(TrainingRecord.created_at.desc()).first()
-    recent_mode = last_record.mode if last_record else None
-
     return jsonify({
         'overview': overview,
         'mastery': mastery,
         'progress': progress,
         'recent_records': recent,
+        'mode_ratio': mode_ratio,
+        'daily_practice': daily_practice,
+        'chord_difficulty': chord_diff_dist,
         'unstable_count': unstable_count,
         'unstable_ratio': round(unstable_ratio, 1),
         'similarity_trend': adjusted_trend,
-        'recent_mode': recent_mode
+        'recent_mode': mode_ratio.get('quick', 0) > 0 and 'quick' or 'normal'
     })
 
 @app.route('/api/teach/generate_advice', methods=['POST'])
 @login_required
 def generate_advice():
     overview = user_stats.get_overview(current_user.id)
-    recent = user_stats.get_recent_records(current_user.id, limit=1)
+    mastery = user_stats.get_chord_mastery(current_user.id)
+    progress = user_stats.get_progress_trend(current_user.id)
+    recent = user_stats.get_recent_records(current_user.id, limit=10)
+    mode_ratio = user_stats.get_mode_ratio(current_user.id)
+
+    # 不稳统计
+    unstable_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.is_unstable == True).scalar()
+    total_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == current_user.id).scalar()
+    unstable_ratio = round((unstable_count / total_count * 100) if total_count else 0.0, 1)
+
+    # 趋势摘要
+    rates = progress.get('rates', [])
+    if len(rates) >= 3:
+        recent_avg = sum(rates[-3:]) / 3
+        earlier_avg = sum(rates[:3]) / 3 if len(rates) >= 6 else rates[0]
+        if recent_avg - earlier_avg > 5:
+            trend_desc = '上升'
+        elif recent_avg - earlier_avg < -5:
+            trend_desc = '下降'
+        else:
+            trend_desc = '平稳'
+    else:
+        trend_desc = '数据不足'
+
     stats = {
         'overview': overview,
-        'recent_records': recent
+        'mastery': mastery,
+        'progress': progress,
+        'recent_records': recent,
+        'mode_ratio': mode_ratio,
+        'unstable_ratio': unstable_ratio,
+        'trend_desc': trend_desc
     }
     advice = llm_service.generate_advice(stats)
     if advice:

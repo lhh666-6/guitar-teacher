@@ -19,6 +19,16 @@ var bubbleMsgEl = document.getElementById('bubbleMessage');
 var loadingInterval = null;
 var isLoading = false;
 
+// 轮播状态
+var carouselState = {
+    radar: 0,     // 0=雷达图, 1=难度分布, 2=日历热力图
+    progress: 0   // 0=正确率+相似度, 1=仅正确率, 2=仅相似度
+};
+var carouselTitles = {
+    radar: ['和弦掌握度', '难度分布', '练习频次'],
+    progress: ['进步趋势', '正确率趋势', '相似度趋势']
+};
+
 function showLoading() {
     if (isLoading) return;
     isLoading = true;
@@ -51,6 +61,67 @@ function hideLoading() {
     isLoading = false;
 }
 
+// ========== 轮播逻辑 ==========
+function updateCarouselUI(panel) {
+    var state = carouselState[panel];
+    var dotsContainer = document.getElementById(panel + 'Dots');
+    if (dotsContainer) {
+        var total = 3;
+        var html = '';
+        for (var i = 0; i < total; i++) {
+            html += '<span class="carousel-dot' + (i === state ? ' active' : '') + '"></span>';
+        }
+        dotsContainer.innerHTML = html;
+    }
+    var titleEl = document.getElementById(panel + 'PanelTitle');
+    if (titleEl) {
+        titleEl.textContent = carouselTitles[panel][state];
+    }
+}
+
+function switchCarouselView(panel, data) {
+    updateCarouselUI(panel);
+    var state = carouselState[panel];
+
+    if (panel === 'radar') {
+        document.getElementById('radarChart').style.display = state === 0 ? 'block' : 'none';
+        document.getElementById('difficultyChart').style.display = state === 1 ? 'block' : 'none';
+        document.getElementById('calendarChart').style.display = state === 2 ? 'block' : 'none';
+
+        if (state === 0 && data.mastery && data.mastery.chords && data.mastery.chords.length) {
+            Charts.renderMastery('radarChart', data.mastery);
+        } else if (state === 1 && data.chord_difficulty) {
+            Charts.renderDifficulty('difficultyChart', data.chord_difficulty);
+        } else if (state === 2 && data.daily_practice) {
+            Charts.renderCalendar('calendarChart', data.daily_practice);
+        }
+    } else if (panel === 'progress') {
+        document.getElementById('progressChart').style.display = state === 0 ? 'block' : 'none';
+        document.getElementById('accuracyOnlyChart').style.display = state === 1 ? 'block' : 'none';
+        document.getElementById('similarityOnlyChart').style.display = state === 2 ? 'block' : 'none';
+
+        var avgAcc = (data.overview && data.overview.avg_accuracy) || null;
+        if (state === 0 && data.progress && data.progress.dates && data.progress.dates.length) {
+            Charts.renderProgress('progressChart', data.progress, data.similarity_trend || null, avgAcc);
+        } else if (state === 1 && data.progress && data.progress.dates && data.progress.dates.length) {
+            Charts.renderAccuracyOnly('accuracyOnlyChart', data.progress, avgAcc);
+        } else if (state === 2 && data.progress && data.progress.dates && data.progress.dates.length) {
+            Charts.renderSimilarityOnly('similarityOnlyChart', data.progress, data.similarity_trend || null);
+        }
+    }
+}
+
+function initCarousel() {
+    document.querySelectorAll('.carousel-arrow').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var panel = btn.dataset.panel;
+            var dir = btn.dataset.dir === 'next' ? 1 : -1;
+            carouselState[panel] = (carouselState[panel] + dir + 3) % 3;
+            switchCarouselView(panel, dashboardData);
+        });
+    });
+}
+
 // ========== 加载仪表盘数据 ==========
 function loadDashboardData() {
     return fetch('/api/teach/dashboard')
@@ -64,6 +135,9 @@ function loadDashboardData() {
             renderCharts(data);
             renderRecords(data);
             renderMiniStats(data);
+            initCarousel();
+            switchCarouselView('radar', data);
+            switchCarouselView('progress', data);
         })
         .catch(function (err) {
             console.error('加载仪表盘数据失败:', err);
@@ -85,16 +159,17 @@ function renderStats(data) {
     document.getElementById('weak-chords').textContent = weak.length && weak[0] !== '无数据' ? weak.join('、') : '—';
 }
 
-// ========== 渲染图表（直接嵌入页面） ==========
+// ========== 渲染图表（初始视图） ==========
 function renderCharts(data) {
-    // 雷达图
+    // 初始渲染雷达图（carousel view 0）
     if (data.mastery && data.mastery.chords && data.mastery.chords.length) {
         Charts.renderMastery('radarChart', data.mastery);
     }
 
-    // 进步趋势 + 相似度（合并为双折线）
+    // 初始渲染进步趋势（carousel view 0）
     if (data.progress && data.progress.dates && data.progress.dates.length) {
-        Charts.renderProgress('progressChart', data.progress, data.similarity_trend || null);
+        var avgAcc = (data.overview && data.overview.avg_accuracy) || null;
+        Charts.renderProgress('progressChart', data.progress, data.similarity_trend || null, avgAcc);
     }
 
     // 稳定度环形图
@@ -106,11 +181,10 @@ function renderCharts(data) {
     Charts.renderStabilityDonut('stabilityDonut', correctCount, errorCount, unstableCount);
 }
 
-// ========== 渲染迷你统计行 ==========
+// ========== 渲染迷你统计行（含模式比例） ==========
 function renderMiniStats(data) {
     var unstableCountEl = document.getElementById('unstable-count');
     var unstableRatioEl = document.getElementById('unstable-ratio');
-    var practiceModeEl = document.getElementById('practice-mode');
 
     if (unstableCountEl) {
         unstableCountEl.textContent = data.unstable_count || 0;
@@ -118,9 +192,27 @@ function renderMiniStats(data) {
     if (unstableRatioEl) {
         unstableRatioEl.textContent = (data.unstable_ratio || 0).toFixed(1) + '%';
     }
-    if (practiceModeEl) {
-        var mode = data.recent_mode;
-        practiceModeEl.textContent = mode === 'quick' ? '快速模式' : (mode === 'normal' ? '普通模式' : '无记录');
+
+    // 模式使用比例
+    var modeRatio = data.mode_ratio || {};
+    var quickCount = modeRatio.quick || 0;
+    var normalCount = modeRatio.normal || 0;
+    var modeTotal = modeRatio.total || (quickCount + normalCount);
+
+    var quickEl = document.getElementById('quick-mode-count');
+    var quickPctEl = document.getElementById('quick-mode-pct');
+    var normalEl = document.getElementById('normal-mode-count');
+    var normalPctEl = document.getElementById('normal-mode-pct');
+
+    if (quickEl) quickEl.textContent = quickCount + '次';
+    if (normalEl) normalEl.textContent = normalCount + '次';
+
+    if (modeTotal > 0) {
+        if (quickPctEl) quickPctEl.textContent = Math.round(quickCount / modeTotal * 100) + '%';
+        if (normalPctEl) normalPctEl.textContent = Math.round(normalCount / modeTotal * 100) + '%';
+    } else {
+        if (quickPctEl) quickPctEl.textContent = '—';
+        if (normalPctEl) normalPctEl.textContent = '—';
     }
 }
 

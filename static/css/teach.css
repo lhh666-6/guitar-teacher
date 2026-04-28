@@ -133,7 +133,8 @@ body {
 }
 .chart-panel-header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
+    justify-content: space-between;
     gap: 12px;
     margin-bottom: 8px;
     padding-bottom: 12px;
@@ -144,6 +145,8 @@ body {
     font-size: 1.1rem;
     font-weight: 500;
     letter-spacing: 0.5px;
+    margin: 0;
+    flex-shrink: 0;
 }
 .chart-sub {
     font-size: 0.78rem;
@@ -161,6 +164,58 @@ body {
     transform: translate(-50%, -50%);
     color: var(--text-dim);
     font-size: 0.9rem;
+}
+
+/* ========== 轮播控件 ========== */
+.carousel-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.carousel-arrow {
+    background: rgba(255, 215, 140, 0.1);
+    border: 1px solid rgba(255, 215, 140, 0.2);
+    color: var(--text-dim);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+    line-height: 1;
+}
+.carousel-arrow:hover {
+    background: rgba(255, 215, 140, 0.25);
+    color: var(--accent-gold);
+    border-color: var(--accent-gold);
+}
+.carousel-dots {
+    display: flex;
+    gap: 4px;
+}
+.carousel-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 215, 140, 0.2);
+    transition: all 0.3s;
+}
+.carousel-dot.active {
+    background: var(--accent-gold);
+    box-shadow: 0 0 4px rgba(255, 217, 102, 0.5);
+}
+
+/* ========== 模式卡片 ========== */
+.mode-stat-card .mini-stat-sub {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 2px;
 }
 
 /* ========== 迷你统计行 ========== */

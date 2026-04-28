@@ -12,7 +12,12 @@
       "Bash(python -m py_compile core/voice_commands.py)",
       "Bash(python -m py_compile core/recommendation.py)",
       "Bash(python -m py_compile core/detector.py)",
-      "Bash(python -m py_compile core/tts_service.py)"
+      "Bash(python -m py_compile core/tts_service.py)",
+      "WebFetch(domain:cdn.staticfile.org)",
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "WebFetch(domain:cdn.socket.io)",
+      "Bash(curl -sI --connect-timeout 5 \"https://cdn.socket.io/4.5.4/socket.io.min.js\")",
+      "Bash(python *)"
     ]
   }
 }

@@ -76,6 +76,12 @@ ENABLE_LLM = True                          # 是否启用大模型
 # config.py 末尾添加
 
 VOLC_TTS_VOICE_TYPE = "zh-CN-XiaoxiaoNeural"   # 或其他音色
+
+# ---------- 邮箱验证码配置 ----------
+SMTP_HOST = 'smtp.qq.com'
+SMTP_PORT = 465
+SMTP_USER = os.getenv('SMTP_USER', '2741554524@qq.com')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', 'yuvmgretufqvdecd')
 # ---------- 数据库配置 ----------
 import os
 from dotenv import load_dotenv

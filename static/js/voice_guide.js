@@ -470,7 +470,7 @@ const VoiceGuide = (function() {
     return {
         init() {
             injectIconStyles();  // 动态注入动画样式
-            createIcon();        // 创建悬浮图标
+            createIcon();        // 创建悬浮图标（默认关闭，点击开启）
             if (typeof io !== 'undefined') {
                 socket = io("https://www.hnuguitarteacher.xyz", { transports: ['websocket'] });
                 socket.on('voice_response', onVoiceResponse);
@@ -485,7 +485,7 @@ const VoiceGuide = (function() {
                 sessionId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
                 localStorage.setItem('voice_session_id', sessionId);
             }
-            startListening();
+            // 默认不自动开启，用户点击图标手动开启
             const toggleBtn = document.getElementById('voice-toggle');
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', () => {

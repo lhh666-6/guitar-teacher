@@ -44,27 +44,39 @@
             </div>
         </div>
 
-        <!-- 第二行：双图表区 -->
+        <!-- 第二行：双图表区（带轮播） -->
         <div class="charts-row">
             <div class="chart-panel" id="radarPanel">
                 <div class="chart-panel-header">
-                    <h3>和弦掌握度</h3>
-                    <span class="chart-sub">各和弦正确率分布</span>
+                    <h3 id="radarPanelTitle">和弦掌握度</h3>
+                    <div class="carousel-controls">
+                        <button class="carousel-arrow" data-panel="radar" data-dir="prev">◀</button>
+                        <span class="carousel-dots" id="radarDots"></span>
+                        <button class="carousel-arrow" data-panel="radar" data-dir="next">▶</button>
+                    </div>
                 </div>
                 <div class="chart-box" id="radarChart"></div>
+                <div class="chart-box" id="difficultyChart" style="display:none;"></div>
+                <div class="chart-box" id="calendarChart" style="display:none;"></div>
                 <div class="chart-empty" id="radarEmpty">暂无练习数据</div>
             </div>
             <div class="chart-panel" id="progressPanel">
                 <div class="chart-panel-header">
-                    <h3>进步趋势</h3>
-                    <span class="chart-sub">正确率 + 相似度</span>
+                    <h3 id="progressPanelTitle">进步趋势</h3>
+                    <div class="carousel-controls">
+                        <button class="carousel-arrow" data-panel="progress" data-dir="prev">◀</button>
+                        <span class="carousel-dots" id="progressDots"></span>
+                        <button class="carousel-arrow" data-panel="progress" data-dir="next">▶</button>
+                    </div>
                 </div>
                 <div class="chart-box" id="progressChart"></div>
+                <div class="chart-box" id="accuracyOnlyChart" style="display:none;"></div>
+                <div class="chart-box" id="similarityOnlyChart" style="display:none;"></div>
                 <div class="chart-empty" id="progressEmpty">暂无趋势数据</div>
             </div>
         </div>
 
-        <!-- 第三行：稳定度统计 + 模式 -->
+        <!-- 第三行：稳定度统计 + 模式使用比例 -->
         <div class="mini-stats-row">
             <div class="mini-stat-card">
                 <span class="mini-stat-label">不稳次数</span>
@@ -74,9 +86,15 @@
                 <span class="mini-stat-label">不稳占比</span>
                 <span class="mini-stat-value" id="unstable-ratio">0%</span>
             </div>
-            <div class="mini-stat-card">
-                <span class="mini-stat-label">练习模式</span>
-                <span class="mini-stat-value" id="practice-mode">—</span>
+            <div class="mini-stat-card mode-stat-card">
+                <span class="mini-stat-label">快速模式</span>
+                <span class="mini-stat-value" id="quick-mode-count">0</span>
+                <span class="mini-stat-sub" id="quick-mode-pct">0%</span>
+            </div>
+            <div class="mini-stat-card mode-stat-card">
+                <span class="mini-stat-label">普通模式</span>
+                <span class="mini-stat-value" id="normal-mode-count">0</span>
+                <span class="mini-stat-sub" id="normal-mode-pct">0%</span>
             </div>
             <div class="mini-stat-card donut-card">
                 <div class="donut-box" id="stabilityDonut"></div>

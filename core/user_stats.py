@@ -2,7 +2,8 @@
 
 from models import TrainingRecord, db
 from datetime import datetime, timedelta
-from sqlalchemy import func
+from sqlalchemy import func, case
+from api.chords import chords_data
 
 def get_overview(user_id):
     """返回当前用户的总览数据：总次数、总时长、平均正确率、薄弱和弦TOP3"""
@@ -62,6 +63,57 @@ def get_progress_trend(user_id, days=30):
     dates = [row.day for row in progress_query]
     rates = [int(row.acc * 100) for row in progress_query]
     return {'dates': dates, 'rates': rates}
+
+def get_mode_ratio(user_id):
+    """返回 quick vs normal 模式使用次数和比例"""
+    mode_counts = db.session.query(
+        TrainingRecord.mode,
+        func.count(TrainingRecord.id)
+    ).filter(
+        TrainingRecord.user_id == user_id,
+        TrainingRecord.mode.isnot(None)
+    ).group_by(TrainingRecord.mode).all()
+
+    result = {'quick': 0, 'normal': 0, 'total': 0}
+    for mode, count in mode_counts:
+        key = 'quick' if mode == 'quick' else 'normal'
+        result[key] = count
+        result['total'] += count
+    return result
+
+def get_daily_practice_count(user_id, days=90):
+    """返回每天练习次数，用于日历热力图"""
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=days)
+    daily = db.session.query(
+        func.date(TrainingRecord.created_at).label('day'),
+        func.count(TrainingRecord.id)
+    ).filter(
+        TrainingRecord.user_id == user_id,
+        func.date(TrainingRecord.created_at) >= start_date
+    ).group_by(func.date(TrainingRecord.created_at)).all()
+
+    return [[str(row.day), row[1]] for row in daily]
+
+def get_chord_difficulty_distribution(user_id):
+    """返回用户练习和弦的难度分布"""
+    practiced_chords = db.session.query(
+        TrainingRecord.chord_name,
+        func.count(TrainingRecord.id)
+    ).filter(TrainingRecord.user_id == user_id)\
+     .group_by(TrainingRecord.chord_name).all()
+
+    chord_diff_map = {c['name']: c.get('difficulty', 1) for c in chords_data}
+    diff_counts = {1: 0, 2: 0, 3: 0}
+    for chord_name, count in practiced_chords:
+        diff = chord_diff_map.get(chord_name, 1)
+        diff_counts[diff] = diff_counts.get(diff, 0) + count
+
+    return [
+        {'name': '基础', 'value': diff_counts[1]},
+        {'name': '进阶', 'value': diff_counts[2]},
+        {'name': '高级', 'value': diff_counts[3]}
+    ]
 
 def get_recent_records(user_id, limit=10):
     """返回当前用户的最近练习记录"""

@@ -162,15 +162,39 @@ class LLMService:
     # ==================== 精简 Prompt 构建方法 ====================
     def _build_advice_prompt(self, user_stats: Dict) -> str:
         o = user_stats.get('overview', {})
-        weak = ','.join(o.get('weak_chords', [])) or '无'
+        mastery = user_stats.get('mastery', {})
+        progress = user_stats.get('progress', {})
         recent_records = user_stats.get('recent_records', [])
-        last = recent_records[0] if recent_records else {}
-        last_chord = last.get('chord', '?')
-        last_acc = last.get('accuracy', 0)
+        mode_ratio = user_stats.get('mode_ratio', {})
+        unstable_ratio = user_stats.get('unstable_ratio', 0)
+        trend_desc = user_stats.get('trend_desc', '未知')
+
+        # 和弦掌握度排名：最好3个 + 最差3个
+        chords_sorted = sorted(mastery.get('chords', []), key=lambda x: x['value'], reverse=True)
+        best3 = [c['name'] for c in chords_sorted[:3]] if chords_sorted else []
+        worst3 = [c['name'] for c in chords_sorted[-3:]] if chords_sorted else []
+
+        # 最近练习记录摘要
+        recent_summary = []
+        for r in recent_records[:5]:
+            recent_summary.append(f"{r['chord']}({r['accuracy']}%)")
+        recent_str = ' → '.join(recent_summary) if recent_summary else '无'
+
+        # 模式使用
+        quick = mode_ratio.get('quick', 0)
+        normal = mode_ratio.get('normal', 0)
+        mode_desc = f"快速:{quick}次 普通:{normal}次"
+
         return (
-            f"总{o.get('total_sessions',0)}次 均准{o.get('avg_accuracy',0)}% "
-            f"弱和弦:{weak} 末次:{last_chord}({last_acc}%)\n"
-            f"给出3条详细教学建议"
+            f"【数据概览】总练习{o.get('total_sessions',0)}次 | "
+            f"平均正确率{o.get('avg_accuracy',0)}% | "
+            f"总时长{o.get('total_duration',0)}分钟\n"
+            f"【掌握度排名】最佳:{','.join(best3) or '无'} | "
+            f"薄弱:{','.join(o.get('weak_chords',['无']))}\n"
+            f"【进步趋势】{trend_desc} | 不稳占比{unstable_ratio}%\n"
+            f"【练习模式】{mode_desc}\n"
+            f"【最近练习】{recent_str}\n"
+            f"请给出3条针对性教学建议（每条20-40字，用1.2.3.格式）"
         )
 
     def _build_chord_recommendation_prompt(self, user_stats: Dict) -> str:
@@ -195,7 +219,7 @@ class LLMService:
             "每条建议应包含：1）指出具体问题或方向；2）给出可操作的练习方法或技巧。"
             "每条建议字数在20-40字之间，用1.2.3.格式输出，语气鼓励且专业。"
         )
-        return self.generate(prompt, system_prompt, temperature=0.7, max_tokens=180)
+        return self.generate(prompt, system_prompt, temperature=0.5, max_tokens=250)
 
     def generate_chord_recommendations(self, user_stats: Dict) -> Optional[List[str]]:
         """极速生成和弦推荐（非流式），<2秒返回"""

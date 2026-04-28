@@ -20,6 +20,10 @@
         </form>
         <form id="register-form" style="display: none;">
             <input type="email" id="reg-email" placeholder="邮箱" required>
+            <div class="verify-row">
+                <input type="text" id="reg-verify-code" placeholder="验证码" maxlength="6" required>
+                <button type="button" id="send-code-btn" class="send-code-btn">发送验证码</button>
+            </div>
             <input type="password" id="reg-password" placeholder="密码 (至少6位)" required>
             <input type="password" id="reg-confirm" placeholder="确认密码" required>
             <button type="submit">注册</button>
