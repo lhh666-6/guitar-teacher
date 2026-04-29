@@ -149,12 +149,12 @@ def handle_thumbnail(data):
     image_base64 = data.get('image')
     if not image_base64:
         logger.warning("收到空缩略图数据")
-        return  # 如果没有 callback，就不用调用
+        return True
 
     frame = base64_to_cv2(image_base64)
     if frame is None:
         logger.warning("缩略图解码失败")
-        return
+        return True
 
     success = recognizer.update_fretboard(frame)
     if success:
@@ -165,7 +165,6 @@ def handle_thumbnail(data):
     else:
         logger.warning("指板参数更新失败（可能未检测到琴枕/琴桥）")
 
-    # 返回 True 作为回调结果（ack）
     return True
 
 @socketio.on('frame')

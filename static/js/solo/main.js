@@ -52,6 +52,7 @@
 
             this.cooldownTimer = null;
             this.quickTimer = null;
+            this._quickAdvanceTimer = null;
 
             // 滤波器
             this.filters = [];
@@ -550,6 +551,12 @@
                 this.stopTestAndSending();
             } else {
                 this._cleanupCoreState();
+                this._exitFullscreenAndCleanUI();
+                this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+                this.sendingEnabled = false;
+                if (this.currentChord) {
+                    requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
+                }
             }
             this.cameraManager.close();
             this.elements.toggleCamera.textContent = '开启';
@@ -557,16 +564,10 @@
             this._perfFrameTimes = [];
             this._lastThumbnailRtt = 0;
             if (this.elements.perfIndicator) this.elements.perfIndicator.style.display = 'none';
-            this._exitFullscreenAndCleanUI();
             this.socketManager.disconnect();
-            this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
             this.filters = [];
             this.latestLocalLandmarks = null;
             this.cachedDrawingData = null;
-            this.sendingEnabled = false;
-            if (this.currentChord) {
-                requestAnimationFrame(() => this.renderStandardDots(this.currentChord));
-            }
         }
 
         _onFretboardParams(params) {
@@ -678,7 +679,10 @@
             }).catch(err => console.error('保存记录失败:', err));
 
             if (QUICK_MODE) {
-                setTimeout(() => this.moveToNextTest(), 1200);
+                this._quickAdvanceTimer = setTimeout(() => {
+                    this._quickAdvanceTimer = null;
+                    if (this.testMode) this.moveToNextTest();
+                }, 1200);
             }
         }
 
@@ -900,15 +904,24 @@
                     mode: QUICK_MODE ? 'quick' : 'normal'
                 })
             }).catch(err => console.error('保存不稳记录失败:', err));
+
+            if (QUICK_MODE) {
+                this._quickAdvanceTimer = setTimeout(() => {
+                    this._quickAdvanceTimer = null;
+                    if (this.testMode) this.moveToNextTest();
+                }, 1200);
+            }
         }
 
         _clearAllTimers() {
             if (this.cooldownTimer) clearTimeout(this.cooldownTimer);
             if (this.audioTimeout) clearTimeout(this.audioTimeout);
             if (this.quickTimer) clearTimeout(this.quickTimer);
+            if (this._quickAdvanceTimer) clearTimeout(this._quickAdvanceTimer);
             this.cooldownTimer = null;
             this.audioTimeout = null;
             this.quickTimer = null;
+            this._quickAdvanceTimer = null;
             this.audioWaiting = false;
         }
 
@@ -933,7 +946,10 @@
             }).catch(err => console.error('保存记录失败:', err));
 
             if (QUICK_MODE) {
-                setTimeout(() => this.moveToNextTest(), 1200);
+                this._quickAdvanceTimer = setTimeout(() => {
+                    this._quickAdvanceTimer = null;
+                    if (this.testMode) this.moveToNextTest();
+                }, 1200);
             }
         }
 

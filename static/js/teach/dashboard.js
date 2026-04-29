@@ -95,7 +95,7 @@ function _triggerPanelGlow(panel) {
 }
 
 function switchCarouselView(panel, data, direction) {
-    direction = direction || 0; // 1=next, -1=prev, 0=initial
+    direction = direction || 0;
     var state = carouselState[panel];
 
     if (direction !== 0) {
@@ -103,65 +103,54 @@ function switchCarouselView(panel, data, direction) {
     }
 
     if (panel === 'radar') {
-        var ids = ['radarChart', 'difficultyChart', 'calendarChart'];
-        var allEls = ids.map(function(id) { return document.getElementById(id); });
+        var containerId = 'radarChartBox';
         var emptyEl = document.getElementById('radarEmpty');
-
-        allEls.forEach(function(el) { if (el) { el.classList.remove('active'); el.style.display = 'none'; } });
-        if (emptyEl) emptyEl.style.display = 'none';
-
-        var activeId = ids[state];
-        var activeEl = document.getElementById(activeId);
+        var chartEl = document.getElementById(containerId);
         var rendered = null;
 
         if (state === 0 && data.mastery && data.mastery.chords && data.mastery.chords.length) {
-            rendered = Charts.renderMastery('radarChart', data.mastery);
-        } else if (state === 1 && data.chord_difficulty) {
-            rendered = Charts.renderDifficulty('difficultyChart', data.chord_difficulty);
-        } else if (state === 2 && data.daily_practice) {
-            rendered = Charts.renderCalendar('calendarChart', data.daily_practice);
+            rendered = Charts.renderMastery(containerId, data.mastery);
+        } else if (state === 1 && data.chord_difficulty && data.chord_difficulty.length) {
+            rendered = Charts.renderDifficulty(containerId, data.chord_difficulty);
+        } else if (state === 2 && data.daily_practice && data.daily_practice.length) {
+            rendered = Charts.renderCalendar(containerId, data.daily_practice);
         }
 
         if (rendered) {
-            if (activeEl) {
-                activeEl.style.display = 'block';
-                activeEl.offsetHeight;
-                activeEl.classList.add('active');
-            }
-            setTimeout(function() { rendered.resize(); }, 80);
-        } else if (emptyEl) {
-            emptyEl.style.display = 'block';
+            if (emptyEl) emptyEl.style.display = 'none';
+            if (chartEl) chartEl.style.display = 'block';
+            // 确保 ECharts 获取正确尺寸
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() { rendered.resize(); });
+            });
+        } else {
+            if (chartEl) chartEl.style.display = 'none';
+            if (emptyEl) emptyEl.style.display = 'block';
         }
     } else if (panel === 'progress') {
-        var ids = ['progressChart', 'accuracyOnlyChart', 'similarityOnlyChart'];
-        var allEls = ids.map(function(id) { return document.getElementById(id); });
+        var containerId = 'progressChartBox';
         var emptyEl = document.getElementById('progressEmpty');
-
-        allEls.forEach(function(el) { if (el) { el.classList.remove('active'); el.style.display = 'none'; } });
-        if (emptyEl) emptyEl.style.display = 'none';
-
-        var activeId = ids[state];
-        var activeEl = document.getElementById(activeId);
+        var chartEl = document.getElementById(containerId);
         var rendered = null;
 
         var avgAcc = (data.overview && data.overview.avg_accuracy) || null;
         if (state === 0 && data.progress && data.progress.dates && data.progress.dates.length) {
-            rendered = Charts.renderProgress('progressChart', data.progress, data.similarity_trend || null, avgAcc);
+            rendered = Charts.renderProgress(containerId, data.progress, data.similarity_trend || null, avgAcc);
         } else if (state === 1 && data.progress && data.progress.dates && data.progress.dates.length) {
-            rendered = Charts.renderAccuracyOnly('accuracyOnlyChart', data.progress, avgAcc);
+            rendered = Charts.renderAccuracyOnly(containerId, data.progress, avgAcc);
         } else if (state === 2 && data.progress && data.progress.dates && data.progress.dates.length) {
-            rendered = Charts.renderSimilarityOnly('similarityOnlyChart', data.progress, data.similarity_trend || null);
+            rendered = Charts.renderSimilarityOnly(containerId, data.progress, data.similarity_trend || null);
         }
 
         if (rendered) {
-            if (activeEl) {
-                activeEl.style.display = 'block';
-                activeEl.offsetHeight;
-                activeEl.classList.add('active');
-            }
-            setTimeout(function() { rendered.resize(); }, 80);
-        } else if (emptyEl) {
-            emptyEl.style.display = 'block';
+            if (emptyEl) emptyEl.style.display = 'none';
+            if (chartEl) chartEl.style.display = 'block';
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() { rendered.resize(); });
+            });
+        } else {
+            if (chartEl) chartEl.style.display = 'none';
+            if (emptyEl) emptyEl.style.display = 'block';
         }
     }
     updateCarouselUI(panel);
@@ -196,10 +185,16 @@ function startAutoRotate(panel) {
         startAutoRotate('progress');
         return;
     }
+    if (!dashboardData) return;
     stopAutoRotate(panel);
     autoRotateTimers[panel] = setInterval(function () {
+        if (!dashboardData) return;
         carouselState[panel] = (carouselState[panel] + 1) % 3;
-        switchCarouselView(panel, dashboardData, 1);
+        try {
+            switchCarouselView(panel, dashboardData, 1);
+        } catch (e) {
+            console.error('轮播切换异常 (' + panel + '):', e);
+        }
     }, AUTO_ROTATE_MS);
 }
 

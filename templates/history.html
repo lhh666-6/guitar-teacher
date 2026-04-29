@@ -2,9 +2,14 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>训练历史 - 智能吉他教学系统</title>
-    <!-- ✅ 国内镜像：ECharts (BootCDN) 与 Font Awesome (Staticfile CDN) -->
+    <link rel="dns-prefetch" href="https://cdn.bootcdn.net">
+    <link rel="dns-prefetch" href="https://cdn.staticfile.org">
+    <link rel="dns-prefetch" href="https://cdn.socket.io">
+    <link rel="preconnect" href="https://cdn.bootcdn.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.staticfile.org" crossorigin>
+    <link rel="preconnect" href="https://cdn.socket.io" crossorigin>
     <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
     <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -13,314 +18,166 @@
         body {
             font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
             background: linear-gradient(160deg, #1a1410 0%, #231e17 40%, #1e1812 100%);
-            margin: 0;
-            padding: 20px;
-            color: #ecd9b4;
-            min-height: 100vh;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-            .back-link:hover, .btn-reset:hover, .page-btn:hover {
-                transform: none !important;
-            }
+            margin: 0; padding: 20px; color: #ecd9b4; min-height: 100vh;
         }
 
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: rgba(26, 20, 16, 0.85);
-            border: 1px solid rgba(255, 215, 140, 0.08);
-            border-radius: 32px;
-            padding: 20px 30px 40px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            max-width: 1400px; margin: 0 auto;
+            background: rgba(26,20,16,0.85); border: 1px solid rgba(255,215,140,0.08);
+            border-radius: 32px; padding: 20px 30px 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: fadeSlideIn 0.5s ease-out;
+        }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-            border-bottom: 1px solid rgba(255, 215, 140, 0.15);
-            padding-bottom: 15px;
+            display: flex; justify-content: space-between; align-items: baseline;
+            flex-wrap: wrap; margin-bottom: 30px;
+            border-bottom: 1px solid rgba(255,215,140,0.15); padding-bottom: 15px;
         }
-
         h1 {
-            margin: 0;
-            font-size: 2rem;
-            color: #ffd966;
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            text-shadow: 0 0 30px rgba(255, 217, 102, 0.2);
+            margin: 0; font-size: 2rem; color: #ffd966;
+            display: inline-flex; align-items: center; gap: 12px;
+            text-shadow: 0 0 30px rgba(255,217,102,0.2);
         }
-
         .back-link {
-            background: rgba(255, 215, 140, 0.1);
-            color: #ecd9b4;
-            text-decoration: none;
-            padding: 8px 20px;
-            border-radius: 40px;
-            font-weight: 500;
-            border: 1px solid rgba(255, 215, 140, 0.2);
+            background: rgba(255,215,140,0.1); color: #ecd9b4; text-decoration: none;
+            padding: 8px 20px; border-radius: 40px; font-weight: 500;
+            border: 1px solid rgba(255,215,140,0.2);
             transition: transform 0.2s, background 0.25s, box-shadow 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            display: inline-flex; align-items: center; gap: 8px;
         }
-
         .back-link:hover {
-            background: rgba(255, 215, 140, 0.2);
-            border-color: rgba(255, 215, 140, 0.4);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+            background: rgba(255,215,140,0.2); border-color: rgba(255,215,140,0.4);
+            transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.3);
         }
 
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px; margin-bottom: 30px;
         }
-
         .stat-card {
-            background: rgba(255, 215, 140, 0.04);
-            border-radius: 28px;
-            padding: 20px;
-            border: 1px solid rgba(255, 215, 140, 0.08);
-            border-left: 3px solid #ffd966;
-            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+            background: rgba(255,215,140,0.04); border-radius: 28px; padding: 20px;
+            border: 1px solid rgba(255,215,140,0.08); border-left: 3px solid #ffd966;
+            transition: transform 0.25s, box-shadow 0.25s;
         }
-
         .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.3);
-            border-color: rgba(255, 215, 140, 0.25);
+            transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.3);
         }
-
         .stat-title {
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #c0a88b;
-            margin-bottom: 12px;
-            font-weight: 600;
+            font-size: 0.82rem; text-transform: uppercase; letter-spacing: 1px;
+            color: #c0a88b; margin-bottom: 10px; font-weight: 600;
         }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #ffd966;
-            line-height: 1;
-        }
-
-        .stat-unit {
-            font-size: 0.9rem;
-            font-weight: normal;
-            color: #c0a88b;
-        }
+        .stat-number { font-size: 2.4rem; font-weight: 800; color: #ffd966; line-height: 1; }
+        .stat-unit { font-size: 0.9rem; font-weight: normal; color: #c0a88b; }
 
         .chart-filter-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 30px;
-            margin-bottom: 40px;
-            align-items: stretch;
+            display: flex; flex-wrap: wrap; gap: 30px; margin-bottom: 30px; align-items: stretch;
         }
-
         .chart-box {
-            flex: 2;
-            background: rgba(255, 215, 140, 0.03);
-            border-radius: 24px;
-            padding: 20px 15px 15px;
-            border: 1px solid rgba(255, 215, 140, 0.06);
-            display: flex;
-            flex-direction: column;
-            min-height: 380px;
+            flex: 2; background: rgba(255,215,140,0.03); border-radius: 24px;
+            padding: 20px 15px 15px; border: 1px solid rgba(255,215,140,0.06);
+            display: flex; flex-direction: column; min-height: 380px;
         }
-
-        #chartContainer {
-            width: 100%;
-            flex: 1;
-            min-height: 320px;
-        }
+        #chartContainer { width: 100%; flex: 1; min-height: 320px; }
 
         .filters-box {
-            flex: 1;
-            background: rgba(255, 215, 140, 0.03);
-            border-radius: 24px;
-            padding: 20px;
-            border: 1px solid rgba(255, 215, 140, 0.06);
+            flex: 1; background: rgba(255,215,140,0.03); border-radius: 24px;
+            padding: 20px; border: 1px solid rgba(255,215,140,0.06);
         }
-
-        .filters-box h3 {
-            color: #ffd966;
-        }
-
-        .filter-group {
-            margin-bottom: 20px;
-        }
-
+        .filters-box h3 { color: #ffd966; margin-top: 0; }
+        .filter-group { margin-bottom: 16px; }
         .filter-group label {
-            display: block;
-            font-weight: 600;
-            color: #c0a88b;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
+            display: block; font-weight: 600; color: #c0a88b;
+            margin-bottom: 6px; font-size: 0.88rem;
         }
-
         select, input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid rgba(255, 215, 140, 0.15);
-            border-radius: 30px;
-            font-size: 0.9rem;
-            background: rgba(26, 20, 16, 0.6);
-            color: #ecd9b4;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%; padding: 10px 12px; border: 1px solid rgba(255,215,140,0.15);
+            border-radius: 30px; font-size: 0.9rem; background: rgba(26,20,16,0.6);
+            color: #ecd9b4; transition: border-color 0.2s, box-shadow 0.2s;
         }
-
         select:focus, input:focus {
-            outline: none;
-            border-color: #ffd966;
-            box-shadow: 0 0 0 3px rgba(255, 217, 102, 0.12);
+            outline: none; border-color: #ffd966;
+            box-shadow: 0 0 0 3px rgba(255,217,102,0.12);
         }
-
-        select option {
-            background: #2a2018;
-            color: #ecd9b4;
-        }
-
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(0.8);
-        }
+        select option { background: #2a2018; color: #ecd9b4; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); }
+        input + input { margin-top: 8px; }
 
         .btn-reset {
-            background: rgba(255, 215, 140, 0.08);
-            border: 1px solid rgba(255, 215, 140, 0.15);
-            padding: 10px 20px;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: 600;
-            color: #ffd966;
-            width: 100%;
-            transition: background 0.2s, transform 0.15s, border-color 0.2s;
+            background: rgba(255,215,140,0.08); border: 1px solid rgba(255,215,140,0.15);
+            padding: 10px 20px; border-radius: 40px; cursor: pointer; font-weight: 600;
+            color: #ffd966; width: 100%; transition: background 0.2s, transform 0.15s;
         }
-
         .btn-reset:hover {
-            background: rgba(255, 215, 140, 0.15);
-            border-color: rgba(255, 215, 140, 0.35);
+            background: rgba(255,215,140,0.15); border-color: rgba(255,215,140,0.35);
             transform: translateY(-1px);
         }
 
-        .virtual-scroll-container {
-            height: 500px;
-            overflow-y: auto;
-            background: rgba(255, 215, 140, 0.02);
-            border-radius: 24px;
-            margin-top: 20px;
-            border: 1px solid rgba(255, 215, 140, 0.08);
+        /* ---- 表格 ---- */
+        .table-section {
+            background: rgba(255,215,140,0.02); border-radius: 24px;
+            border: 1px solid rgba(255,215,140,0.08); overflow: hidden;
         }
-
-        .virtual-scroll-content {
-            position: relative;
-            width: 100%;
-        }
-
-        .table-row {
-            display: flex;
-            border-bottom: 1px solid rgba(255, 215, 140, 0.05);
-            font-size: 0.9rem;
-            transition: background 0.15s;
-            color: #ecd9b4;
-        }
-
-        .table-row:not(.header-row):hover {
-            background: rgba(255, 215, 140, 0.06);
-        }
-
-        .header-row {
-            background: rgba(255, 215, 140, 0.08);
-            font-weight: 700;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            border-bottom: 1px solid rgba(255, 215, 140, 0.2);
-            color: #ffd966;
-        }
-
-        .table-cell {
-            padding: 12px;
-            text-align: center;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            background: rgba(255,215,140,0.08); font-weight: 700; color: #ffd966;
+            padding: 13px 12px; text-align: center; font-size: 0.84rem;
+            letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,215,140,0.2);
             white-space: nowrap;
         }
-
-        .col-id { width: 5%; }
-        .col-chord { width: 12%; }
-        .col-result { width: 14%; }
-        .col-status { width: 12%; }
-        .col-time { width: 10%; }
-        .col-date { width: 47%; }
+        tbody td {
+            padding: 12px; text-align: center; font-size: 0.87rem;
+            color: #ecd9b4; border-bottom: 1px solid rgba(255,215,140,0.05);
+        }
+        tbody tr { transition: background 0.2s; }
+        tbody tr:hover td { background: rgba(255,215,140,0.06); }
+        tbody tr.page-enter {
+            animation: rowFadeIn 0.35s ease-out both;
+        }
+        @keyframes rowFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
 
         .badge-correct, .badge-wrong {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            display: inline-block; padding: 4px 12px; border-radius: 40px;
+            font-size: 0.78rem; font-weight: 600;
         }
+        .badge-correct { background: rgba(46,204,113,0.15); color: #2ecc71; }
+        .badge-wrong   { background: rgba(231,76,60,0.15); color: #e74c3c; }
 
-        .badge-correct { background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
-        .badge-wrong { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
-
+        /* ---- 分页 ---- */
         .pagination {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 20px;
+            display: flex; justify-content: center; gap: 8px; margin-top: 20px;
+            flex-wrap: wrap;
         }
-
         .page-btn {
-            background: rgba(255, 215, 140, 0.06);
-            border: 1px solid rgba(255, 215, 140, 0.1);
-            padding: 8px 14px;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: 500;
-            color: #c0a88b;
-            transition: transform 0.15s, background 0.2s, border-color 0.2s;
+            background: rgba(255,215,140,0.06); border: 1px solid rgba(255,215,140,0.1);
+            padding: 8px 14px; border-radius: 40px; cursor: pointer; font-weight: 500;
+            color: #c0a88b; min-width: 40px; text-align: center;
+            transition: all 0.2s; font-size: 0.88rem;
         }
-
         .page-btn.active {
-            background: rgba(255, 215, 140, 0.2);
-            border-color: #ffd966;
-            color: #ffd966;
+            background: rgba(255,215,140,0.2); border-color: #ffd966; color: #ffd966;
         }
-
-        .page-btn:hover:not(.active) {
-            background: rgba(255, 215, 140, 0.12);
-            border-color: rgba(255, 215, 140, 0.3);
-            color: #ecd9b4;
-            transform: translateY(-1px);
+        .page-btn:hover:not(.active):not(:disabled) {
+            background: rgba(255,215,140,0.14); border-color: rgba(255,215,140,0.35);
+            color: #ecd9b4; transform: translateY(-1px);
         }
-
-        .empty-row {
-            text-align: center;
-            padding: 40px;
-            color: #c0a88b;
+        .page-btn:disabled { opacity: 0.3; cursor: default; }
+        .page-info {
+            display: flex; align-items: center; padding: 0 8px;
+            color: #c0a88b; font-size: 0.82rem;
         }
 
         @media (max-width: 680px) {
             .container { padding: 15px; }
             .stat-number { font-size: 1.8rem; }
-            .table-cell { padding: 8px 4px; font-size: 0.75rem; }
+            td, th { padding: 8px 4px; font-size: 0.75rem; }
         }
     </style>
 </head>
@@ -330,7 +187,7 @@
         <h1><i class="fas fa-chart-line"></i> 训练历史</h1>
         <a href="/" class="back-link"><i class="fas fa-home"></i> 返回首页</a>
     </div>
-    
+
     <!-- 第一行统计卡片 -->
     <div class="stats-grid" id="statsContainer">
         <div class="stat-card">
@@ -351,7 +208,7 @@
         </div>
     </div>
 
-    <!-- 第二行统计卡片（样式与第一行完全一致） -->
+    <!-- 第二行统计卡片 -->
     <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
         <div class="stat-card">
             <div class="stat-title">按弦不稳次数</div>
@@ -373,12 +230,10 @@
             <div id="chartContainer"></div>
         </div>
         <div class="filters-box">
-            <h3 style="margin-top:0; color:#7a4d2e;"><i class="fas fa-filter"></i> 筛选记录</h3>
+            <h3><i class="fas fa-filter"></i> 筛选记录</h3>
             <div class="filter-group">
                 <label><i class="fas fa-guitar"></i> 和弦</label>
-                <select id="filterChord">
-                    <option value="all">全部和弦</option>
-                </select>
+                <select id="filterChord"><option value="all">全部和弦</option></select>
             </div>
             <div class="filter-group">
                 <label><i class="fas fa-check-circle"></i> 结果</label>
@@ -391,158 +246,108 @@
             <div class="filter-group">
                 <label><i class="fas fa-calendar-alt"></i> 日期范围</label>
                 <input type="date" id="startDate">
-                <input type="date" id="endDate" style="margin-top: 8px;">
+                <input type="date" id="endDate">
             </div>
             <button class="btn-reset" id="resetFilters"><i class="fas fa-undo-alt"></i> 重置筛选</button>
         </div>
     </div>
 
-    <!-- 虚拟滚动表格 -->
-    <div id="virtualScrollContainer" class="virtual-scroll-container">
-        <div id="virtualScrollContent" class="virtual-scroll-content">
-            <div class="table-row header-row">
-                <div class="table-cell col-id">#</div>
-                <div class="table-cell col-chord">和弦</div>
-                <div class="table-cell col-result">结果</div>
-                <div class="table-cell col-status">状态</div>
-                <div class="table-cell col-time">用时(秒)</div>
-                <div class="table-cell col-date">练习时间</div>
-            </div>
-        </div>
+    <!-- 分页表格 -->
+    <div class="table-section">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:5%">#</th>
+                    <th style="width:12%">和弦</th>
+                    <th style="width:10%">结果</th>
+                    <th style="width:10%">状态</th>
+                    <th style="width:8%">用时(s)</th>
+                    <th style="width:10%">模式</th>
+                    <th>练习时间</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="7" style="text-align:center;padding:40px;color:#c0a88b;">加载中...</td></tr>
+            </tbody>
+        </table>
     </div>
 
     <div id="paginationControls" class="pagination"></div>
 </div>
 
 <script>
-    // ---- 全局变量 ----
-    let filters = { chord: 'all', result: 'all', startDate: '', endDate: '' };
-    let currentPage = 1;
-    let totalPages = 1;
-    let allRecords = [];
-    const ROW_HEIGHT = 52;
-    let container = document.getElementById('virtualScrollContainer');
-    let content = document.getElementById('virtualScrollContent');
-    let scrollHandler = null;
-    let resizeObserver = null;
-
-    // 虚拟滚动渲染（header占一行高度，数据行从ROW_HEIGHT开始偏移）
-    function renderVisibleRows() {
-        const scrollTop = container.scrollTop;
-        const visibleHeight = container.clientHeight;
-        const headerOffset = ROW_HEIGHT;
-        const adjustedScroll = Math.max(0, scrollTop - headerOffset);
-        const startIndex = Math.floor(adjustedScroll / ROW_HEIGHT);
-        const endIndex = Math.min(startIndex + Math.ceil(visibleHeight / ROW_HEIGHT) + 1, allRecords.length);
-
-        // 清除旧行（保留表头）
-        const rows = content.querySelectorAll('.table-row:not(.header-row)');
-        rows.forEach(row => row.remove());
-
-        for (let i = startIndex; i < endIndex; i++) {
-            const rec = allRecords[i];
-            const row = document.createElement('div');
-            row.className = 'table-row';
-            row.style.position = 'absolute';
-            row.style.top = ((i + 1) * ROW_HEIGHT) + 'px';
-            row.style.width = '100%';
-            row.innerHTML = `
-                <div class="table-cell col-id">${(currentPage-1)*10 + i + 1}</div>
-                <div class="table-cell col-chord"><strong>${escapeHtml(rec.chord_name)}</strong></div>
-                <div class="table-cell col-result">${rec.correct ? '<span class="badge-correct"><i class="fas fa-check"></i> 正确</span>' : '<span class="badge-wrong"><i class="fas fa-times"></i> 错误</span>'}</div>
-                <div class="table-cell col-status">
-                    ${rec.is_unstable ? '<i class="fas fa-exclamation-triangle" style="color:#e6a817;" title="按弦不稳"></i>' : ''}
-                    ${rec.similarity != null ? '<span style="margin-left:6px;">' + parseFloat(rec.similarity).toFixed(2) + '</span>' : ''}
-                </div>
-                <div class="table-cell col-time">${rec.time_spent ? rec.time_spent.toFixed(2) : '--'}</div>
-                <div class="table-cell col-date">${formatDate(rec.created_at)}</div>
-            `;
-            content.appendChild(row);
-        }
-    }
-
-    function formatDate(isoString) {
-        if (!isoString) return '';
-        try { return new Date(isoString).toLocaleString(); } catch(e) { return isoString; }
-    }
+(function() {
+    var filters = { chord: 'all', result: 'all', startDate: '', endDate: '' };
+    var currentPage = 1;
+    var totalPages = 1;
+    var totalRecords = 0;
+    var PER_PAGE = 10;
+    var chartInstance = null;
 
     function escapeHtml(str) {
         if (!str) return '';
-        return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]);
-    }
-
-    function setupVirtualScroll(records) {
-        allRecords = records;
-        content.style.height = ((records.length + 1) * ROW_HEIGHT) + 'px';
-        renderVisibleRows();
-        if (scrollHandler) container.removeEventListener('scroll', scrollHandler);
-        scrollHandler = () => requestAnimationFrame(renderVisibleRows);
-        container.addEventListener('scroll', scrollHandler);
-        if (resizeObserver) resizeObserver.disconnect();
-        resizeObserver = new ResizeObserver(() => renderVisibleRows());
-        resizeObserver.observe(container);
-    }
-
-    // 加载顶部统计
-    async function loadStats() {
-        try {
-            const res = await fetch('/api/history/stats');
-            const stats = await res.json();
-
-            document.getElementById('totalCount').innerText = stats.total_count ?? 0;
-            let accuracy = parseFloat(stats.accuracy);
-            if (isNaN(accuracy)) accuracy = 0;
-            document.getElementById('totalAccuracy').innerHTML = accuracy.toFixed(1) + '<span class="stat-unit">%</span>';
-            document.getElementById('lastPractice').innerHTML = stats.last_practice ? new Date(stats.last_practice).toLocaleString() : '无记录';
-            const weakChords = stats.weak_chords || [];
-            document.getElementById('weakChords').innerHTML = weakChords.length ? weakChords.join(', ') : '暂无';
-
-            const chordSelect = document.getElementById('filterChord');
-            const chordList = stats.chords || [];
-            chordSelect.innerHTML = '<option value="all">全部和弦</option>' + chordList.map(c => `<option value="${c}">${c}</option>`).join('');
-
-            if (chordList.length) {
-                renderChartLater(chordList, stats.accuracies || []);
-            } else {
-                document.getElementById('chartContainer').innerHTML = '<div style="text-align:center; padding-top:120px; color:#c0a88b;">暂无练习数据</div>';
-            }
-        } catch (err) {
-            console.error('加载统计数据失败', err);
-        }
-    }
-
-    let chartRendered = false;
-    function renderChartLater(chords, accuracies) {
-        if (chartRendered) return;
-        const container = document.getElementById('chartContainer');
-        const checkSize = () => {
-            if (container.clientWidth > 0 && container.clientHeight > 0) {
-                renderChart(chords, accuracies);
-                chartRendered = true;
-            } else {
-                requestAnimationFrame(checkSize);
-            }
-        };
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) { checkSize(); observer.disconnect(); }
+        return str.replace(/[&<>]/g, function(m) {
+            return ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m];
         });
-        observer.observe(container);
     }
 
+    function formatDate(iso) {
+        if (!iso) return '--';
+        try { return new Date(iso).toLocaleString(); } catch(e) { return iso; }
+    }
+
+    // ========== 加载统计 ==========
+    function loadStats() {
+        return fetch('/api/history/stats')
+            .then(function(res) { return res.json(); })
+            .then(function(stats) {
+                document.getElementById('totalCount').textContent = stats.total_count || 0;
+                var acc = parseFloat(stats.accuracy) || 0;
+                document.getElementById('totalAccuracy').innerHTML = acc.toFixed(1) + '<span class="stat-unit">%</span>';
+                document.getElementById('lastPractice').textContent = stats.last_practice ? new Date(stats.last_practice).toLocaleString() : '无记录';
+                var weak = stats.weak_chords || [];
+                document.getElementById('weakChords').textContent = weak.length ? weak.join(', ') : '暂无';
+
+                var sel = document.getElementById('filterChord');
+                var list = stats.chords || [];
+                sel.innerHTML = '<option value="all">全部和弦</option>' + list.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+
+                if (stats.unstable_count !== undefined) {
+                    document.getElementById('unstable-count').textContent = stats.unstable_count || 0;
+                }
+                if (stats.unstable_ratio !== undefined) {
+                    document.getElementById('unstable-ratio').textContent = (stats.unstable_ratio || 0).toFixed(1) + '%';
+                }
+                if (stats.latest_mode) {
+                    document.getElementById('practice-mode').textContent = stats.latest_mode === 'quick' ? '快速模式' : '普通模式';
+                }
+
+                if (list.length) renderChart(list, stats.accuracies || []);
+                else document.getElementById('chartContainer').innerHTML = '<div style="text-align:center;padding-top:120px;color:#c0a88b;">暂无练习数据</div>';
+            })
+            .catch(function(err) { console.error('加载统计失败', err); });
+    }
+
+    // ========== 图表 ==========
     function renderChart(chords, accuracies) {
-        const chartDom = document.getElementById('chartContainer');
-        const myChart = echarts.init(chartDom);
-        const safeAccuracies = (accuracies || []).map(v => parseFloat(v) || 0);
-        myChart.setOption({
+        var dom = document.getElementById('chartContainer');
+        if (chartInstance) chartInstance.dispose();
+        // 等待容器有尺寸
+        if (dom.clientWidth === 0 || dom.clientHeight === 0) {
+            requestAnimationFrame(function() { renderChart(chords, accuracies); });
+            return;
+        }
+        chartInstance = echarts.init(dom);
+        var safe = (accuracies || []).map(function(v) { return parseFloat(v) || 0; });
+        chartInstance.setOption({
             tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'shadow' },
-                backgroundColor: 'rgba(30,20,15,0.95)',
-                borderColor: 'rgba(255,215,140,0.4)',
+                trigger: 'axis', axisPointer: { type: 'shadow' },
+                backgroundColor: 'rgba(30,20,15,0.95)', borderColor: 'rgba(255,215,140,0.4)',
                 textStyle: { color: '#ecd9b4', fontSize: 13 }
             },
             xAxis: {
-                type: 'category', data: chords, axisLabel: { rotate: 30, color: '#c0a88b', fontSize: 11 },
+                type: 'category', data: chords,
+                axisLabel: { rotate: 30, color: '#c0a88b', fontSize: 11 },
                 axisLine: { lineStyle: { color: 'rgba(255,215,140,0.15)' } },
                 axisTick: { show: false }
             },
@@ -553,101 +358,138 @@
                 splitLine: { lineStyle: { color: 'rgba(255,215,140,0.06)' } }
             },
             series: [{
-                name: '正确率', type: 'bar', data: safeAccuracies,
+                type: 'bar', data: safe,
                 itemStyle: {
                     borderRadius: [8,8,0,0],
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: '#ffd966' },
-                        { offset: 1, color: '#c0a070' }
+                    color: new echarts.graphic.LinearGradient(0,0,0,1, [
+                        {offset:0,color:'#ffd966'},{offset:1,color:'#c0a070'}
                     ])
                 },
                 label: { show: true, position: 'top', formatter: '{c}%', color: '#c0a88b', fontSize: 11 },
-                emphasis: {
-                    itemStyle: { color: '#ffd966', shadowBlur: 10, shadowColor: 'rgba(255,217,102,0.3)' }
-                }
+                emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(255,217,102,0.3)' } }
             }],
             grid: { containLabel: true, left: '8%', right: '4%', top: 45, bottom: 20 }
         });
-        window.addEventListener('resize', () => myChart.resize());
+        window.addEventListener('resize', function() { if (chartInstance) chartInstance.resize(); });
     }
 
-    // 加载表格数据
-    async function loadTable(page = 1) {
+    // ========== 分页表格 ==========
+    function loadTable(page) {
         currentPage = page;
-        const params = new URLSearchParams({
-            page, per_page: 10,
+        var params = new URLSearchParams({
+            page: page, per_page: PER_PAGE,
             chord: filters.chord !== 'all' ? filters.chord : '',
             result: filters.result !== 'all' ? filters.result : '',
-            start_date: filters.startDate,
-            end_date: filters.endDate
+            start_date: filters.startDate, end_date: filters.endDate
         });
-        try {
-            const res = await fetch(`/api/history/data?${params}`);
-            const data = await res.json();
-            setupVirtualScroll(data.records || []);
-            totalPages = Math.ceil((data.total || 0) / (data.per_page || 10));
-            renderPagination();
-        } catch (err) {
-            console.error('加载表格失败', err);
-            content.innerHTML += '<div class="empty-row">加载失败，请重试</div>';
+        return fetch('/api/history/data?' + params)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var records = data.records || [];
+                totalRecords = data.total || 0;
+                totalPages = Math.ceil(totalRecords / (data.per_page || PER_PAGE)) || 1;
+                renderTable(records);
+                renderPagination();
+            })
+            .catch(function(err) {
+                console.error('加载表格失败', err);
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#e74c3c;">加载失败，请重试</td></tr>';
+            });
+    }
+
+    function renderTable(records) {
+        var tbody = document.getElementById('tableBody');
+        var startNum = (currentPage - 1) * PER_PAGE;
+        if (!records.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#c0a88b;">暂无匹配记录</td></tr>';
+            return;
         }
+        tbody.innerHTML = records.map(function(r, i) {
+            var correct = r.correct;
+            return '<tr class="page-enter" style="animation-delay:' + (i * 0.04) + 's">' +
+                '<td>' + (startNum + i + 1) + '</td>' +
+                '<td><strong>' + escapeHtml(r.chord_name) + '</strong></td>' +
+                '<td>' + (correct ? '<span class="badge-correct">✓ 正确</span>' : '<span class="badge-wrong">✗ 错误</span>') + '</td>' +
+                '<td>' +
+                    (r.is_unstable ? '<i class="fas fa-exclamation-triangle" style="color:#e6a817;" title="按弦不稳"></i>' : '—') +
+                    (r.similarity != null ? ' <span style="margin-left:4px;font-size:0.78rem;">' + parseFloat(r.similarity).toFixed(2) + '</span>' : '') +
+                '</td>' +
+                '<td>' + (r.time_spent != null ? r.time_spent.toFixed(2) : '--') + '</td>' +
+                '<td>' + (r.mode === 'quick' ? '⚡快速' : '普通') + '</td>' +
+                '<td>' + formatDate(r.created_at) + '</td>' +
+                '</tr>';
+        }).join('');
     }
 
     function renderPagination() {
-        const pag = document.getElementById('paginationControls');
+        var pag = document.getElementById('paginationControls');
         if (totalPages <= 1) { pag.innerHTML = ''; return; }
-        let btns = '';
-        for (let i = 1; i <= totalPages; i++) {
-            btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+
+        var html = '<button class="page-btn" data-page="' + (currentPage - 1) + '"' + (currentPage <= 1 ? ' disabled' : '') + '>◀</button>';
+
+        var start = Math.max(1, currentPage - 2);
+        var end = Math.min(totalPages, currentPage + 2);
+
+        if (start > 1) { html += '<button class="page-btn" data-page="1">1</button>'; }
+        if (start > 2) { html += '<span class="page-info">…</span>'; }
+
+        for (var i = start; i <= end; i++) {
+            html += '<button class="page-btn' + (i === currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
         }
-        pag.innerHTML = btns;
-        document.querySelectorAll('.page-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const page = parseInt(btn.dataset.page);
-                if (!isNaN(page) && page !== currentPage) loadTable(page);
+
+        if (end < totalPages - 1) { html += '<span class="page-info">…</span>'; }
+        if (end < totalPages) { html += '<button class="page-btn" data-page="' + totalPages + '">' + totalPages + '</button>'; }
+
+        html += '<button class="page-btn" data-page="' + (currentPage + 1) + '"' + (currentPage >= totalPages ? ' disabled' : '') + '>▶</button>';
+
+        html += '<span class="page-info">共 ' + totalRecords + ' 条</span>';
+        pag.innerHTML = html;
+
+        pag.querySelectorAll('.page-btn:not([disabled])').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var p = parseInt(btn.dataset.page);
+                if (p >= 1 && p <= totalPages && p !== currentPage) loadTable(p);
             });
         });
     }
 
+    // ========== 筛选绑定 ==========
     function bindFilters() {
-        const chordSelect = document.getElementById('filterChord');
-        const resultSelect = document.getElementById('filterResult');
-        const startDate = document.getElementById('startDate');
-        const endDate = document.getElementById('endDate');
-        const resetBtn = document.getElementById('resetFilters');
-        const update = () => {
-            filters.chord = chordSelect.value;
-            filters.result = resultSelect.value;
-            filters.startDate = startDate.value;
-            filters.endDate = endDate.value;
+        var chordSel = document.getElementById('filterChord');
+        var resultSel = document.getElementById('filterResult');
+        var startEl = document.getElementById('startDate');
+        var endEl = document.getElementById('endDate');
+
+        function update() {
+            filters.chord = chordSel.value;
+            filters.result = resultSel.value;
+            filters.startDate = startEl.value;
+            filters.endDate = endEl.value;
             loadTable(1);
-        };
-        chordSelect.addEventListener('change', update);
-        resultSelect.addEventListener('change', update);
-        startDate.addEventListener('change', update);
-        endDate.addEventListener('change', update);
-        resetBtn.addEventListener('click', () => {
-            chordSelect.value = 'all'; resultSelect.value = 'all';
-            startDate.value = ''; endDate.value = '';
+        }
+        chordSel.addEventListener('change', update);
+        resultSel.addEventListener('change', update);
+        startEl.addEventListener('change', update);
+        endEl.addEventListener('change', update);
+        document.getElementById('resetFilters').addEventListener('click', function() {
+            chordSel.value = 'all'; resultSel.value = 'all';
+            startEl.value = ''; endEl.value = '';
             update();
         });
     }
 
-    async function init() {
-        await loadStats();
+    // ========== 启动 ==========
+    loadStats().then(function() {
         bindFilters();
-        await loadTable(1);
-    }
-    init();
+        return loadTable(1);
+    });
+})();
 </script>
 
-<!-- 语音助手 -->
 <script>
-    if (window.VoiceGuide) {
-        VoiceGuide.registerPageCommands('/history', []);
-    }
+    if (window.VoiceGuide) VoiceGuide.registerPageCommands('/history', []);
 </script>
-<script src="https://cdn.bootcdn.net/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+<script defer src="https://cdn.bootcdn.net/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
 <script src="/static/js/voice_guide.js"></script>
 </body>
 </html>

@@ -88,19 +88,31 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 .stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-    border-color: rgba(255, 215, 140, 0.6);
+    transform: translateY(-6px) scale(1.02);
+    box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.4),
+        0 0 30px rgba(255, 200, 100, 0.15),
+        0 0 0 1px rgba(255, 215, 140, 0.3) inset;
+    border-color: rgba(255, 215, 140, 0.7);
 }
 .stat-card::after {
     content: '';
     position: absolute;
     top: 0; left: -100%;
     width: 100%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 215, 140, 0.08), transparent);
-    transition: left 0.6s ease;
+    background: linear-gradient(105deg, transparent 30%, rgba(255, 215, 140, 0.1) 45%, rgba(255, 240, 200, 0.15) 50%, rgba(255, 215, 140, 0.1) 55%, transparent 70%);
+    transition: left 0.7s ease;
 }
 .stat-card:hover::after { left: 100%; }
+.stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 2;
+}
 .stat-value {
     font-size: 2.6rem;
     font-weight: 700;
@@ -138,13 +150,14 @@ body {
     border: 1px solid var(--border-glow);
     border-radius: 24px;
     padding: 20px 24px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(255, 200, 100, 0);
     position: relative;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.4s ease, transform 0.3s ease;
 }
 .chart-panel:hover {
-    border-color: rgba(255, 215, 140, 0.4);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+    border-color: rgba(255, 215, 140, 0.5);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3), 0 0 40px rgba(255, 200, 100, 0.08);
+    transform: translateY(-2px);
 }
 .chart-panel-header {
     display: flex;
@@ -300,6 +313,22 @@ body {
     min-width: 120px;
     flex: 1;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1), box-shadow 0.3s ease, border-color 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+.mini-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 200, 100, 0.1);
+    border-color: rgba(255, 215, 140, 0.5);
+}
+.mini-stat-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 50%);
+    pointer-events: none;
 }
 .mini-stat-label {
     font-size: 0.8rem;
@@ -413,7 +442,9 @@ body {
 }
 .recommend-item:hover {
     background: rgba(255, 215, 140, 0.1);
-    border-color: rgba(255, 215, 140, 0.25);
+    border-color: rgba(255, 215, 140, 0.35);
+    transform: translateX(4px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 200, 100, 0.06);
 }
 .chord-info {
     display: flex;
@@ -465,6 +496,13 @@ body {
     border-radius: 24px;
     padding: 20px 28px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.advice-section:hover,
+.records-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.3), 0 0 30px rgba(255, 200, 100, 0.06);
+    border-color: rgba(255, 215, 140, 0.45);
 }
 .advice-content {
     min-height: 80px;
@@ -544,7 +582,21 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 .table tbody tr:nth-child(even) { background: rgba(255, 215, 140, 0.03); }
-.table tbody tr:hover { background: rgba(255, 215, 140, 0.08); transition: background 0.2s; }
+.table tbody tr {
+    transition: all 0.25s cubic-bezier(0.2, 0.9, 0.4, 1);
+    position: relative;
+}
+.table tbody tr:hover {
+    background: rgba(255, 215, 140, 0.1);
+    transform: translateX(3px) scale(1.005);
+    box-shadow: 0 0 20px rgba(255, 200, 100, 0.08), inset 3px 0 0 rgba(255, 215, 140, 0.4);
+}
+.table tbody td:first-child {
+    border-radius: 8px 0 0 8px;
+}
+.table tbody td:last-child {
+    border-radius: 0 8px 8px 0;
+}
 
 /* ========== 粒子 ========== */
 #particles .particle {

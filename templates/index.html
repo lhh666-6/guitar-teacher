@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>智能吉他教学系统 · 音乐家风格 · 动效优化版</title>
+    <!-- DNS 预解析 + 预连接 -->
+    <link rel="dns-prefetch" href="https://cdn.bootcdn.net">
+    <link rel="dns-prefetch" href="https://cdn.staticfile.org">
+    <link rel="dns-prefetch" href="https://cdn.socket.io">
+    <link rel="preconnect" href="https://cdn.bootcdn.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.staticfile.org" crossorigin>
+    <link rel="preconnect" href="https://cdn.socket.io" crossorigin>
     <!-- GSAP -->
     <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <!-- Font Awesome -->
@@ -766,7 +773,7 @@
             VoiceGuide.registerPageCommands('/', []);
         }
     </script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script defer src="https://cdn.bootcdn.net/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
     <script src="/static/js/voice_guide.js"></script>
 </body>
 </html>

@@ -8,6 +8,9 @@ load_dotenv()
 # ---------- 日志调试 ----------
 DEBUG = True                     # 控制日志输出级别
 
+# ---------- 静态资源缓存 ----------
+SEND_FILE_MAX_AGE_DEFAULT = 3600  # 静态文件浏览器缓存 1 小时（生产环境可调至 86400）
+
 # ---------- 模型路径 ----------
 YOLO_MODEL_PATH = "models/best.pt"                     # YOLO检测琴枕琴桥的模型
 

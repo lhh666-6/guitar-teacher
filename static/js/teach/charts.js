@@ -40,13 +40,8 @@ var Charts = {
         var chart = this._initChart(containerId);
         var t = this._theme;
         if (!chart || !data || !data.chords || !data.chords.length) {
-            var empty = document.getElementById('radarEmpty');
-            if (empty) { empty.style.display = 'block'; }
-            document.getElementById('radarChart').style.display = 'none';
             return null;
         }
-        document.getElementById('radarEmpty').style.display = 'none';
-        document.getElementById('radarChart').style.display = 'block';
 
         var indicator = data.chords.map(function (c) {
             return { name: c.name, max: 100 };
@@ -204,13 +199,8 @@ var Charts = {
         var chart = this._initChart(containerId);
         var t = this._theme;
         if (!chart || !progressData || !progressData.dates || !progressData.dates.length) {
-            var empty = document.getElementById('progressEmpty');
-            if (empty) { empty.style.display = 'block'; }
-            document.getElementById('progressChart').style.display = 'none';
             return null;
         }
-        document.getElementById('progressEmpty').style.display = 'none';
-        document.getElementById('progressChart').style.display = 'block';
 
         var formatDate = this._formatDate;
         var series = [{
