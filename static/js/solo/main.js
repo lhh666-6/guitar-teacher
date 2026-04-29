@@ -603,7 +603,6 @@
                 this.elements.selChordName.textContent = chord.name;
                 this.elements.selChordDesc.textContent = chord.description;
                 this.elements.currentChordName.textContent = chord.name;
-                this.elements.chordDescription.textContent = chord.description;
                 this.elements.chordDetailContent.textContent = chord.detail;
                 this.renderStandardDots(chord);
                 if (this.elements.difficultyBadge) {
@@ -810,6 +809,7 @@
                 dot.className = `dot ${p.type === 'standard' ? 'standard' : (p.correct ? 'user-correct' : 'user-wrong')}`;
                 dot.style.left = x + 'px';
                 dot.style.top = y + 'px';
+                dot.textContent = p.fret;
                 container.appendChild(dot);
             });
 
@@ -1490,7 +1490,6 @@
                     this.elements.selChordName.textContent = this.currentChord.name;
                     this.elements.selChordDesc.textContent = this.currentChord.description;
                     this.elements.currentChordName.textContent = this.currentChord.name;
-                    this.elements.chordDescription.textContent = this.currentChord.description;
                     this.elements.chordDetailContent.textContent = this.currentChord.detail;
                     this.renderStandardDots(this.currentChord);
                     if (this.elements.difficultyBadge) {

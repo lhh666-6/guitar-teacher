@@ -124,6 +124,40 @@ class LLMService:
             logger.error(f"LLM 请求异常: {e}")
             return None
 
+    def _call_api_stream(self, messages: List[Dict], temperature=0.7, max_tokens=1200):
+        """流式调用 LLM API，逐块 yield 文本内容"""
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+            "thinking": {"type": "enabled"}
+        }
+        try:
+            resp = self.session.post(self.endpoint, json=payload, timeout=(10, 120), stream=True)
+            resp.raise_for_status()
+            for line in resp.iter_lines(decode_unicode=True):
+                if not line or not line.startswith('data:'):
+                    continue
+                data_str = line[5:].strip()
+                if data_str == '[DONE]':
+                    break
+                try:
+                    chunk = json.loads(data_str)
+                    delta = chunk.get('choices', [{}])[0].get('delta', {})
+                    content = delta.get('content', '')
+                    if content:
+                        yield content
+                except json.JSONDecodeError:
+                    continue
+        except requests.exceptions.Timeout:
+            logger.error("LLM 流式请求超时")
+            yield None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"LLM 流式请求异常: {e}")
+            yield None
+
     def generate(self, prompt, system_prompt="你是一个专业的吉他教练。", temperature=0.7, max_tokens=500):
         if self.enable_cache:
             cached = self.cache.get(prompt, system_prompt, temperature, max_tokens)
@@ -342,6 +376,47 @@ class LLMService:
             "用「你」称呼用户。精确引用数据中的数字。"
         )
         return self.generate(prompt, system_prompt, temperature=0.5, max_tokens=1200)
+
+    def generate_advice_stream(self, user_stats: Dict):
+        """流式生成教学建议，逐块 yield 文本内容"""
+        prompt = self._build_advice_prompt(user_stats)
+        system_prompt = (
+            "你是资深吉他教学专家兼数据分析师。用户提供了一份完整的吉他练习数据报告，"
+            "包含掌握度排名（雷达图）、进步趋势（折线图）、难度分布（玫瑰图）、"
+            "练习频次（日历热力图）、稳定性（环形图）、模式使用比例等多维度数据。\n\n"
+            "你的任务：撰写一份全面的吉他学习评估报告，请严格按以下结构输出，每部分都要引用具体数据：\n\n"
+            "## 一、整体评估\n"
+            "用一段话概括学习状态，引用总练习次数、平均正确率、趋势方向等核心指标。\n\n"
+            "## 二、强项分析\n"
+            "引用掌握度最高的2-3个和弦及其分数，分析为什么这些和弦掌握得好，"
+            "结合难度分布数据说明学习策略的优势。\n\n"
+            "## 三、薄弱环节\n"
+            "引用薄弱和弦的具体分数和排名，分析不稳比例和可能的指法问题。"
+            "如果近期趋势下降，指出具体的数据变化。\n\n"
+            "## 四、进步趋势解读\n"
+            "解读正确率趋势线和相似度数据，说明是在进步、退步还是平台期。"
+            "结合日期分析哪段时间进步最明显。\n\n"
+            "## 五、练习习惯评价\n"
+            "分析快速模式vs普通模式的使用比例，评估练习深度是否足够。"
+            "如果快速模式占比过高（>60%），提醒需要更多精细化练习。\n\n"
+            "## 六、针对性建议（4-5条）\n"
+            "每条建议包含：1）针对的具体问题（引用数据）；2）具体的练习方法；"
+            "3）建议的练习频率或时长。用1.2.3.4.编号，每条60-100字。\n\n"
+            "## 七、歌曲推荐（仅当用户整体正确率≥80%时有此章节）\n"
+            "如果数据报告末尾有「🎵歌曲推荐」请求，则输出此章节。\n"
+            "推荐2-3首适合的中文弹唱歌曲，每首包含：\n"
+            "① 歌曲名 + 原唱\n"
+            "② 和弦进行（如 C-G-Am-F，标注每个和弦在第几拍切换）\n"
+            "③ 难度评估（★1-5），说明用户还需练习哪个和弦\n\n"
+            "要求：语气温暖鼓励，像一位关心学生的老师，不要像冷冰冰的数据报告。"
+            "用「你」称呼用户。精确引用数据中的数字。"
+        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ]
+        for chunk in self._call_api_stream(messages, temperature=0.5, max_tokens=1200):
+            yield chunk
 
     def generate_chord_recommendations(self, user_stats: Dict) -> Optional[List[str]]:
         """极速生成和弦推荐（非流式），<2秒返回"""

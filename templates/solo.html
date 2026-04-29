@@ -285,7 +285,11 @@
             flex: 2.5;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 12px;
+        }
+        .right-panel > div {
+            flex: 1;
+            min-height: 0;
         }
 
         .camera-container {
@@ -415,6 +419,13 @@
             height: 22px;
             border-radius: 50%;
             transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(0,0,0,0.75);
+            text-shadow: 0 0 2px rgba(255,255,255,0.3);
             z-index: 30;
             pointer-events: none;
             transition: transform 0.15s ease, box-shadow 0.2s ease;
@@ -570,9 +581,10 @@
             background: rgba(0,0,0,0.2);
             border-radius: 12px;
             padding: 8px;
-            min-height: 120px;
-            max-height: 260px;
+            min-height: 0;
+            max-height: none;
             overflow-y: auto;
+            flex: 1;
         }
         /* 同时支持两种类名：原JS可能生成.test-list-item，我们为其添加样式 */
         .test-list-item, .test-item {
@@ -673,13 +685,14 @@
         }
 
         .test-progress-area {
-            background: rgba(0,0,0,0.3);
-            border-radius: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
             padding: 14px 16px;
-            margin-top: 8px;
+            margin-top: 0;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            flex: 1;
         }
         .progress-actions {
             display: grid;
@@ -892,11 +905,13 @@
             padding: 12px 14px;
         }
         body.video-overlay-active .test-progress-area {
-            padding: 12px 14px;
+            padding: 10px 12px;
             margin-top: 0;
+            flex: 1;
         }
         body.video-overlay-active .test-list {
-            max-height: 220px;
+            max-height: none;
+            flex: 1;
         }
         body.video-overlay-active .camera-status {
             position: absolute;
@@ -1245,7 +1260,6 @@
                         <span class="difficulty-badge" id="difficultyBadge"></span>
                         <h4 id="currentChordName" class="chord-title">未选择和弦</h4>
                     </div>
-                    <p id="chordDescription" class="chord-subtitle"></p>
                 </div>
             </div>
             <div class="fretboard-mini" id="fretboardMini">

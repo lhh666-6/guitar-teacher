@@ -1,6 +1,7 @@
 import logging
 import base64
 import os
+import json
 import threading
 import time
 import io
@@ -12,7 +13,7 @@ from api.chords import chords_bp
 
 import cv2
 import numpy as np
-from flask import Flask, jsonify, request, render_template, send_file, session, redirect, url_for
+from flask import Flask, jsonify, request, render_template, send_file, session, redirect, url_for, Response, stream_with_context
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from flask_login import LoginManager, login_required, current_user
@@ -504,7 +505,82 @@ def generate_advice():
         return jsonify({'advice': advice})
     else:
         return jsonify({'advice': '暂时无法生成建议，请稍后再试。'})
-    
+
+
+@app.route('/api/teach/advice/stream')
+@login_required
+def generate_advice_stream():
+    """SSE 流式生成教学建议，避免 504 超时"""
+    overview = user_stats.get_overview(current_user.id)
+    mastery = user_stats.get_chord_mastery(current_user.id)
+    progress = user_stats.get_progress_trend(current_user.id)
+    recent = user_stats.get_recent_records(current_user.id, limit=10)
+    mode_ratio = user_stats.get_mode_ratio(current_user.id)
+    chord_diff_dist = user_stats.get_chord_difficulty_distribution(current_user.id)
+
+    unstable_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.is_unstable == True).scalar()
+    total_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == current_user.id).scalar()
+    unstable_ratio = round((unstable_count / total_count * 100) if total_count else 0.0, 1)
+
+    rates = progress.get('rates', [])
+    if len(rates) >= 3:
+        recent_avg = sum(rates[-3:]) / 3
+        earlier_avg = sum(rates[:3]) / 3 if len(rates) >= 6 else rates[0]
+        if recent_avg - earlier_avg > 5:
+            trend_desc = '上升'
+        elif recent_avg - earlier_avg < -5:
+            trend_desc = '下降'
+        else:
+            trend_desc = '平稳'
+    else:
+        trend_desc = '数据不足'
+
+    recent_similarities = db.session.query(
+        TrainingRecord.similarity
+    ).filter(
+        TrainingRecord.user_id == current_user.id,
+        TrainingRecord.similarity.isnot(None)
+    ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
+    sim_trend = [float(r.similarity) for r in reversed(recent_similarities)]
+
+    stats = {
+        'overview': overview,
+        'mastery': mastery,
+        'progress': progress,
+        'recent_records': recent,
+        'mode_ratio': mode_ratio,
+        'unstable_ratio': unstable_ratio,
+        'unstable_count': unstable_count,
+        'trend_desc': trend_desc,
+        'chord_difficulty': chord_diff_dist,
+        'similarity_trend': sim_trend
+    }
+
+    def generate():
+        try:
+            for chunk in llm_service.generate_advice_stream(stats):
+                if chunk is None:
+                    yield f"data: {json.dumps({'error': '生成失败，请稍后重试'})}\n\n"
+                    return
+                yield f"data: {json.dumps({'content': chunk})}\n\n"
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except Exception as e:
+            logger.error(f"流式生成异常: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        content_type='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive'
+        }
+    )
+
+
 @app.route('/api/teach/recommend_chords', methods=['POST'])
 @login_required
 def recommend_chords():

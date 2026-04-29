@@ -18,6 +18,7 @@ var loadingContainer = document.getElementById('adviceLoadingContainer');
 var bubbleMsgEl = document.getElementById('bubbleMessage');
 var loadingInterval = null;
 var isLoading = false;
+var activeStreamAbort = null;
 
 // 轮播状态
 var carouselState = {
@@ -102,58 +103,58 @@ function switchCarouselView(panel, data, direction) {
         _triggerPanelGlow(panel);
     }
 
-    if (panel === 'radar') {
-        var containerId = 'radarChartBox';
-        var emptyEl = document.getElementById('radarEmpty');
-        var chartEl = document.getElementById(containerId);
+    var containerId = panel === 'radar' ? 'radarChartBox' : 'progressChartBox';
+    var emptyEl = document.getElementById(panel === 'radar' ? 'radarEmpty' : 'progressEmpty');
+    var chartEl = document.getElementById(containerId);
+
+    // 先淡出
+    if (chartEl) chartEl.classList.remove('active');
+
+    var doRender = function() {
         var rendered = null;
 
-        if (state === 0 && data.mastery && data.mastery.chords && data.mastery.chords.length) {
-            rendered = Charts.renderMastery(containerId, data.mastery);
-        } else if (state === 1 && data.chord_difficulty && data.chord_difficulty.length) {
-            rendered = Charts.renderDifficulty(containerId, data.chord_difficulty);
-        } else if (state === 2 && data.daily_practice && data.daily_practice.length) {
-            rendered = Charts.renderCalendar(containerId, data.daily_practice);
+        if (panel === 'radar') {
+            if (state === 0 && data.mastery && data.mastery.chords && data.mastery.chords.length) {
+                rendered = Charts.renderMastery(containerId, data.mastery);
+            } else if (state === 1 && data.chord_difficulty && data.chord_difficulty.length) {
+                rendered = Charts.renderDifficulty(containerId, data.chord_difficulty);
+            } else if (state === 2 && data.daily_practice && data.daily_practice.length) {
+                rendered = Charts.renderCalendar(containerId, data.daily_practice);
+            }
+        } else {
+            var avgAcc = (data.overview && data.overview.avg_accuracy) || null;
+            if (state === 0 && data.progress && data.progress.dates && data.progress.dates.length) {
+                rendered = Charts.renderProgress(containerId, data.progress, data.similarity_trend || null, avgAcc);
+            } else if (state === 1 && data.progress && data.progress.dates && data.progress.dates.length) {
+                rendered = Charts.renderAccuracyOnly(containerId, data.progress, avgAcc);
+            } else if (state === 2 && data.progress && data.progress.dates && data.progress.dates.length) {
+                rendered = Charts.renderSimilarityOnly(containerId, data.progress, data.similarity_trend || null);
+            }
         }
 
         if (rendered) {
             if (emptyEl) emptyEl.style.display = 'none';
-            if (chartEl) chartEl.style.display = 'block';
-            // 确保 ECharts 获取正确尺寸
-            requestAnimationFrame(function() {
-                requestAnimationFrame(function() { rendered.resize(); });
-            });
+            if (chartEl) {
+                chartEl.style.display = 'block';
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        rendered.resize();
+                        chartEl.classList.add('active');
+                    });
+                });
+            }
         } else {
             if (chartEl) chartEl.style.display = 'none';
             if (emptyEl) emptyEl.style.display = 'block';
         }
-    } else if (panel === 'progress') {
-        var containerId = 'progressChartBox';
-        var emptyEl = document.getElementById('progressEmpty');
-        var chartEl = document.getElementById(containerId);
-        var rendered = null;
+        updateCarouselUI(panel);
+    };
 
-        var avgAcc = (data.overview && data.overview.avg_accuracy) || null;
-        if (state === 0 && data.progress && data.progress.dates && data.progress.dates.length) {
-            rendered = Charts.renderProgress(containerId, data.progress, data.similarity_trend || null, avgAcc);
-        } else if (state === 1 && data.progress && data.progress.dates && data.progress.dates.length) {
-            rendered = Charts.renderAccuracyOnly(containerId, data.progress, avgAcc);
-        } else if (state === 2 && data.progress && data.progress.dates && data.progress.dates.length) {
-            rendered = Charts.renderSimilarityOnly(containerId, data.progress, data.similarity_trend || null);
-        }
-
-        if (rendered) {
-            if (emptyEl) emptyEl.style.display = 'none';
-            if (chartEl) chartEl.style.display = 'block';
-            requestAnimationFrame(function() {
-                requestAnimationFrame(function() { rendered.resize(); });
-            });
-        } else {
-            if (chartEl) chartEl.style.display = 'none';
-            if (emptyEl) emptyEl.style.display = 'block';
-        }
+    if (direction !== 0) {
+        setTimeout(doRender, 200);
+    } else {
+        doRender();
     }
-    updateCarouselUI(panel);
 }
 
 function initCarousel() {
@@ -438,24 +439,111 @@ document.addEventListener('DOMContentLoaded', function () {
 
     generateBtn.addEventListener('click', function () {
         showLoading();
-        fetch('/api/teach/generate_advice', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-        }).then(function (res) { return res.json(); })
-          .then(function (data) {
-              var text = data.advice || '暂时无法生成建议，请稍后再试。';
-              text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-              text = text.replace(/\n/g, '<br>');
-              text = text.replace(/## (.*?)(<br>|$)/g, '<strong style="color:#ffd966;font-size:1.05em;">$1</strong><br>');
-              adviceTextEl.innerHTML = text;
-          })
-          .catch(function () {
-              adviceTextEl.innerHTML = '生成失败，请稍后重试';
-          })
-          .finally(function () {
-              hideLoading();
-          });
+        adviceTextEl.innerHTML = '';
+
+        // 取消之前的流
+        if (activeStreamAbort) {
+            activeStreamAbort.abort();
+            activeStreamAbort = null;
+        }
+
+        var fullText = '';
+        var abortController = new AbortController();
+        activeStreamAbort = abortController;
+        var streamDone = false;
+
+        function formatText(text, applyHeading) {
+            var out = text
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/\n/g, '<br>');
+            if (applyHeading) {
+                out = out.replace(/## (.*?)(<br>|$)/g, '<strong style="color:#ffd966;font-size:1.05em;">$1</strong><br>');
+            }
+            return out;
+        }
+
+        function finishStream() {
+            if (streamDone) return;
+            streamDone = true;
+            activeStreamAbort = null;
+            if (isLoading) hideLoading();
+            if (!fullText) {
+                adviceTextEl.innerHTML = '暂时无法生成建议，请稍后再试。';
+                return;
+            }
+            var formatted = formatText(fullText, true);
+            adviceTextEl.innerHTML = formatted;
+        }
+
+        function handleError(errMsg) {
+            if (streamDone) return;
+            streamDone = true;
+            activeStreamAbort = null;
+            if (fullText) {
+                adviceTextEl.innerHTML = formatText(fullText, true);
+            } else {
+                adviceTextEl.innerHTML = errMsg || '生成失败，请稍后重试';
+            }
+            if (isLoading) hideLoading();
+        }
+
+        fetch('/api/teach/advice/stream', {
+            signal: abortController.signal
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = '';
+
+            function pump() {
+                reader.read().then(function (result) {
+                    if (result.done) {
+                        // 流结束但没有收到 done 信号，使用已有文本
+                        if (!streamDone) finishStream();
+                        return;
+                    }
+                    buffer += decoder.decode(result.value, {stream: true});
+                    // 按 \n\n 分割 SSE 消息
+                    var parts = buffer.split('\n\n');
+                    buffer = parts.pop(); // 保留未完成的部分
+                    parts.forEach(function (msg) {
+                        var lines = msg.split('\n');
+                        var dataLines = [];
+                        for (var i = 0; i < lines.length; i++) {
+                            if (lines[i].indexOf('data:') === 0) {
+                                dataLines.push(lines[i].slice(5).trim());
+                            }
+                        }
+                        if (!dataLines.length) return;
+                        try {
+                            var data = JSON.parse(dataLines.join('\n'));
+                            if (data.content) {
+                                fullText += data.content;
+                                if (isLoading) hideLoading();
+                                adviceTextEl.innerHTML = formatText(fullText, false) + '<span class="streaming-cursor">▊</span>';
+                            } else if (data.done) {
+                                finishStream();
+                            } else if (data.error && !streamDone) {
+                                handleError(data.error);
+                            }
+                        } catch (e) {
+                            // JSON parse error, skip
+                        }
+                    });
+                    if (!streamDone) pump();
+                }).catch(function (err) {
+                    if (err.name === 'AbortError') return;
+                    // 流读取中断但已有部分文本
+                    if (!streamDone) handleError(fullText ? '' : '生成失败，请稍后重试');
+                });
+            }
+            pump();
+        }).catch(function (err) {
+            if (err.name === 'AbortError') return;
+            handleError('生成失败，请稍后重试');
+        });
     });
 
     document.getElementById('speak-advice-btn').addEventListener('click', function () {
@@ -480,4 +568,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 window.addEventListener('beforeunload', function () {
     stopAutoRotate();
+    if (activeStreamAbort) {
+        activeStreamAbort.abort();
+    }
 });
