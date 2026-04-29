@@ -307,6 +307,7 @@
                 // 整行点击 = 切换勾选（多选模式）
                 item.addEventListener('click', function(e) {
                     if (window.modalToggleChord) window.modalToggleChord(chord.name);
+                    self.selectChordByName(chord.name);
                     var nowChecked = window.modalIsChordSelected && window.modalIsChordSelected(chord.name);
                     var checkEl = item.querySelector('.popup-chord-check');
                     if (checkEl) {
@@ -452,18 +453,34 @@
                 if (!chord) return;
                 var item = document.createElement('div');
                 item.className = 'test-item';
+                // 点击测试列表项 → 切换指板显示对应和弦
+                item.addEventListener('click', function() {
+                    if (self.currentChord && self.currentChord.id === chord.id) return;
+                    if (self.testMode) {
+                        self.currentTestIndex = idx;
+                        self.goToTestIndex(idx);
+                    } else {
+                        self.elements.chordSelect.value = chord.id;
+                        self.elements.chordSelect.dispatchEvent(new Event('change'));
+                    }
+                });
+                // 当前正在测试/显示的和弦高亮
+                if (self.currentChord && self.currentChord.id === chord.id) {
+                    item.classList.add('current');
+                }
+                var orderSpan = document.createElement('span');
+                orderSpan.className = 'test-item-order';
+                orderSpan.textContent = (idx + 1);
                 var nameSpan = document.createElement('span');
                 nameSpan.className = 'test-item-name';
                 nameSpan.textContent = chord.name;
                 var diffSpan = document.createElement('span');
                 diffSpan.className = 'test-item-difficulty';
-                var difficulty = chord.difficulty || 1;
-                diffSpan.textContent = '难度 ' + difficulty;
+                diffSpan.textContent = chord.difficulty || 1;
                 var statusSpan = document.createElement('span');
                 statusSpan.className = 'test-item-status';
                 var res = self.testResults[idx];
                 var prevRes = self._prevTestResults[idx];
-                // 检测状态变化，添加跳动动画
                 var changed = false;
                 if (res && !prevRes) changed = true;
                 else if (res && prevRes && res.correct !== prevRes.correct) changed = true;
@@ -477,14 +494,14 @@
                         statusSpan.innerHTML = '<span class="test-badge-wrong">✗</span> <span class="test-item-time">--</span>';
                     }
                 } else {
-                    statusSpan.innerHTML = '<span class="test-badge-pending">⏳</span>';
+                    statusSpan.innerHTML = '<span class="test-badge-pending"></span>';
                 }
+                item.appendChild(orderSpan);
                 item.appendChild(nameSpan);
                 item.appendChild(diffSpan);
                 item.appendChild(statusSpan);
                 div.appendChild(item);
             });
-            // 保存当前结果用于下次比较
             this._prevTestResults = this.testResults.slice();
             this.elements.testCountSpan.textContent = this.testList.length;
         }
@@ -600,10 +617,10 @@
             if (chord) {
                 this.currentChord = chord;
                 this.elements.chordSelect.value = chord.id;
-                this.elements.selChordName.textContent = chord.name;
-                this.elements.selChordDesc.textContent = chord.description;
-                this.elements.currentChordName.textContent = chord.name;
-                this.elements.chordDetailContent.textContent = chord.detail;
+                if (this.elements.selChordName) this.elements.selChordName.textContent = chord.name;
+                if (this.elements.selChordDesc) this.elements.selChordDesc.textContent = chord.description;
+                if (this.elements.currentChordName) this.elements.currentChordName.textContent = chord.name;
+                if (this.elements.chordDetailContent) this.elements.chordDetailContent.textContent = chord.detail;
                 this.renderStandardDots(chord);
                 if (this.elements.difficultyBadge) {
                     const difficulty = chord.difficulty || 1;
@@ -637,17 +654,15 @@
                     }, 3000);
                 }
                 this.updateProgress();
+                this.renderTestList();
             }
         }
 
         moveToNextTest() {
             if (this.currentTestIndex + 1 >= this.testList.length) {
                 this.stopTestAndSending();
-                const total = this.stats.correct + this.stats.wrong;
-                const avgTime = this.testResults.filter(r => r && r.correct).reduce((acc, r) => acc + r.time, 0) / (this.stats.correct || 1);
-                alert(`✅ 测试完成！\n正确: ${this.stats.correct}, 错误: ${this.stats.wrong}\n平均正确用时: ${avgTime.toFixed(2)} 秒`);
-                this.elements.progressDisplay.textContent = `${this.testList.length}/${this.testList.length}`;
-                this.elements.currentTimeDisplay.textContent = '0.0 s';
+                this.elements.progressDisplay.textContent = `${this.testList.length}/${this.testList.length} ✓`;
+                this.elements.currentTimeDisplay.textContent = '完成';
                 if (this.cameraManager.stream) {
                     this._closeCamera();
                 }
@@ -704,7 +719,8 @@
 
         recordSkip() {
             if (!this.testMode || this.recordedForCurrentChord) return;
-            this.testResults[this.currentTestIndex] = { correct: false, time: null };
+            const elapsed = (Date.now() - this.chordStartTime) / 1000;
+            this.testResults[this.currentTestIndex] = { correct: false, time: elapsed };
             this.stats.wrong++;
             this.updateStats('wrong');
             this.recordedForCurrentChord = true;
@@ -715,7 +731,7 @@
                 body: JSON.stringify({
                     chord_name: this.currentChord.name,
                     correct: false,
-                    time_spent: 0.0,
+                    time_spent: elapsed,
                     mode: QUICK_MODE ? 'quick' : 'normal'
                 })
             }).catch(err => console.error('保存记录失败:', err));
@@ -875,9 +891,10 @@
 
         // ================= 其他功能方法（保持不变） =================
         _recordUnstable() {
+            const elapsed = (Date.now() - this.chordStartTime) / 1000;
             this.testResults[this.currentTestIndex] = {
                 correct: false,
-                time: null,
+                time: elapsed,
                 unstable: true
             };
             this.stats.unstable = (this.stats.unstable || 0) + 1;
@@ -895,7 +912,7 @@
                     correct: false,
                     is_unstable: true,
                     similarity: similarity,
-                    time_spent: 0,
+                    time_spent: elapsed,
                     mode: QUICK_MODE ? 'quick' : 'normal'
                 })
             }).catch(err => console.error('保存不稳记录失败:', err));
@@ -922,7 +939,8 @@
 
         recordWrong() {
             if (!this.testMode || this.recordedForCurrentChord) return;
-            this.testResults[this.currentTestIndex] = { correct: false, time: null };
+            const elapsed = (Date.now() - this.chordStartTime) / 1000;
+            this.testResults[this.currentTestIndex] = { correct: false, time: elapsed };
             this.stats.wrong++;
             this.updateStats('wrong');
             this.recordedForCurrentChord = true;
@@ -935,7 +953,7 @@
                 body: JSON.stringify({
                     chord_name: this.currentChord.name,
                     correct: false,
-                    time_spent: 0.0,
+                    time_spent: elapsed,
                     mode: QUICK_MODE ? 'quick' : 'normal'
                 })
             }).catch(err => console.error('保存记录失败:', err));
@@ -955,19 +973,33 @@
             switch (result) {
                 case 'correct':
                     this.recordCorrect();
+                    if (!QUICK_MODE) {
+                        this._quickAdvanceTimer = setTimeout(() => {
+                            this._quickAdvanceTimer = null;
+                            if (this.testMode) this.moveToNextTest();
+                        }, 1500);
+                    }
                     break;
                 case 'unstable':
                     this._recordUnstable();
+                    if (!QUICK_MODE) {
+                        this._quickAdvanceTimer = setTimeout(() => {
+                            this._quickAdvanceTimer = null;
+                            if (this.testMode) this.moveToNextTest();
+                        }, 1500);
+                    }
                     break;
                 case 'wrong':
                     if (options.forceSkip) {
                         this.recordSkip();
                     } else {
-                        this.recordWrong();
+                        this._showResultFlash(false);
+                        this._visualStablePassed = false;
+                        this._visualStableReady = false;
+                        this._visualErrorStart = null;
                     }
                     break;
             }
-            // 不再有任何延迟跳转
         }
 
         _handleAudioReady() {
@@ -1012,7 +1044,7 @@
                 } else {
                     if (!this._visualErrorStart) {
                         this._visualErrorStart = performance.now();
-                    } else if (performance.now() - this._visualErrorStart >= 100) {
+                    } else if (performance.now() - this._visualErrorStart >= 1500) {
                         this._visualStablePassed = false;
                         this._visualStableReady = true;
                     }
@@ -1487,10 +1519,10 @@
                 const id = this.elements.chordSelect.value;
                 this.currentChord = this.chords.find(c => c.id === id);
                 if (this.currentChord) {
-                    this.elements.selChordName.textContent = this.currentChord.name;
-                    this.elements.selChordDesc.textContent = this.currentChord.description;
-                    this.elements.currentChordName.textContent = this.currentChord.name;
-                    this.elements.chordDetailContent.textContent = this.currentChord.detail;
+                    if (this.elements.selChordName) this.elements.selChordName.textContent = this.currentChord.name;
+                    if (this.elements.selChordDesc) this.elements.selChordDesc.textContent = this.currentChord.description;
+                    if (this.elements.currentChordName) this.elements.currentChordName.textContent = this.currentChord.name;
+                    if (this.elements.chordDetailContent) this.elements.chordDetailContent.textContent = this.currentChord.detail;
                     this.renderStandardDots(this.currentChord);
                     if (this.elements.difficultyBadge) {
                         const difficulty = this.currentChord.difficulty || 1;
@@ -1538,7 +1570,7 @@
                     return;
                 }
                 if (this.recordedForCurrentChord) {
-                    alert('当前和弦已记录，不能再次跳过');
+                    this.moveToNextTest();
                     return;
                 }
                 this.recordSkip();

@@ -76,15 +76,17 @@ FORCE_NUT_LEFT = False                                  # 根据前端镜像情�
 
 # ---------- Flask应用配置（新增，仅用于满足Flask要求）----------
 SECRET_KEY = 'dev-secret-key'                           # Flask密钥，任意字符串即可
-# config.py 末尾添加
 # 缩略图尺寸（必须与前端 constants.js 中的值一致）
 THUMBNAIL_WIDTH = 640
-# 大模型配置（火山方舟）
-VOLCANO_API_KEY = '06ab62f2-ba88-4b31-b05d-6ce0cce4cd06'          # 替换为实际密钥
-VOLCANO_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'  # 示例地址
-LLM_MODEL = 'doubao-seed-2-0-mini-260215'                # 替换为部署的模型ID
-ENABLE_LLM = True                          # 是否启用大模型
-# config.py 末尾添加
+# 大模型配置（DeepSeek 主力 + 火山方舟备用）
+DEEPSEEK_API_KEY = 'sk-e2943168af8645e594c82104d2f23b65'
+DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions'
+LLM_MODEL = 'deepseek-v4-flash'
+# 火山方舟（备用）
+VOLCANO_API_KEY = '06ab62f2-ba88-4b31-b05d-6ce0cce4cd06g'
+VOLCANO_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+FALLBACK_MODEL = 'doubao-seed-2-0-mini-260215'
+ENABLE_LLM = True
 
 VOLC_TTS_VOICE_TYPE = "zh-CN-XiaoxiaoNeural"   # 或其他音色
 

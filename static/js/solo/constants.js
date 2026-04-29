@@ -18,7 +18,7 @@ const THUMBNAIL_QUALITY = 0.9;
 
 // -------------------- 手部关键点滤波参数 --------------------
 // 滤波类型: 'kalman' | 'oneeuro'
-const FILTER_TYPE = 'kalman';
+const FILTER_TYPE = 'oneeuro';
 
 // Kalman 过程噪声 q — 越大越跟手（对快速运动响应快），越小越平滑（建议 0.01 ~ 0.2）
 const KALMAN_Q = 0.08;
@@ -27,10 +27,10 @@ const KALMAN_Q = 0.08;
 const KALMAN_R = 0.5;
 
 // OneEuroFilter 最小截止频率，越小越平滑（建议范围 0.5 ~ 3.0）
-const FILTER_MIN_CUTOFF = 1.2;
+const FILTER_MIN_CUTOFF = 1.3;
 
 // 速度系数，越大对快速运动响应越快，但可能引入抖动（建议范围 0.01 ~ 0.1）
-const FILTER_BETA = 0.05;
+const FILTER_BETA = 0.06;
 
 // 导数截止频率，通常无需修改
 const FILTER_DCUTOFF = 1.0;

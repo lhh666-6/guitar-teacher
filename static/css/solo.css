@@ -436,3 +436,82 @@ body {
 #chordSelect option .star {
     color: #ffd966; /* 星号金色 */
 }
+
+/* ==========  移动端适配 ========== */
+@media (max-width: 768px) {
+    body { padding: 8px; }
+
+    .train-layout {
+        flex-direction: column;
+        height: auto;
+        gap: 10px;
+    }
+    .left-panel, .center-panel, .right-panel {
+        flex: 1 1 auto;
+        padding: 12px;
+        border-radius: 14px;
+    }
+
+    /* 摄像头区域缩小 */
+    .camera-container { padding: 6px; }
+    #cameraFeed { max-height: 200px; object-fit: contain; }
+
+    /* 指板适应 */
+    .fretboard-mini { max-width: 100%; height: auto; }
+
+    /* 按钮变大便于触控 */
+    button, .mini-btn, .chord-cat-tab {
+        min-height: 40px;
+        min-width: 44px;
+        font-size: 0.85rem;
+    }
+
+    /* 和弦选择弹窗全屏 */
+    .chord-modal-card {
+        width: 95vw;
+        max-height: 90vh;
+        margin: 5vh auto;
+        border-radius: 14px;
+    }
+    .chord-modal-list { max-height: 45vh; }
+
+    /* 结果弹窗 */
+    .result-modal-card {
+        width: 90vw;
+        margin: 10vh auto;
+    }
+
+    /* 底部详情 */
+    .chord-detail-footer { padding: 10px 14px; }
+
+    /* 统计卡片网格 */
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+    /* 导航栏 */
+    .top-nav { flex-wrap: wrap; gap: 6px; }
+    .top-nav a { font-size: 0.8rem; padding: 6px 10px; }
+
+    /* 和弦选择下拉 */
+    #chordSelect { font-size: 0.85rem; }
+
+    /* 测试按钮组 */
+    .test-actions { flex-wrap: wrap; gap: 8px; }
+}
+
+@media (max-width: 480px) {
+    .train-layout { flex-direction: column; gap: 8px; }
+    .left-panel, .center-panel, .right-panel { padding: 10px; border-radius: 10px; }
+
+    #cameraFeed { max-height: 160px; }
+
+    .chord-modal-card { width: 98vw; border-radius: 10px; }
+    .chord-modal-list { max-height: 35vh; }
+    .chord-cat-tab { font-size: 0.75rem; padding: 6px 10px; }
+
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .test-actions { flex-direction: column; }
+    .test-actions button { width: 100%; }
+
+    button { min-height: 44px; font-size: 0.9rem; }
+}
+}

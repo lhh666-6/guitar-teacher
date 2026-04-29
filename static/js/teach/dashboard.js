@@ -151,7 +151,7 @@ function switchCarouselView(panel, data, direction) {
     };
 
     if (direction !== 0) {
-        setTimeout(doRender, 200);
+        setTimeout(doRender, 300);
     } else {
         doRender();
     }
@@ -547,10 +547,31 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('speak-advice-btn').addEventListener('click', function () {
-        var text = adviceTextEl.innerText;
-        if (text && text.indexOf('点击') !== 0 && window.VoiceGuide) {
-            VoiceGuide.speak(text);
-        }
+        var text = adviceTextEl.innerText || adviceTextEl.textContent || '';
+        if (!text || text.indexOf('点击') === 0 || text.indexOf('生成指导') === 0) return;
+        var btn = document.getElementById('speak-advice-btn');
+        btn.disabled = true;
+        btn.textContent = '朗读中...';
+        fetch('/api/tts/speak', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+        .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.blob();
+        })
+        .then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var audio = new Audio(url);
+            audio.onended = function() { URL.revokeObjectURL(url); };
+            audio.play().catch(function(e) { console.error('播放失败:', e); });
+        })
+        .catch(function(err) { console.error('TTS失败:', err); })
+        .finally(function() {
+            btn.disabled = false;
+            btn.textContent = '朗读';
+        });
     });
 
     var refreshBtn = document.getElementById('refreshRecommendBtn');

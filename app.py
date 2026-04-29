@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch(thread=False)
+
 import logging
 import base64
 import os
@@ -97,7 +100,9 @@ recognizer = GuitarFingeringRecognizer(
     yolo_model_path=config.YOLO_MODEL_PATH
 )
 
-executor = ThreadPoolExecutor(max_workers=2)
+executor = ThreadPoolExecutor(max_workers=1)
+_frame_busy = False
+_frame_lock = threading.Lock()
 
 play_records = {}
 records_lock = threading.Lock()
@@ -151,40 +156,58 @@ def handle_hand_landmarks(data):
 
 @socketio.on('thumbnail')
 def handle_thumbnail(data):
+    global _frame_busy
     image_base64 = data.get('image')
     if not image_base64:
-        logger.warning("收到空缩略图数据")
         return True
+    # 缩略图更新不与帧处理争抢 CPU，busy 则跳过
+    with _frame_lock:
+        if _frame_busy:
+            return True
+        _frame_busy = True
 
-    frame = base64_to_cv2(image_base64)
-    if frame is None:
-        logger.warning("缩略图解码失败")
-        return True
+    def _process_thumb(img_b64, sid):
+        global _frame_busy
+        try:
+            frame = base64_to_cv2(img_b64)
+            if frame is None:
+                return
+            success = recognizer.update_fretboard(frame)
+            if success:
+                params = recognizer.get_fretboard_params()
+                if params:
+                    socketio.emit('fretboard_params', params, room=sid)
+        except Exception as e:
+            logger.exception("缩略图处理异常")
+        finally:
+            with _frame_lock:
+                _frame_busy = False
 
-    success = recognizer.update_fretboard(frame)
-    if success:
-        logger.info("指板参数更新成功")
-        params = recognizer.get_fretboard_params()
-        if params:
-            socketio.emit('fretboard_params', params, room=request.sid)
-    else:
-        logger.warning("指板参数更新失败（可能未检测到琴枕/琴桥）")
-
+    executor.submit(_process_thumb, image_base64, request.sid)
     return True
 
 @socketio.on('frame')
 def handle_frame(data, callback=None):
+    global _frame_busy
     image_base64 = data.get('image')
     if not image_base64:
         if callback:
             callback('failed')
         return
+    # 低配服务器防拥塞：上一帧还在处理就跳过，不留积压
+    with _frame_lock:
+        if _frame_busy:
+            if callback:
+                callback('busy')
+            return
+        _frame_busy = True
     sid = request.sid
     executor.submit(process_and_emit, image_base64, sid)
     if callback:
         callback('ok')
 
 def process_and_emit(image_base64: str, sid: str):
+    global _frame_busy
     timings = {}
     t_start = time.perf_counter()
 
@@ -209,17 +232,21 @@ def process_and_emit(image_base64: str, sid: str):
         timings['emit'] = (time.perf_counter() - t_emit) * 1000
 
         total_ms = (time.perf_counter() - t_start) * 1000
-        logger.info(
-            f"[APP_TIMING] 解码={timings['decode']:.1f}ms, 推理={timings['inference']:.1f}ms, "
-            f"发送={timings['emit']:.1f}ms, 总计={total_ms:.1f}ms | "
-            f"按点: {len(result.get('positions', []))} | 横按: {result.get('barre') is not None}"
-        )
+        if config.DEBUG:
+            logger.info(
+                f"[APP_TIMING] 解码={timings['decode']:.1f}ms, 推理={timings['inference']:.1f}ms, "
+                f"发送={timings['emit']:.1f}ms, 总计={total_ms:.1f}ms | "
+                f"按点: {len(result.get('positions', []))} | 横按: {result.get('barre') is not None}"
+            )
     except Exception as e:
         logger.exception("处理帧时发生异常")
         _safe_emit('detection_result', {
             'status': 'failed',
             'error': '处理失败，请稍后重试'
         }, room=sid)
+    finally:
+        with _frame_lock:
+            _frame_busy = False
 
 # ---------- HTTP 接口 ----------
 @app.route('/api/solo/save_record', methods=['POST'])
@@ -400,6 +427,57 @@ def history_stats():
 # ---------- 教学驾驶舱 API ----------
 llm_service = LLMService()
 
+
+def _build_advice_stats(user_id):
+    """构建 LLM 建议所需的统计数据，两个 endpoint 共用"""
+    overview = user_stats.get_overview(user_id)
+    mastery = user_stats.get_chord_mastery(user_id)
+    progress = user_stats.get_progress_trend(user_id)
+    recent = user_stats.get_recent_records(user_id, limit=10)
+    mode_ratio = user_stats.get_mode_ratio(user_id)
+    chord_diff_dist = user_stats.get_chord_difficulty_distribution(user_id)
+
+    unstable_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == user_id, TrainingRecord.is_unstable == True).scalar()
+    total_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == user_id).scalar()
+    unstable_ratio = round((unstable_count / total_count * 100) if total_count else 0.0, 1)
+
+    rates = progress.get('rates', [])
+    if len(rates) >= 3:
+        recent_avg = sum(rates[-3:]) / 3
+        earlier_avg = sum(rates[:3]) / 3 if len(rates) >= 6 else rates[0]
+        if recent_avg - earlier_avg > 5:
+            trend_desc = '上升'
+        elif recent_avg - earlier_avg < -5:
+            trend_desc = '下降'
+        else:
+            trend_desc = '平稳'
+    else:
+        trend_desc = '数据不足'
+
+    recent_similarities = db.session.query(
+        TrainingRecord.similarity
+    ).filter(
+        TrainingRecord.user_id == user_id,
+        TrainingRecord.similarity.isnot(None)
+    ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
+    sim_trend = [float(r.similarity) for r in reversed(recent_similarities)]
+
+    return {
+        'overview': overview,
+        'mastery': mastery,
+        'progress': progress,
+        'recent_records': recent,
+        'mode_ratio': mode_ratio,
+        'unstable_ratio': unstable_ratio,
+        'unstable_count': unstable_count,
+        'trend_desc': trend_desc,
+        'chord_difficulty': chord_diff_dist,
+        'similarity_trend': sim_trend
+    }
+
+
 @app.route('/api/teach/dashboard')
 @login_required
 def get_teach_dashboard():
@@ -411,14 +489,12 @@ def get_teach_dashboard():
     daily_practice = user_stats.get_daily_practice_count(current_user.id)
     chord_diff_dist = user_stats.get_chord_difficulty_distribution(current_user.id)
 
-    # 不稳统计
     unstable_count = db.session.query(func.count(TrainingRecord.id))\
         .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.is_unstable == True).scalar()
     total_count = db.session.query(func.count(TrainingRecord.id))\
         .filter(TrainingRecord.user_id == current_user.id).scalar()
     unstable_ratio = (unstable_count / total_count * 100) if total_count else 0.0
 
-    # 相似度趋势（最近20条，已调整）
     recent_similarities = db.session.query(
         TrainingRecord.correct, TrainingRecord.similarity
     ).filter(
@@ -448,58 +524,11 @@ def get_teach_dashboard():
         'recent_mode': mode_ratio.get('quick', 0) > 0 and 'quick' or 'normal'
     })
 
+
 @app.route('/api/teach/generate_advice', methods=['POST'])
 @login_required
 def generate_advice():
-    overview = user_stats.get_overview(current_user.id)
-    mastery = user_stats.get_chord_mastery(current_user.id)
-    progress = user_stats.get_progress_trend(current_user.id)
-    recent = user_stats.get_recent_records(current_user.id, limit=10)
-    mode_ratio = user_stats.get_mode_ratio(current_user.id)
-    chord_diff_dist = user_stats.get_chord_difficulty_distribution(current_user.id)
-
-    # 不稳统计
-    unstable_count = db.session.query(func.count(TrainingRecord.id))\
-        .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.is_unstable == True).scalar()
-    total_count = db.session.query(func.count(TrainingRecord.id))\
-        .filter(TrainingRecord.user_id == current_user.id).scalar()
-    unstable_ratio = round((unstable_count / total_count * 100) if total_count else 0.0, 1)
-
-    # 趋势摘要
-    rates = progress.get('rates', [])
-    if len(rates) >= 3:
-        recent_avg = sum(rates[-3:]) / 3
-        earlier_avg = sum(rates[:3]) / 3 if len(rates) >= 6 else rates[0]
-        if recent_avg - earlier_avg > 5:
-            trend_desc = '上升'
-        elif recent_avg - earlier_avg < -5:
-            trend_desc = '下降'
-        else:
-            trend_desc = '平稳'
-    else:
-        trend_desc = '数据不足'
-
-    # 相似度趋势
-    recent_similarities = db.session.query(
-        TrainingRecord.similarity
-    ).filter(
-        TrainingRecord.user_id == current_user.id,
-        TrainingRecord.similarity.isnot(None)
-    ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
-    sim_trend = [float(r.similarity) for r in reversed(recent_similarities)]
-
-    stats = {
-        'overview': overview,
-        'mastery': mastery,
-        'progress': progress,
-        'recent_records': recent,
-        'mode_ratio': mode_ratio,
-        'unstable_ratio': unstable_ratio,
-        'unstable_count': unstable_count,
-        'trend_desc': trend_desc,
-        'chord_difficulty': chord_diff_dist,
-        'similarity_trend': sim_trend
-    }
+    stats = _build_advice_stats(current_user.id)
     advice = llm_service.generate_advice(stats)
     if advice:
         return jsonify({'advice': advice})
@@ -511,64 +540,42 @@ def generate_advice():
 @login_required
 def generate_advice_stream():
     """SSE 流式生成教学建议，避免 504 超时"""
-    overview = user_stats.get_overview(current_user.id)
-    mastery = user_stats.get_chord_mastery(current_user.id)
-    progress = user_stats.get_progress_trend(current_user.id)
-    recent = user_stats.get_recent_records(current_user.id, limit=10)
-    mode_ratio = user_stats.get_mode_ratio(current_user.id)
-    chord_diff_dist = user_stats.get_chord_difficulty_distribution(current_user.id)
-
-    unstable_count = db.session.query(func.count(TrainingRecord.id))\
-        .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.is_unstable == True).scalar()
-    total_count = db.session.query(func.count(TrainingRecord.id))\
-        .filter(TrainingRecord.user_id == current_user.id).scalar()
-    unstable_ratio = round((unstable_count / total_count * 100) if total_count else 0.0, 1)
-
-    rates = progress.get('rates', [])
-    if len(rates) >= 3:
-        recent_avg = sum(rates[-3:]) / 3
-        earlier_avg = sum(rates[:3]) / 3 if len(rates) >= 6 else rates[0]
-        if recent_avg - earlier_avg > 5:
-            trend_desc = '上升'
-        elif recent_avg - earlier_avg < -5:
-            trend_desc = '下降'
-        else:
-            trend_desc = '平稳'
-    else:
-        trend_desc = '数据不足'
-
-    recent_similarities = db.session.query(
-        TrainingRecord.similarity
-    ).filter(
-        TrainingRecord.user_id == current_user.id,
-        TrainingRecord.similarity.isnot(None)
-    ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
-    sim_trend = [float(r.similarity) for r in reversed(recent_similarities)]
-
-    stats = {
-        'overview': overview,
-        'mastery': mastery,
-        'progress': progress,
-        'recent_records': recent,
-        'mode_ratio': mode_ratio,
-        'unstable_ratio': unstable_ratio,
-        'unstable_count': unstable_count,
-        'trend_desc': trend_desc,
-        'chord_difficulty': chord_diff_dist,
-        'similarity_trend': sim_trend
-    }
+    stats = _build_advice_stats(current_user.id)
 
     def generate():
-        try:
-            for chunk in llm_service.generate_advice_stream(stats):
-                if chunk is None:
-                    yield f"data: {json.dumps({'error': '生成失败，请稍后重试'})}\n\n"
+        import eventlet
+        from eventlet.queue import Queue, Empty
+        q = Queue()
+
+        def worker():
+            try:
+                for chunk in llm_service.generate_advice_stream(stats):
+                    q.put(('content', chunk))
+                q.put(('done', None))
+            except Exception as e:
+                logger.error(f"流式生成异常: {e}")
+                q.put(('error', str(e)))
+
+        eventlet.spawn(worker)
+
+        while True:
+            try:
+                item = q.get(timeout=10)
+                kind, value = item
+                if kind == 'content':
+                    if value is None:
+                        yield f"data: {json.dumps({'error': '生成失败，请稍后重试'})}\n\n"
+                        return
+                    yield f"data: {json.dumps({'content': value})}\n\n"
+                elif kind == 'done':
+                    yield f"data: {json.dumps({'done': True})}\n\n"
                     return
-                yield f"data: {json.dumps({'content': chunk})}\n\n"
-            yield f"data: {json.dumps({'done': True})}\n\n"
-        except Exception as e:
-            logger.error(f"流式生成异常: {e}")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                elif kind == 'error':
+                    yield f"data: {json.dumps({'error': value})}\n\n"
+                    return
+            except Empty:
+                # 10 秒无数据 → 心跳注释，保持代理连接不超时
+                yield ": heartbeat\n\n"
 
     return Response(
         stream_with_context(generate()),
@@ -655,15 +662,11 @@ def handle_voice_command(data):
 
 # ---------- 【最终修复】启动代码（解决 WebSocket 400） ----------
 if __name__ == '__main__':
-    # 强制修复 eventlet 异步，必须加这两行
-    import eventlet
-    # eventlet.monkey_patch()
-
     logger.info(f"启动服务器，debug={config.DEBUG}")
     socketio.run(
         app,
         debug=config.DEBUG,
-        host='0.0.0.0',    # 允许公网访问
+        host='0.0.0.0',
         port=5000,
         use_reloader=False
     )

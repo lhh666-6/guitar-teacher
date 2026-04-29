@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 / 注册 - 智能吉他教学</title>
+    <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}?v={{ APP_VERSION }}">
 </head>
 <body>
@@ -11,6 +12,7 @@
     <div id="particles"></div>
 
     <div class="glass-card">
+        <div class="guitar-icon"><i class="fas fa-guitar"></i></div>
         <div class="tabs">
             <button class="tab-btn active" data-tab="login">登 录</button>
             <button class="tab-btn" data-tab="register">注 册</button>

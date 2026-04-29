@@ -287,9 +287,16 @@
             flex-direction: column;
             gap: 12px;
         }
-        .right-panel > div {
-            flex: 1;
+        .right-panel > div:first-child {
+            flex: 1 1 auto;
             min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow: hidden;
+        }
+        .right-panel > div:last-child {
+            flex: 0 0 auto;
         }
 
         .camera-container {
@@ -379,33 +386,89 @@
         .fretboard-mini {
             width: 100%;
             height: 350px;
-            background: linear-gradient(180deg, #8B6340 0%, #6b4425 50%, #5c3a1e 100%);
+            background:
+                radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.03) 0%, transparent 60%),
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0,0,0,0.03) 2px,
+                    rgba(0,0,0,0.03) 4px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 6px,
+                    rgba(0,0,0,0.02) 6px,
+                    rgba(0,0,0,0.02) 7px
+                ),
+                linear-gradient(180deg, #4a2c17 0%, #5c361e 15%, #6b4126 30%, #5a351d 80%, #3d2010 100%);
             border-radius: 12px;
             position: relative;
-            padding: 30px 20px;
-            border-bottom: 2px solid rgba(0,0,0,0.3);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-            transform: none;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            padding: 38px 24px 30px 30px;  /* 上边留出琴枕空间 */
+            border-bottom: 3px solid #2a1508;
+            box-shadow:
+                0 8px 32px rgba(0,0,0,0.5),
+                0 2px 8px rgba(0,0,0,0.3),
+                inset 0 8px 20px rgba(0,0,0,0.15);
+            transform: perspective(900px) rotateX(4deg);
+            transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.5s ease;
             isolation: isolate;
             margin-top: 4px;
+        }
+        .fretboard-mini:hover {
+            transform: perspective(900px) rotateX(0deg);
+            box-shadow:
+                0 12px 40px rgba(0,0,0,0.55),
+                0 4px 12px rgba(0,0,0,0.35),
+                inset 0 8px 20px rgba(0,0,0,0.15);
+        }
+        /* 琴枕 */
+        .fretboard-mini::before {
+            content: '';
+            position: absolute;
+            top: 38px;
+            left: 24px;
+            right: 24px;
+            height: 4px;
+            background: linear-gradient(180deg, #f5f0e8 0%, #e8e0d0 40%, #d4c8b0 60%, #b8a890 100%);
+            border-radius: 2px;
+            z-index: 35;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
 
         .fret-mini {
             position: absolute;
             top: 0; bottom: 0;
-            width: 2px;
-            background: rgba(255,255,255,0.35);
+            width: 2.5px;
+            background: linear-gradient(90deg, #c0c0c0, #e8e8e8, #c0c0c0);
             z-index: 10;
             border-radius: 1px;
-            transform: translateX(-1px);
+            transform: translateX(-1.25px);
+            box-shadow: 0 0 2px rgba(0,0,0,0.2), 1px 0 1px rgba(255,255,255,0.3);
         }
         .string-mini {
             position: absolute;
             left: 0; right: 0;
-            height: 1.5px;
-            background: rgba(220,210,190,0.55);
+            height: 1.8px;
+            background: linear-gradient(180deg,
+                rgba(180,170,155,0.4) 0%,
+                rgba(240,235,225,0.9) 30%,
+                rgba(255,252,245,1) 50%,
+                rgba(220,210,195,0.7) 70%,
+                rgba(160,145,130,0.35) 100%);
             z-index: 20;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+        }
+        /* 琴弦在指板上的投影 */
+        .string-mini::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 0; right: 0;
+            height: 1px;
+            background: rgba(0,0,0,0.15);
+            filter: blur(1px);
         }
         .dot-container {
             position: absolute;
@@ -415,33 +478,37 @@
         }
         .dot {
             position: absolute;
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             transform: translate(-50%, -50%);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
-            font-weight: 700;
-            color: rgba(0,0,0,0.75);
-            text-shadow: 0 0 2px rgba(255,255,255,0.3);
+            font-size: 11px;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
             z-index: 30;
             pointer-events: none;
             transition: transform 0.15s ease, box-shadow 0.2s ease;
+            letter-spacing: -0.5px;
         }
         .dot.standard {
-            background: radial-gradient(circle at 40% 35%, #f5ede0 0%, #c4b498 60%, #a89070 100%);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25);
+            background: radial-gradient(circle at 40% 35%, #5dfc8e 0%, #16a34a 45%, #0d7a32 80%, #064e1e 100%);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35), 0 0 12px rgba(34,197,94,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+            border: 1.5px solid rgba(0,0,0,0.15);
         }
         .dot.user-correct {
-            background: radial-gradient(circle at 40% 35%, #4ae07a 0%, #1f8b4c 60%, #145a30 100%);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(46,204,113,0.35);
+            background: radial-gradient(circle at 40% 35%, #5dfc8e 0%, #16a34a 45%, #0d7a32 80%, #064e1e 100%);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35), 0 0 16px rgba(34,197,94,0.6), 0 0 0 3px rgba(255,255,255,0.7);
+            border: 1.5px solid rgba(0,0,0,0.15);
             animation: dotPopIn 0.3s cubic-bezier(0.2,0.9,0.4,1);
         }
         .dot.user-wrong {
-            background: radial-gradient(circle at 40% 35%, #f26878 0%, #c0392b 60%, #7b1a1a 100%);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(231,76,60,0.35);
+            background: radial-gradient(circle at 40% 35%, #f87171 0%, #dc2626 55%, #991b1b 100%);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35), 0 0 14px rgba(239,68,68,0.5), 0 0 0 3px rgba(255,255,255,0.5);
+            border: 1.5px solid rgba(0,0,0,0.15);
             animation: dotPopIn 0.3s cubic-bezier(0.2,0.9,0.4,1);
         }
         @keyframes dotPopIn {
@@ -1117,6 +1184,32 @@
         }
         .test-item.just-changed {
             animation: testItemPulse 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .test-item-order {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(255, 215, 140, 0.15);
+            border: 1px solid rgba(255, 215, 140, 0.25);
+            color: #c0a88b;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.25s;
+        }
+        .test-item.current .test-item-order {
+            background: rgba(111, 191, 76, 0.2);
+            border-color: rgba(111, 191, 76, 0.5);
+            color: #6fbf4c;
+            box-shadow: 0 0 6px rgba(111, 191, 76, 0.25);
+        }
+        .test-item.current {
+            border-color: rgba(111, 191, 76, 0.55) !important;
+            background: rgba(111, 191, 76, 0.06) !important;
+            box-shadow: 0 0 10px rgba(111, 191, 76, 0.1);
         }
 
         /* 5. 进度区呼吸光 */

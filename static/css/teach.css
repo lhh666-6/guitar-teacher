@@ -195,7 +195,7 @@ body {
     height: 340px;
     opacity: 0;
     transform: translateY(16px) scale(0.98);
-    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
     pointer-events: none;
 }
 .chart-box.active {
@@ -526,6 +526,23 @@ body {
     min-height: 80px;
     max-height: 500px;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 215, 140, 0.25) transparent;
+}
+.advice-content::-webkit-scrollbar {
+    width: 6px;
+}
+.advice-content::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+}
+.advice-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 140, 0.25);
+    border-radius: 3px;
+    transition: background 0.3s;
+}
+.advice-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 215, 140, 0.45);
 }
 .advice-text {
     margin: 0;
