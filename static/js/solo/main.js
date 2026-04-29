@@ -57,6 +57,7 @@
             this.filters = [];
             this.lastThumbnailTime = 0;
             this.sendingEnabled = false;
+            this._thumbnailCanvas = null;
 
             // 关键点发送节流
             this.lastLandmarkSendTime = 0;
@@ -155,7 +156,8 @@
                 fretboardMini: document.getElementById('fretboardMini'),
                 trainLayout: document.querySelector('.train-layout'),
                 videoContainer: document.querySelector('.camera-container'),
-                difficultyBadge: document.getElementById('difficultyBadge')
+                difficultyBadge: document.getElementById('difficultyBadge'),
+                perfIndicator: document.getElementById('perfIndicator')
             };
 
             // 叠加画布（若不存在则创建）
@@ -422,45 +424,67 @@
             return STRING_COUNT - backendString;
         }
 
-        updateStats() {
+        updateStats(changedKey) {
             this.elements.statCorrect.textContent = this.stats.correct;
             this.elements.statWrong.textContent = this.stats.wrong;
-            const total = this.stats.correct + this.stats.wrong;
+            var total = this.stats.correct + this.stats.wrong;
             this.elements.statRate.textContent = total ? ((this.stats.correct / total) * 100).toFixed(1) + '%' : '0%';
+            // 分数跳动动画
+            if (changedKey) {
+                var el = changedKey === 'correct' ? this.elements.statCorrect :
+                         changedKey === 'wrong' ? this.elements.statWrong : this.elements.statRate;
+                if (el) {
+                    el.classList.remove('stat-bounce');
+                    void el.offsetWidth;
+                    el.classList.add('stat-bounce');
+                }
+            }
         }
 
         renderTestList() {
-            const div = this.elements.testListDiv;
+            var div = this.elements.testListDiv;
             div.innerHTML = '';
-            this.testList.forEach((id, idx) => {
-                const chord = this.chords.find(c => c.id === id);
+            var self = this;
+            this._prevTestResults = this._prevTestResults || [];
+            this.testList.forEach(function(id, idx) {
+                var chord = self.chords.find(function(c) { return c.id === id; });
                 if (!chord) return;
-                const item = document.createElement('div');
+                var item = document.createElement('div');
                 item.className = 'test-item';
-                const nameSpan = document.createElement('span');
+                var nameSpan = document.createElement('span');
                 nameSpan.className = 'test-item-name';
                 nameSpan.textContent = chord.name;
-                const diffSpan = document.createElement('span');
+                var diffSpan = document.createElement('span');
                 diffSpan.className = 'test-item-difficulty';
-                const difficulty = chord.difficulty || 1;
-                diffSpan.textContent = `难度 ${difficulty}`;
-                const statusSpan = document.createElement('span');
+                var difficulty = chord.difficulty || 1;
+                diffSpan.textContent = '难度 ' + difficulty;
+                var statusSpan = document.createElement('span');
                 statusSpan.className = 'test-item-status';
-                const res = this.testResults[idx];
+                var res = self.testResults[idx];
+                var prevRes = self._prevTestResults[idx];
+                // 检测状态变化，添加跳动动画
+                var changed = false;
+                if (res && !prevRes) changed = true;
+                else if (res && prevRes && res.correct !== prevRes.correct) changed = true;
+                if (changed) {
+                    item.classList.add('just-changed');
+                }
                 if (res !== undefined && res !== null) {
                     if (res.correct) {
-                        statusSpan.innerHTML = `<span class="test-badge-correct">✓</span> <span class="test-item-time">${res.time.toFixed(1)}s</span>`;
+                        statusSpan.innerHTML = '<span class="test-badge-correct">✓</span> <span class="test-item-time">' + res.time.toFixed(1) + 's</span>';
                     } else {
-                        statusSpan.innerHTML = `<span class="test-badge-wrong">✗</span> <span class="test-item-time">--</span>`;
+                        statusSpan.innerHTML = '<span class="test-badge-wrong">✗</span> <span class="test-item-time">--</span>';
                     }
                 } else {
-                    statusSpan.innerHTML = `<span class="test-badge-pending">⏳</span>`;
+                    statusSpan.innerHTML = '<span class="test-badge-pending">⏳</span>';
                 }
                 item.appendChild(nameSpan);
                 item.appendChild(diffSpan);
                 item.appendChild(statusSpan);
                 div.appendChild(item);
             });
+            // 保存当前结果用于下次比较
+            this._prevTestResults = this.testResults.slice();
             this.elements.testCountSpan.textContent = this.testList.length;
         }
 
@@ -509,6 +533,11 @@
             this.sendingEnabled = false;
             this._cleanupCoreState();
             this.testMode = false;
+            if (this.elements.videoContainer) {
+                this.elements.videoContainer.classList.remove('detecting');
+            }
+            var progressArea = document.querySelector('.test-progress-area');
+            if (progressArea) progressArea.classList.remove('test-active');
             this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
             this._exitFullscreenAndCleanUI();
             if (this.currentChord) {
@@ -525,6 +554,9 @@
             this.cameraManager.close();
             this.elements.toggleCamera.textContent = '开启';
             this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
+            this._perfFrameTimes = [];
+            this._lastThumbnailRtt = 0;
+            if (this.elements.perfIndicator) this.elements.perfIndicator.style.display = 'none';
             this._exitFullscreenAndCleanUI();
             this.socketManager.disconnect();
             this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
@@ -576,6 +608,15 @@
                 if (this.elements.difficultyBadge) {
                     const difficulty = chord.difficulty || 1;
                     this.elements.difficultyBadge.textContent = '难度' + difficulty;
+                    this.elements.difficultyBadge.classList.remove('show');
+                    void this.elements.difficultyBadge.offsetWidth;
+                    this.elements.difficultyBadge.classList.add('show');
+                }
+                // 和弦标题辉光
+                if (this.elements.currentChordName) {
+                    this.elements.currentChordName.classList.remove('glow-pop');
+                    void this.elements.currentChordName.offsetWidth;
+                    this.elements.currentChordName.classList.add('glow-pop');
                 }
                 this.recordedForCurrentChord = false;
                 this.chordStartTime = Date.now();
@@ -621,7 +662,7 @@
             const elapsed = (Date.now() - this.chordStartTime) / 1000;
             this.testResults[this.currentTestIndex] = { correct: true, time: elapsed };
             this.stats.correct++;
-            this.updateStats();
+            this.updateStats('correct');
             this.recordedForCurrentChord = true;
             this.renderTestList();
             this._showResultFlash(true);
@@ -662,7 +703,7 @@
             if (!this.testMode || this.recordedForCurrentChord) return;
             this.testResults[this.currentTestIndex] = { correct: false, time: null };
             this.stats.wrong++;
-            this.updateStats();
+            this.updateStats('wrong');
             this.recordedForCurrentChord = true;
             this.renderTestList();
             fetch('/api/save_record', {
@@ -765,7 +806,7 @@
                 dot.className = `dot ${p.type === 'standard' ? 'standard' : (p.correct ? 'user-correct' : 'user-wrong')}`;
                 dot.style.left = (x - DOT_RADIUS) + 'px';
                 if (p.type === 'standard') {
-                    dot.style.top = (y - DOT_RADIUS + DOT_RADIUS) + 'px';
+                    dot.style.top = (y - DOT_RADIUS) + 'px';
                 } else {
                     dot.style.top = (y - DOT_RADIUS) + 'px';
                 }
@@ -841,6 +882,10 @@
                 unstable: true
             };
             this.stats.unstable = (this.stats.unstable || 0) + 1;
+            this.stats.wrong++;
+            this.updateStats('wrong');
+            this.recordedForCurrentChord = true;
+            this.renderTestList();
             console.log('[记录] 按弦不稳');
             const similarity = this.audioResultCache ? this.audioResultCache.confidence : null;
             fetch('/api/save_record', {
@@ -871,7 +916,7 @@
             if (!this.testMode || this.recordedForCurrentChord) return;
             this.testResults[this.currentTestIndex] = { correct: false, time: null };
             this.stats.wrong++;
-            this.updateStats();
+            this.updateStats('wrong');
             this.recordedForCurrentChord = true;
             this.renderTestList();
             this._showResultFlash(false);
@@ -919,7 +964,7 @@
             if (this.audioTimeout) clearTimeout(this.audioTimeout);
             this.audioTimeout = null;
             this.audioWaiting = false;
-            const visualOk = this._visualStableReady ? this._visualStablePassed : this._visualStablePassed;
+            const visualOk = this._visualStableReady ? this._visualStablePassed : false;
             const result = window.evaluateChord(visualOk, this.audioResultCache, { threshold: 0.55 });
             this._finalizeChord(result);
         }
@@ -1071,25 +1116,34 @@
             this._prevLandmarks = landmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z }));
 
             // ──────────────────────────────────────
-            // 平滑滤波（扩展为 x,y,z 三维）
+            // 平滑滤波（支持 Kalman / OneEuro 两种类型）
             // ──────────────────────────────────────
             const smoothed = [];
+            const useKalman = (typeof FILTER_TYPE !== 'undefined' && FILTER_TYPE === 'kalman');
             for (let i = 0; i < landmarks.length; i++) {
                 const lm = landmarks[i];
                 if (!this.filters[i]) {
-                    // 首次创建滤波器，使用动态参数初始化
-                    this.filters[i] = {
-                        x: new OneEuroFilter(now, lm.x, dynamicMinCutoff, dynamicBeta, DCUTOFF),
-                        y: new OneEuroFilter(now, lm.y, dynamicMinCutoff, dynamicBeta, DCUTOFF),
-                        z: new OneEuroFilter(now, lm.z, dynamicMinCutoff, dynamicBeta, DCUTOFF)
-                    };
+                    if (useKalman) {
+                        this.filters[i] = {
+                            x: new KalmanFilter(now, lm.x, KALMAN_Q, KALMAN_R),
+                            y: new KalmanFilter(now, lm.y, KALMAN_Q, KALMAN_R),
+                            z: new KalmanFilter(now, lm.z, KALMAN_Q, KALMAN_R)
+                        };
+                    } else {
+                        this.filters[i] = {
+                            x: new OneEuroFilter(now, lm.x, dynamicMinCutoff, dynamicBeta, DCUTOFF),
+                            y: new OneEuroFilter(now, lm.y, dynamicMinCutoff, dynamicBeta, DCUTOFF),
+                            z: new OneEuroFilter(now, lm.z, dynamicMinCutoff, dynamicBeta, DCUTOFF)
+                        };
+                    }
                     smoothed.push({ x: lm.x, y: lm.y, z: lm.z });
                 } else {
-                    // 更新每个滤波器的参数（因为它们是动态的）
-                    ['x', 'y', 'z'].forEach(axis => {
-                        this.filters[i][axis].mincutoff = dynamicMinCutoff;
-                        this.filters[i][axis].beta = dynamicBeta;
-                    });
+                    if (!useKalman) {
+                        ['x', 'y', 'z'].forEach(axis => {
+                            this.filters[i][axis].mincutoff = dynamicMinCutoff;
+                            this.filters[i][axis].beta = dynamicBeta;
+                        });
+                    }
                     const sx = this.filters[i].x.filter(now, lm.x);
                     const sy = this.filters[i].y.filter(now, lm.y);
                     const sz = this.filters[i].z.filter(now, lm.z);
@@ -1193,11 +1247,25 @@
            }, 2000);
        }
 
+            // FPS 统计
+            if (!this._perfFrameTimes) this._perfFrameTimes = [];
+            this._perfFrameTimes.push(now);
+            // 只保留最近 1 秒内的帧
+            while (this._perfFrameTimes.length > 0 && this._perfFrameTimes[0] < now - 1000) {
+                this._perfFrameTimes.shift();
+            }
+            this._updatePerfDisplay();
+
             const sendTime = now;
             const targetHeight = Math.round(THUMBNAIL_WIDTH * video.videoHeight / video.videoWidth);
-            const canvas = document.createElement('canvas');
-            canvas.width = THUMBNAIL_WIDTH;
-            canvas.height = targetHeight;
+            if (!this._thumbnailCanvas) {
+                this._thumbnailCanvas = document.createElement('canvas');
+            }
+            const canvas = this._thumbnailCanvas;
+            if (canvas.width !== THUMBNAIL_WIDTH || canvas.height !== targetHeight) {
+                canvas.width = THUMBNAIL_WIDTH;
+                canvas.height = targetHeight;
+            }
 
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, THUMBNAIL_WIDTH, targetHeight);
@@ -1205,8 +1273,28 @@
 
             this.socketManager.emit('thumbnail', { image: imageBase64 }, (response) => {
                 const rtt = performance.now() - sendTime;
+                this._lastThumbnailRtt = Math.round(rtt);
                 this._updateThumbnailRtt(rtt);
             });
+        }
+
+        _updatePerfDisplay() {
+            var el = this.elements.perfIndicator;
+            if (!el) return;
+            // 摄像头关闭时隐藏
+            if (!this.cameraManager.stream) {
+                el.style.display = 'none';
+                return;
+            }
+            el.style.display = 'inline';
+            var now = performance.now();
+            // 节流更新，200ms 一次
+            if (this._lastPerfUpdate && now - this._lastPerfUpdate < 200) return;
+            this._lastPerfUpdate = now;
+            var fps = this._perfFrameTimes ? this._perfFrameTimes.length : 0;
+            var rtt = this._lastThumbnailRtt || 0;
+            var imgSize = THUMBNAIL_WIDTH + 'px';
+            el.textContent = fps + 'fps | ' + rtt + 'ms | ' + imgSize;
         }
 
 
@@ -1305,6 +1393,10 @@
             if (this.timerInterval) clearInterval(this.timerInterval);
 
             this.sendingEnabled = true;
+            // 摄像头检测脉冲
+            if (this.elements.videoContainer) {
+                this.elements.videoContainer.classList.add('detecting');
+            }
             this.audioResultCache = null;
             this.audioWaiting = false;
             if (this.audioVerifier) {
@@ -1349,6 +1441,9 @@
             if (this.elements.trainLayout) {
                 this.elements.trainLayout.classList.add('test-mode');
             }
+            // 进度条脉冲
+            var progressArea = document.querySelector('.test-progress-area');
+            if (progressArea) progressArea.classList.add('test-active');
             this.renderTestList();
 
             if (this.elements.videoContainer) {
@@ -1390,6 +1485,15 @@
                     if (this.elements.difficultyBadge) {
                         const difficulty = this.currentChord.difficulty || 1;
                         this.elements.difficultyBadge.textContent = '难度' + difficulty;
+                        this.elements.difficultyBadge.classList.remove('show');
+                        void this.elements.difficultyBadge.offsetWidth;
+                        this.elements.difficultyBadge.classList.add('show');
+                    }
+                    // 和弦标题辉光
+                    if (this.elements.currentChordName) {
+                        this.elements.currentChordName.classList.remove('glow-pop');
+                        void this.elements.currentChordName.offsetWidth;
+                        this.elements.currentChordName.classList.add('glow-pop');
                     }
                     // 自动加入测试列表
                     if (!this.testList.includes(this.currentChord.id)) {

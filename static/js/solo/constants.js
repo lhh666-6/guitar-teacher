@@ -11,12 +11,21 @@ const FRAME_INTERVAL = 200;
 // 缩略图宽度（像素），高度按比例自动计算
 // 提高此值可增加后端 YOLO 精度，但会增加网络流量
 // 必须与后端 config.py 中的 THUMBNAIL_WIDTH 一致
-const THUMBNAIL_WIDTH = 960;
+const THUMBNAIL_WIDTH = 640;
 
 // JPEG 压缩质量（0.0 ~ 1.0），0.9 视觉无损
 const THUMBNAIL_QUALITY = 0.9;
 
 // -------------------- 手部关键点滤波参数 --------------------
+// 滤波类型: 'kalman' | 'oneeuro'
+const FILTER_TYPE = 'kalman';
+
+// Kalman 过程噪声 q — 越大越跟手（对快速运动响应快），越小越平滑（建议 0.01 ~ 0.2）
+const KALMAN_Q = 0.08;
+
+// Kalman 测量噪声 r — 越小越信任原始测量值（建议 0.1 ~ 2.0）
+const KALMAN_R = 0.5;
+
 // OneEuroFilter 最小截止频率，越小越平滑（建议范围 0.5 ~ 3.0）
 const FILTER_MIN_CUTOFF = 1.2;
 

@@ -7,29 +7,57 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 <body>
+    <!-- 粒子背景 -->
+    <div id="particles"></div>
+
     <div class="glass-card">
         <div class="tabs">
-            <button class="tab-btn active" data-tab="login">登录</button>
-            <button class="tab-btn" data-tab="register">注册</button>
+            <button class="tab-btn active" data-tab="login">登 录</button>
+            <button class="tab-btn" data-tab="register">注 册</button>
         </div>
-        <form id="login-form">
-            <input type="email" id="login-email" placeholder="邮箱" required>
-            <input type="password" id="login-password" placeholder="密码" required>
-            <button type="submit">登录</button>
-            <div class="message"></div>
-        </form>
-        <form id="register-form" style="display: none;">
-            <input type="email" id="reg-email" placeholder="邮箱" required>
-            <div class="verify-row">
-                <input type="text" id="reg-verify-code" placeholder="验证码" maxlength="6" required>
-                <button type="button" id="send-code-btn" class="send-code-btn">发送验证码</button>
-            </div>
-            <input type="password" id="reg-password" placeholder="密码 (至少6位)" required>
-            <input type="password" id="reg-confirm" placeholder="确认密码" required>
-            <button type="submit">注册</button>
-            <div class="message"></div>
-        </form>
+        <div class="form-container">
+            <form id="login-form" class="form-panel">
+                <input type="email" id="login-email" placeholder="邮箱地址" required autocomplete="email">
+                <input type="password" id="login-password" placeholder="密码" required autocomplete="current-password">
+                <button type="submit">登 录</button>
+                <div class="message"></div>
+            </form>
+            <form id="register-form" class="form-panel" style="display: none;">
+                <input type="email" id="reg-email" placeholder="邮箱地址" required autocomplete="email">
+                <div class="verify-row">
+                    <input type="text" id="reg-verify-code" placeholder="验证码" maxlength="6" required autocomplete="off">
+                    <button type="button" id="send-code-btn" class="send-code-btn">发送验证码</button>
+                </div>
+                <input type="password" id="reg-password" placeholder="密码 (至少6位)" required autocomplete="new-password">
+                <input type="password" id="reg-confirm" placeholder="确认密码" required autocomplete="new-password">
+                <button type="submit">注 册</button>
+                <div class="message"></div>
+            </form>
+        </div>
+        <a href="/" class="back-link">← 返回首页</a>
     </div>
+
+    <script>
+        // 创建粒子背景
+        (function () {
+            var particles = document.getElementById('particles');
+            if (!particles) return;
+            var count = 35;
+            var html = '';
+            for (var i = 0; i < count; i++) {
+                var size = Math.random() * 5 + 2;
+                html += '<div class="particle" style="' +
+                    'width:' + size + 'px;height:' + size + 'px;' +
+                    'left:' + Math.random() * 100 + '%;' +
+                    'top:' + Math.random() * 100 + '%;' +
+                    'animation-duration:' + (Math.random() * 10 + 8) + 's,' + (Math.random() * 15 + 10) + 's;' +
+                    'animation-delay:' + Math.random() * 5 + 's;' +
+                    'opacity:' + (0.2 + Math.random() * 0.4) + ';' +
+                    '"></div>';
+            }
+            particles.innerHTML = html;
+        })();
+    </script>
     <script src="{{ url_for('static', filename='js/login.js') }}"></script>
 </body>
 </html>

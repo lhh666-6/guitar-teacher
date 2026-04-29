@@ -19,7 +19,14 @@
       "Bash(curl -sI --connect-timeout 5 \"https://cdn.socket.io/4.5.4/socket.io.min.js\")",
       "Bash(python *)",
       "Bash(git add *)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "WebSearch",
+      "Bash(npx --version)",
+      "Bash(npx *)",
+      "Read(//c/Users/lenovo/.claude/skills//**)",
+      "Read(//c/Users/lenovo/.agents/**)",
+      "Bash(claude plugin *)",
+      "Bash(git clone *)"
     ]
   }
 }

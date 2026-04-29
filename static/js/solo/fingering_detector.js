@@ -124,21 +124,22 @@ class FingeringDetector {
             this.vLen = this.params.v_len * scale;
             this.nutCenter = this.params.nut_center ? [this.params.nut_center[0] * scale, this.params.nut_center[1] * scaleY] : null;
 
-            const barre = this._detectBarre(pxLandmarks);
-            const positions = [];
-            for (const finger of this.FINGER_DEFS) {
-                if (finger.name === '食指' && barre) continue;
-                const result = this._detectFingerPress(pxLandmarks, finger);
-                if (result) positions.push(result);
+            try {
+                const barre = this._detectBarre(pxLandmarks);
+                const positions = [];
+                for (const finger of this.FINGER_DEFS) {
+                    if (finger.name === '食指' && barre) continue;
+                    const result = this._detectFingerPress(pxLandmarks, finger);
+                    if (result) positions.push(result);
+                }
+                return { positions, barre };
+            } finally {
+                // 即使异常也恢复原始值，防止状态损坏
+                this.stringVectors = origStringVectors;
+                this.fretSegments = origFretSegments;
+                this.vLen = origVLen;
+                this.nutCenter = origNutCenter;
             }
-
-            // 恢复原始值
-            this.stringVectors = origStringVectors;
-            this.fretSegments = origFretSegments;
-            this.vLen = origVLen;
-            this.nutCenter = origNutCenter;
-
-            return { positions, barre };
         }
 
     _detectBarre(landmarks) {

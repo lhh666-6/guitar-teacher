@@ -29,10 +29,14 @@ DRAW_FRET_NUMBERS = True                                # 是否在图像上绘�
 USE_CLAHE = False                                       # 是否使用CLAHE增强对比度
 
 # ---------- 滤波参数 ----------
-FILTER_MODE = 3                                         # 0:无滤波 1:简单平滑 2:预留 3:OneEuro滤波
+FILTER_MODE = 4                                         # 0:无 1:简单平滑 2:预留 3:OneEuro 4:Kalman
 PRESS_THRESHOLD_PX = 20                                 # 指尖离品丝的像素距离阈值
 STRING_DIST_THRESH = 30                                 # 指尖离琴弦的像素距离阈值
 MIN_BOX_WIDTH = 20                                   # 琴枕/琴桥最小宽度
+
+# Kalman滤波参数 (FILTER_MODE=4 时生效)
+KALMAN_Q = 0.08                                          # 过程噪声，越大越跟手 (0.01~0.2)
+KALMAN_R = 0.5                                           # 测量噪声，越小越信任测量值 (0.1~2.0)
 
 # OneEuro滤波参数
 ONE_EURO_MIN_CUTOFF = 0.7
@@ -70,7 +74,7 @@ FORCE_NUT_LEFT = False                                  # 根据前端镜像情�
 SECRET_KEY = 'dev-secret-key'                           # Flask密钥，任意字符串即可
 # config.py 末尾添加
 # 缩略图尺寸（必须与前端 constants.js 中的值一致）
-THUMBNAIL_WIDTH = 960
+THUMBNAIL_WIDTH = 640
 # 大模型配置（火山方舟）
 VOLCANO_API_KEY = '06ab62f2-ba88-4b31-b05d-6ce0cce4cd06'          # 替换为实际密钥
 VOLCANO_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'  # 示例地址

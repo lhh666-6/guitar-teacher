@@ -45,14 +45,17 @@
             display: none;
             align-items: center;
             justify-content: center;
+            opacity: 0;
+            transition: opacity 0.25s ease;
         }
-        .chord-modal-overlay.active { display: flex; }
+        .chord-modal-overlay.active { display: flex; opacity: 1; }
         .chord-modal-card {
             width: 92%; max-width: 480px; max-height: 82vh;
             background: linear-gradient(145deg, #5a3e2b, #3e2c1b);
             border: 1px solid #b98c5f; border-radius: 24px;
             padding: 18px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             color: #f5e6d3; display: flex; flex-direction: column;
+            transform: translateY(30px) scale(0.96);
         }
         .chord-modal-header {
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
@@ -163,6 +166,10 @@
             gap: 16px;
             flex-wrap: wrap;
         }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
         .header-actions {
             display: inline-flex;
             align-items: center;
@@ -197,6 +204,10 @@
             z-index: 10;
             animation: slideUp 1s ease;
             transition: all 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
         .left-panel, .center-panel, .right-panel {
             background: rgba(101, 67, 33, 0.5);
@@ -360,33 +371,126 @@
         .fretboard-mini {
             width: 100%;
             height: 350px;
-            background: linear-gradient(180deg, #8D6E63, #5D4037);
+            background:
+                /* 木纹纹理 */
+                repeating-linear-gradient(
+                    2deg,
+                    transparent,
+                    transparent 3px,
+                    rgba(139, 90, 43, 0.08) 3px,
+                    rgba(139, 90, 43, 0.08) 4px
+                ),
+                repeating-linear-gradient(
+                    -1deg,
+                    transparent,
+                    transparent 7px,
+                    rgba(0, 0, 0, 0.04) 7px,
+                    rgba(0, 0, 0, 0.04) 8px
+                ),
+                /* 基础木色渐变 */
+                linear-gradient(175deg, #a0764a 0%, #8B6340 15%, #7a5535 40%, #6b4425 65%, #5c3a1e 85%, #4e2f18 100%);
             border-radius: 15px;
             position: relative;
-            padding: 30px 20px; /* 上30px，左右20px，下30px */
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3), inset 0 5px 10px rgba(0,0,0,0.2), inset 0 -5px 10px rgba(0,0,0,0.1);
-            transform: perspective(800px) rotateY(-3deg);
-            transition: transform 0.5s ease;
+            padding: 30px 20px;
+            /* 3D 边框斜面 */
+            border-top: 2px solid rgba(255, 220, 180, 0.25);
+            border-bottom: 3px solid rgba(0, 0, 0, 0.4);
+            /* 多层阴影模拟3D深度 */
+            box-shadow:
+                0 25px 50px rgba(0, 0, 0, 0.5),
+                0 8px 16px rgba(0, 0, 0, 0.3),
+                inset 0 2px 4px rgba(255, 220, 180, 0.15),
+                inset 0 -8px 16px rgba(0, 0, 0, 0.25),
+                inset 2px 0 8px rgba(0, 0, 0, 0.15),
+                inset -2px 0 8px rgba(0, 0, 0, 0.15);
+            transform: perspective(900px) rotateX(2deg) rotateY(-4deg);
+            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.6s ease;
             isolation: isolate;
             margin-top: 4px;
+            animation: fretboardFloat 6s ease-in-out infinite;
+            will-change: transform;
         }
-        .fretboard-mini:hover { transform: perspective(800px) rotateY(0deg); }
+        @keyframes fretboardFloat {
+            0%, 100% { transform: perspective(900px) rotateX(2deg) rotateY(-4deg); }
+            50%      { transform: perspective(900px) rotateX(2.8deg) rotateY(-3.2deg); }
+        }
+        /* 镜面高光扫过 */
+        .fretboard-mini::after {
+            content: '';
+            position: absolute;
+            inset: 10px;
+            border-radius: 10px;
+            background: linear-gradient(135deg,
+                transparent 0%,
+                rgba(255,255,255,0.04) 40%,
+                rgba(255,255,255,0.08) 50%,
+                rgba(255,255,255,0.04) 60%,
+                transparent 100%);
+            pointer-events: none;
+            z-index: 55;
+            animation: glossSweep 5s ease-in-out infinite;
+        }
+        @keyframes glossSweep {
+            0%, 100% { opacity: 0.3; background-position: 0% 50%; }
+            50%      { opacity: 0.7; background-position: 200% 50%; }
+        }
+        .fretboard-mini::before {
+            content: '';
+            position: absolute;
+            inset: 5px;
+            border-radius: 12px;
+            background: transparent;
+            border: 1px solid rgba(255, 220, 180, 0.06);
+            pointer-events: none;
+            z-index: 50;
+        }
+        .fretboard-mini:hover {
+            transform: perspective(900px) rotateX(0deg) rotateY(0deg);
+            animation: none;
+        }
 
         .fret-mini {
             position: absolute;
             top: 0; bottom: 0;
-            width: 2px;
-            background: linear-gradient(90deg, #BDBDBD, #EEEEEE);
-            box-shadow: 0 0 8px rgba(255,255,255,0.5);
+            width: 4px;
+            background: linear-gradient(90deg,
+                rgba(160, 160, 160, 0.5) 0%,
+                rgba(200, 200, 200, 0.85) 25%,
+                rgba(255, 255, 255, 0.95) 50%,
+                rgba(190, 190, 190, 0.8) 75%,
+                rgba(130, 130, 130, 0.5) 100%
+            );
+            box-shadow:
+                2px 0 5px rgba(0,0,0,0.4),
+                4px 0 10px rgba(255,255,255,0.5),
+                -1px 0 3px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.3);
             z-index: 10;
+            border-radius: 2px;
+            transform: translateX(-2px);
         }
         .string-mini {
             position: absolute;
             left: 0; right: 0;
             height: 2px;
-            background: linear-gradient(90deg, #E0E0E0, #FFFFFF);
+            background: linear-gradient(180deg,
+                rgba(200, 180, 140, 0.7) 0%,
+                rgba(240, 225, 190, 0.95) 40%,
+                rgba(255, 240, 210, 1) 50%,
+                rgba(220, 200, 160, 0.85) 60%,
+                rgba(170, 150, 120, 0.6) 100%
+            );
             z-index: 20;
-            box-shadow: 0 0 8px rgba(255,255,255,0.8);
+            box-shadow:
+                0 1px 2px rgba(0, 0, 0, 0.35),
+                0 2px 6px rgba(0, 0, 0, 0.15);
+            animation: stringShimmer 4s ease-in-out infinite;
+        }
+        .string-mini:nth-child(odd)  { animation-delay: 0s; }
+        .string-mini:nth-child(even) { animation-delay: 1.5s; }
+        @keyframes stringShimmer {
+            0%, 100% { opacity: 0.85; }
+            50%      { opacity: 1; }
         }
         .dot-container {
             position: absolute;
@@ -398,8 +502,8 @@
         }
         .dot {
             position: absolute;
-            width: 24px;
-            height: 24px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             transform: translate(-50%, -50%);
             display: flex;
@@ -409,12 +513,41 @@
             font-weight: bold;
             color: white;
             z-index: 30;
-            box-shadow: 0 0 15px currentColor;
             pointer-events: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
         }
-        .dot.standard { background: #28a745; box-shadow: 0 0 15px #28a745; }
-        .dot.user-correct { background: #28a745; box-shadow: 0 0 15px #28a745, 0 0 0 3px white; }
-        .dot.user-wrong { background: #dc3545; box-shadow: 0 0 15px #dc3545, 0 0 0 3px white; }
+        .dot:active { transform: translate(-50%, -50%) scale(0.9); }
+        .dot.standard {
+            background: radial-gradient(circle at 35% 30%, #5ddb7a, #28a745 60%, #1a7a30);
+            box-shadow:
+                0 0 18px rgba(40,167,69,0.6),
+                0 4px 8px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .dot.user-correct {
+            background: radial-gradient(circle at 35% 30%, #5ddb7a, #28a745 60%, #1a7a30);
+            box-shadow:
+                0 0 22px rgba(40,167,69,0.7),
+                0 4px 8px rgba(0,0,0,0.4),
+                0 0 0 4px rgba(255,255,255,0.85),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+            animation: dotPopIn 0.35s cubic-bezier(0.2,0.9,0.4,1);
+        }
+        .dot.user-wrong {
+            background: radial-gradient(circle at 35% 30%, #f06060, #dc3545 60%, #a01a2a);
+            box-shadow:
+                0 0 22px rgba(220,53,69,0.7),
+                0 4px 8px rgba(0,0,0,0.4),
+                0 0 0 4px rgba(255,255,255,0.85),
+                inset 0 1px 0 rgba(255,255,255,0.25);
+            animation: dotPopIn 0.35s cubic-bezier(0.2,0.9,0.4,1);
+        }
+        @keyframes dotPopIn {
+            0%   { transform: translate(-50%, -50%) scale(0); }
+            60%  { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
         .barre {
             position: absolute;
             width: 8px;
@@ -422,20 +555,22 @@
             transform: none;
             z-index: 25;
             pointer-events: none;
+            transition: opacity 0.2s ease, box-shadow 0.2s ease;
         }
         .barre.standard {
-            background-color: #28a745;
+            background: linear-gradient(90deg, #1a7a30, #28a745 50%, #1a7a30);
             opacity: 0.8;
+            box-shadow: 0 0 8px rgba(40,167,69,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
         }
         .barre.user-correct {
-            background-color: #28a745;
+            background: linear-gradient(90deg, #1a7a30, #28a745 50%, #1a7a30);
             opacity: 0.9;
-            box-shadow: 0 0 0 2px white;
+            box-shadow: 0 0 12px rgba(40,167,69,0.5), 0 0 0 3px rgba(255,255,255,0.85), inset 0 1px 0 rgba(255,255,255,0.2);
         }
         .barre.user-wrong {
-            background-color: #dc3545;
+            background: linear-gradient(90deg, #a01a2a, #dc3545 50%, #a01a2a);
             opacity: 0.9;
-            box-shadow: 0 0 0 2px white;
+            box-shadow: 0 0 12px rgba(220,53,69,0.5), 0 0 0 3px rgba(255,255,255,0.85), inset 0 1px 0 rgba(255,255,255,0.15);
         }
         .fret-label {
             position: absolute;
@@ -723,9 +858,12 @@
             backdrop-filter: blur(10px);
             z-index: 11000;
             padding: 24px;
+            opacity: 0;
+            transition: opacity 0.25s ease;
         }
         .result-modal.show {
             display: flex;
+            opacity: 1;
         }
         .result-modal-card {
             width: min(440px, 100%);
@@ -736,6 +874,7 @@
             padding: 24px 24px 20px;
             color: #f6e7d0;
             text-align: center;
+            transform: scale(0.85);
         }
         .result-modal-title {
             color: #ffd966;
@@ -1022,6 +1161,162 @@
                 width: 100%;
             }
         }
+
+        /* ========== Task 9: 全局UI动效增强 ========== */
+
+        /* 1. 面板交错入场 */
+        .left-panel, .center-panel, .right-panel {
+            opacity: 0;
+            animation: panelSlideUp 0.6s cubic-bezier(0.2, 0.9, 0.4, 1) forwards;
+        }
+        .left-panel  { animation-delay: 0.05s; }
+        .center-panel { animation-delay: 0.15s; }
+        .right-panel  { animation-delay: 0.25s; }
+        @keyframes panelSlideUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 2. 按钮点击波纹/按压 */
+        .btn-custom, .back-btn, #toggleCamera, #fullscreenVideoBtn {
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.3s ease;
+        }
+        .btn-custom:active, .back-btn:active, #toggleCamera:active, #fullscreenVideoBtn:active {
+            transform: scale(0.94);
+            transition: transform 0.08s ease;
+        }
+        .btn-custom::after, .back-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 0; height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.5s ease, height 0.5s ease, opacity 0.5s ease;
+            pointer-events: none;
+        }
+        .btn-custom:active::after, .back-btn:active::after {
+            width: 300px;
+            height: 300px;
+            opacity: 0;
+            transition: width 0s, height 0s, opacity 0.4s ease;
+        }
+
+        /* 3. 模态弹窗入场动画 — 增强原始规则 */
+        .chord-modal-card {
+            transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1);
+        }
+        .chord-modal-overlay.active .chord-modal-card {
+            transform: translateY(0) scale(1);
+        }
+        /* 结果弹窗 */
+        .result-modal-card {
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .result-modal.show .result-modal-card {
+            transform: scale(1);
+        }
+
+        /* 4. 测试列表项状态变化跳动 */
+        @keyframes testItemPulse {
+            0%   { transform: scale(1); background: rgba(255,215,140,0.12); }
+            40%  { transform: scale(1.03); background: rgba(255,215,140,0.22); }
+            100% { transform: scale(1); background: rgba(255,215,140,0.1); }
+        }
+        .test-item.just-changed {
+            animation: testItemPulse 0.5s ease-out;
+        }
+
+        /* 5. 进度条脉冲（测试进行中） */
+        .test-progress-area.test-active {
+            animation: progressPulse 2s ease-in-out infinite;
+        }
+        @keyframes progressPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 217, 102, 0); }
+            50%      { box-shadow: 0 0 20px 4px rgba(255, 217, 102, 0.15); }
+        }
+
+        /* 6. 和弦信息卡片辉光 */
+        .chord-info {
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        .chord-info:hover, .chord-info.glow {
+            box-shadow: 0 0 24px rgba(255, 217, 102, 0.15), 0 0 8px rgba(255, 217, 102, 0.08);
+            border: 1px solid rgba(255, 215, 140, 0.3);
+        }
+        .chord-detail-footer {
+            transition: box-shadow 0.4s ease, border-color 0.4s ease;
+        }
+        .chord-detail-footer:hover {
+            box-shadow: 0 0 32px rgba(255, 217, 102, 0.12), 0 20px 50px rgba(0,0,0,0.25);
+            border-color: rgba(255, 215, 140, 0.35);
+        }
+
+        /* 7. 摄像头检测时边框脉冲 */
+        .camera-container {
+            transition: box-shadow 0.4s ease, border-color 0.4s ease;
+        }
+        .camera-container.detecting {
+            animation: cameraDetectPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes cameraDetectPulse {
+            0%, 100% { box-shadow: 0 5px 15px black, 0 0 0 0 rgba(46, 204, 113, 0); }
+            50%      { box-shadow: 0 5px 15px black, 0 0 0 6px rgba(46, 204, 113, 0.2), 0 0 20px 2px rgba(46, 204, 113, 0.1); }
+        }
+
+        /* 8. 分数跳动 */
+        @keyframes statBounce {
+            0%   { transform: scale(1); }
+            30%  { transform: scale(1.35); color: #ffd966; }
+            60%  { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+        .stat-bounce {
+            animation: statBounce 0.4s cubic-bezier(0.2, 0.9, 0.4, 1);
+            display: inline-block;
+        }
+
+        /* 9. 和弦标题切换辉光 */
+        .chord-title {
+            transition: text-shadow 0.3s ease;
+        }
+        .chord-title.glow-pop {
+            animation: titleGlow 0.5s ease-out;
+        }
+        @keyframes titleGlow {
+            0%   { text-shadow: 0 0 20px rgba(255, 217, 102, 0.8), 0 2px 10px rgba(0,0,0,0.28); }
+            100% { text-shadow: 0 2px 10px rgba(0,0,0,0.28); }
+        }
+
+        /* 10. 统计面板数值变化微动 */
+        .stat-row span {
+            display: inline-block;
+            transition: color 0.2s ease;
+            color: #fff2d9;
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        /* 11. 难度徽章入场 */
+        .difficulty-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #1a120b;
+            background: linear-gradient(135deg, #ffd966, #e6a817);
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .difficulty-badge.show {
+            opacity: 1;
+            transform: scale(1);
+        }
     </style>
 </head>
 <body>
@@ -1042,6 +1337,7 @@
                 <video id="cameraFeed" autoplay playsinline></video>
                 <div class="camera-status">
                     <span id="cameraStatus"><i class="fas fa-camera" aria-hidden="true"></i> 摄像头已关闭</span>
+                    <span id="perfIndicator" style="display:none;font-size:0.78rem;color:#a5d6a5;font-family:monospace;margin-left:8px;"></span>
                     <div class="camera-actions">
                         <button id="fullscreenVideoBtn"><i class="fas fa-expand" aria-hidden="true"></i> 全屏</button>
                         <button id="toggleCamera"><i class="fas fa-video" aria-hidden="true"></i> 开启摄像头</button>
@@ -1196,8 +1492,7 @@
         </div>
     </div>
   
-    <!-- Socket.IO 及 MediaPipe 依赖 (不变) -->
-    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <!-- MediaPipe 依赖 -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <!-- 原有 JS 逻辑保持不变 (确保路径正确) -->

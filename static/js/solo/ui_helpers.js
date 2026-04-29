@@ -9,10 +9,6 @@
  * @param {Array} landmarks 归一化关键点数组 [{x,y}, ...]
  */
 function drawLocalHandLandmarks(ctx, canvasWidth, canvasHeight, landmarks) {
-    // 测试红色方块（可删除）
-    ctx.fillStyle = 'red';
-    ctx.fillRect(50, 50, 30, 30);
-
     if (!landmarks) return;
     landmarks.forEach(lm => {
         const x = canvasWidth - lm.x * canvasWidth; // 翻转 x 以匹配镜像视频

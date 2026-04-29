@@ -77,7 +77,7 @@ def ai_reply():
 @teach_bp.route('/analyze_solo_record')
 def analyze_solo_record():
     # 这里需要访问solo模块的play_records，简单起见从当前app的全局变量获取（后续可优化）
-    from .solo import play_records
+    from app import play_records
     try:
         if not play_records:
             return jsonify({'status':'failed', 'message':'暂无SOLO记录，请先在SOLO模式演奏并保存'})

@@ -29,7 +29,7 @@ var carouselTitles = {
     progress: ['进步趋势', '正确率趋势', '相似度趋势']
 };
 var autoRotateTimers = {};
-var AUTO_ROTATE_MS = 2000;
+var AUTO_ROTATE_MS = 3500;
 
 function showLoading() {
     if (isLoading) return;
@@ -71,82 +71,100 @@ function updateCarouselUI(panel) {
         var total = 3;
         var html = '';
         for (var i = 0; i < total; i++) {
-            html += '<span class="carousel-dot' + (i === state ? ' active' : '') + '"></span>';
+            html += '<span class="carousel-dot' + (i === state ? ' active' : '') + '"><i></i></span>';
         }
         dotsContainer.innerHTML = html;
     }
     var titleEl = document.getElementById(panel + 'PanelTitle');
     if (titleEl) {
-        titleEl.textContent = carouselTitles[panel][state];
+        titleEl.style.opacity = '0';
+        titleEl.style.transform = 'translateY(-6px)';
+        setTimeout(function () {
+            titleEl.textContent = carouselTitles[panel][state];
+            titleEl.style.opacity = '1';
+            titleEl.style.transform = 'translateY(0)';
+        }, 120);
     }
 }
 
-function switchCarouselView(panel, data) {
-    updateCarouselUI(panel);
+function _triggerPanelGlow(panel) {
+    var el = document.getElementById(panel + 'Panel');
+    if (!el) return;
+    el.classList.add('glow-pulse');
+    setTimeout(function () { el.classList.remove('glow-pulse'); }, 700);
+}
+
+function switchCarouselView(panel, data, direction) {
+    direction = direction || 0; // 1=next, -1=prev, 0=initial
     var state = carouselState[panel];
 
+    if (direction !== 0) {
+        _triggerPanelGlow(panel);
+    }
+
     if (panel === 'radar') {
-        var radarEls = {
-            0: document.getElementById('radarChart'),
-            1: document.getElementById('difficultyChart'),
-            2: document.getElementById('calendarChart')
-        };
+        var ids = ['radarChart', 'difficultyChart', 'calendarChart'];
+        var allEls = ids.map(function(id) { return document.getElementById(id); });
+        var emptyEl = document.getElementById('radarEmpty');
 
-        // 先全部隐藏
-        Object.keys(radarEls).forEach(function(k) {
-            var el = radarEls[k];
-            if (el) { el.style.opacity = '0'; el.style.display = 'none'; }
-        });
+        allEls.forEach(function(el) { if (el) { el.classList.remove('active'); el.style.display = 'none'; } });
+        if (emptyEl) emptyEl.style.display = 'none';
 
-        var activeEl = radarEls[state];
-        if (activeEl) {
-            activeEl.style.display = 'block';
-            // 强制回流后再显示，触发 CSS transition
-            activeEl.offsetHeight;
-            activeEl.style.opacity = '1';
-        }
+        var activeId = ids[state];
+        var activeEl = document.getElementById(activeId);
+        var rendered = null;
 
         if (state === 0 && data.mastery && data.mastery.chords && data.mastery.chords.length) {
-            var c = Charts.renderMastery('radarChart', data.mastery);
-            if (c) setTimeout(function() { c.resize(); }, 80);
+            rendered = Charts.renderMastery('radarChart', data.mastery);
         } else if (state === 1 && data.chord_difficulty) {
-            var c = Charts.renderDifficulty('difficultyChart', data.chord_difficulty);
-            if (c) setTimeout(function() { c.resize(); }, 80);
+            rendered = Charts.renderDifficulty('difficultyChart', data.chord_difficulty);
         } else if (state === 2 && data.daily_practice) {
-            var c = Charts.renderCalendar('calendarChart', data.daily_practice);
-            if (c) setTimeout(function() { c.resize(); }, 80);
+            rendered = Charts.renderCalendar('calendarChart', data.daily_practice);
+        }
+
+        if (rendered) {
+            if (activeEl) {
+                activeEl.style.display = 'block';
+                activeEl.offsetHeight;
+                activeEl.classList.add('active');
+            }
+            setTimeout(function() { rendered.resize(); }, 80);
+        } else if (emptyEl) {
+            emptyEl.style.display = 'block';
         }
     } else if (panel === 'progress') {
-        var progEls = {
-            0: document.getElementById('progressChart'),
-            1: document.getElementById('accuracyOnlyChart'),
-            2: document.getElementById('similarityOnlyChart')
-        };
+        var ids = ['progressChart', 'accuracyOnlyChart', 'similarityOnlyChart'];
+        var allEls = ids.map(function(id) { return document.getElementById(id); });
+        var emptyEl = document.getElementById('progressEmpty');
 
-        Object.keys(progEls).forEach(function(k) {
-            var el = progEls[k];
-            if (el) { el.style.opacity = '0'; el.style.display = 'none'; }
-        });
+        allEls.forEach(function(el) { if (el) { el.classList.remove('active'); el.style.display = 'none'; } });
+        if (emptyEl) emptyEl.style.display = 'none';
 
-        var activeEl = progEls[state];
-        if (activeEl) {
-            activeEl.style.display = 'block';
-            activeEl.offsetHeight;
-            activeEl.style.opacity = '1';
-        }
+        var activeId = ids[state];
+        var activeEl = document.getElementById(activeId);
+        var rendered = null;
 
         var avgAcc = (data.overview && data.overview.avg_accuracy) || null;
         if (state === 0 && data.progress && data.progress.dates && data.progress.dates.length) {
-            var c = Charts.renderProgress('progressChart', data.progress, data.similarity_trend || null, avgAcc);
-            if (c) setTimeout(function() { c.resize(); }, 80);
+            rendered = Charts.renderProgress('progressChart', data.progress, data.similarity_trend || null, avgAcc);
         } else if (state === 1 && data.progress && data.progress.dates && data.progress.dates.length) {
-            var c = Charts.renderAccuracyOnly('accuracyOnlyChart', data.progress, avgAcc);
-            if (c) setTimeout(function() { c.resize(); }, 80);
+            rendered = Charts.renderAccuracyOnly('accuracyOnlyChart', data.progress, avgAcc);
         } else if (state === 2 && data.progress && data.progress.dates && data.progress.dates.length) {
-            var c = Charts.renderSimilarityOnly('similarityOnlyChart', data.progress, data.similarity_trend || null);
-            if (c) setTimeout(function() { c.resize(); }, 80);
+            rendered = Charts.renderSimilarityOnly('similarityOnlyChart', data.progress, data.similarity_trend || null);
+        }
+
+        if (rendered) {
+            if (activeEl) {
+                activeEl.style.display = 'block';
+                activeEl.offsetHeight;
+                activeEl.classList.add('active');
+            }
+            setTimeout(function() { rendered.resize(); }, 80);
+        } else if (emptyEl) {
+            emptyEl.style.display = 'block';
         }
     }
+    updateCarouselUI(panel);
 }
 
 function initCarousel() {
@@ -155,7 +173,10 @@ function initCarousel() {
             var panel = btn.dataset.panel;
             var dir = btn.dataset.dir === 'next' ? 1 : -1;
             carouselState[panel] = (carouselState[panel] + dir + 3) % 3;
-            switchCarouselView(panel, dashboardData);
+            switchCarouselView(panel, dashboardData, dir);
+            // 用户手动切换后重置自动轮播计时器
+            stopAutoRotate(panel);
+            startAutoRotate(panel);
         });
     });
 
@@ -178,7 +199,7 @@ function startAutoRotate(panel) {
     stopAutoRotate(panel);
     autoRotateTimers[panel] = setInterval(function () {
         carouselState[panel] = (carouselState[panel] + 1) % 3;
-        switchCarouselView(panel, dashboardData);
+        switchCarouselView(panel, dashboardData, 1);
     }, AUTO_ROTATE_MS);
 }
 
@@ -226,27 +247,48 @@ function loadDashboardData() {
 // ========== 渲染统计卡片 ==========
 function renderStats(data) {
     var overview = data.overview || {};
-    document.getElementById('total-duration').textContent = overview.total_duration || '0';
-    document.getElementById('total-sessions').textContent = overview.total_sessions || '0';
-    document.getElementById('avg-accuracy').textContent = overview.avg_accuracy || '0';
-    var weak = overview.weak_chords || [];
-    document.getElementById('weak-chords').textContent = weak.length && weak[0] !== '无数据' ? weak.join('、') : '—';
+    var cards = [
+        { id: 'total-duration', value: overview.total_duration || '0' },
+        { id: 'total-sessions', value: overview.total_sessions || '0' },
+        { id: 'avg-accuracy', value: overview.avg_accuracy || '0' },
+        { id: 'weak-chords', value: (overview.weak_chords && overview.weak_chords.length && overview.weak_chords[0] !== '无数据') ? overview.weak_chords.join('、') : '—' }
+    ];
+    cards.forEach(function (card, index) {
+        var el = document.getElementById(card.id);
+        if (!el) return;
+        // 数字卡片使用计数动画
+        if (card.id !== 'weak-chords' && !isNaN(parseFloat(card.value))) {
+            animateNumber(el, parseFloat(card.value) || 0, 600, index * 80);
+        } else {
+            el.textContent = card.value;
+        }
+    });
+}
+
+function animateNumber(el, targetValue, duration, delay) {
+    var startTime = null;
+    var startValue = 0;
+    var isFloat = targetValue % 1 !== 0;
+    setTimeout(function () {
+        function step(timestamp) {
+            if (!startTime) startTime = timestamp;
+            var progress = Math.min((timestamp - startTime) / duration, 1);
+            var eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+            var current = isFloat ? (startValue + (targetValue - startValue) * eased).toFixed(1) : Math.round(startValue + (targetValue - startValue) * eased);
+            el.textContent = current;
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            } else {
+                el.textContent = targetValue;
+            }
+        }
+        requestAnimationFrame(step);
+    }, delay);
 }
 
 // ========== 渲染图表（初始视图） ==========
 function renderCharts(data) {
-    // 初始渲染雷达图（carousel view 0）
-    if (data.mastery && data.mastery.chords && data.mastery.chords.length) {
-        Charts.renderMastery('radarChart', data.mastery);
-    }
-
-    // 初始渲染进步趋势（carousel view 0）
-    if (data.progress && data.progress.dates && data.progress.dates.length) {
-        var avgAcc = (data.overview && data.overview.avg_accuracy) || null;
-        Charts.renderProgress('progressChart', data.progress, data.similarity_trend || null, avgAcc);
-    }
-
-    // 稳定度环形图
+    // 稳定度环形图（不在轮播中）
     var total = (data.overview && data.overview.total_sessions) || 0;
     var accuracy = parseFloat((data.overview && data.overview.avg_accuracy) || 0);
     var unstableCount = data.unstable_count || 0;

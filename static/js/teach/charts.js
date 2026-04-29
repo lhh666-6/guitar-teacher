@@ -27,10 +27,11 @@ var Charts = {
     _animationOpts: function () {
         return {
             animation: true,
-            animationDuration: 800,
-            animationEasing: 'cubicInOut',
-            animationDurationUpdate: 600,
-            animationEasingUpdate: 'cubicInOut'
+            animationDuration: 1000,
+            animationEasing: 'cubicOut',
+            animationDurationUpdate: 500,
+            animationEasingUpdate: 'cubicInOut',
+            animationDelay: function (idx) { return idx * 40; }
         };
     },
 
@@ -142,6 +143,7 @@ var Charts = {
         var maxVal = Math.max.apply(null, data.map(function (d) { return d[1]; })) || 1;
 
         chart.setOption({
+            backgroundColor: 'transparent',
             tooltip: {
                 backgroundColor: 'rgba(30,20,15,0.95)',
                 borderColor: 'rgba(255,215,140,0.4)',
@@ -155,6 +157,7 @@ var Charts = {
                 orient: 'horizontal',
                 left: 'center',
                 bottom: 0,
+                backgroundColor: 'transparent',
                 textStyle: { color: t.goldDim, fontSize: 10 },
                 itemWidth: 14,
                 itemHeight: 14,
