@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 / 注册 - 智能吉他教学</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}?v={{ APP_VERSION }}">
 </head>
 <body>
     <!-- 粒子背景 -->
@@ -38,26 +38,45 @@
     </div>
 
     <script>
-        // 创建粒子背景
+        // 金色粒子背景
         (function () {
             var particles = document.getElementById('particles');
             if (!particles) return;
-            var count = 35;
+            var count = 40;
             var html = '';
             for (var i = 0; i < count; i++) {
-                var size = Math.random() * 5 + 2;
+                var size = Math.random() * 4 + 1.5;
+                var driftDur = 12 + Math.random() * 14;
+                var delay = Math.random() * 8;
                 html += '<div class="particle" style="' +
                     'width:' + size + 'px;height:' + size + 'px;' +
                     'left:' + Math.random() * 100 + '%;' +
                     'top:' + Math.random() * 100 + '%;' +
-                    'animation-duration:' + (Math.random() * 10 + 8) + 's,' + (Math.random() * 15 + 10) + 's;' +
-                    'animation-delay:' + Math.random() * 5 + 's;' +
-                    'opacity:' + (0.2 + Math.random() * 0.4) + ';' +
+                    'animation-duration:' + driftDur + 's;' +
+                    'animation-delay:' + delay + 's;' +
+                    'opacity:' + (0.15 + Math.random() * 0.35) + ';' +
                     '"></div>';
             }
             particles.innerHTML = html;
         })();
+
+        // 卡片3D倾斜跟随鼠标
+        (function () {
+            var card = document.querySelector('.glass-card');
+            if (!card) return;
+            var maxTilt = 8;
+            document.addEventListener('mousemove', function (e) {
+                var x = e.clientX / window.innerWidth;
+                var y = e.clientY / window.innerHeight;
+                var tiltX = (y - 0.5) * maxTilt;
+                var tiltY = (x - 0.5) * -maxTilt;
+                card.style.transform = 'perspective(1200px) rotateX(' + tiltX.toFixed(1) + 'deg) rotateY(' + tiltY.toFixed(1) + 'deg)';
+            });
+            card.addEventListener('mouseleave', function () {
+                card.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg)';
+            });
+        })();
     </script>
-    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/login.js') }}?v={{ APP_VERSION }}"></script>
 </body>
 </html>

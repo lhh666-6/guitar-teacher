@@ -43,16 +43,25 @@ const VoiceGuide = (function() {
         updateIcon();
     }
 
-    // 动态注入图标样式（确保动画生效）
+    // 动态注入图标样式
     function injectIconStyles() {
         if (document.getElementById('voice-guide-styles')) return;
         const style = document.createElement('style');
         style.id = 'voice-guide-styles';
         style.textContent = `
             @keyframes voiceGuidePulse {
+                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
+                70% { transform: scale(1.08); box-shadow: 0 0 0 14px rgba(46, 204, 113, 0); }
+                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+            }
+            @keyframes voiceGuideWake {
                 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
-                70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+                70% { transform: scale(1.12); box-shadow: 0 0 0 18px rgba(231, 76, 60, 0); }
                 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+            }
+            @keyframes voiceGuideEnter {
+                from { opacity: 0; transform: translateX(20px) scale(0.8); }
+                to { opacity: 1; transform: translateX(0) scale(1); }
             }
         `;
         document.head.appendChild(style);
@@ -63,28 +72,53 @@ const VoiceGuide = (function() {
         if (iconElement) return;
         iconElement = document.createElement('div');
         iconElement.id = 'voice-guide-icon';
-        iconElement.innerHTML = '🎤';
-        iconElement.title = '语音助手';
+        iconElement.title = '语音助手 · 点击开启';
         iconElement.style.cssText = `
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 56px;
-            height: 56px;
+            bottom: 28px;
+            right: 28px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
-            background-color: #666;
-            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
+            font-size: 26px;
             cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             z-index: 10000;
-            transition: all 0.3s ease;
-            opacity: 0.8;
+            transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            animation: voiceGuideEnter 0.5s cubic-bezier(0.2, 0.9, 0.4, 1) forwards;
         `;
         document.body.appendChild(iconElement);
+
+        // 标签提示
+        const label = document.createElement('span');
+        label.id = 'voice-guide-label';
+        label.textContent = '语音已关闭';
+        label.style.cssText = `
+            position: fixed;
+            bottom: 36px;
+            right: 100px;
+            font-size: 13px;
+            color: #999;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 4px 14px;
+            border-radius: 20px;
+            z-index: 10000;
+            pointer-events: none;
+            transition: all 0.4s ease;
+            white-space: nowrap;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            letter-spacing: 0.5px;
+            opacity: 0;
+            transform: translateX(10px);
+        `;
+        document.body.appendChild(label);
+
         iconElement.addEventListener('click', () => {
             if (isListening) {
                 stopListening();
@@ -97,36 +131,71 @@ const VoiceGuide = (function() {
 
     function updateIcon() {
         if (!iconElement) return;
+        const label = document.getElementById('voice-guide-label');
         if (!isListening) {
-            iconElement.style.backgroundColor = '#999';
-            iconElement.style.opacity = '0.5';
-            iconElement.innerHTML = '🎤❌';
-            iconElement.title = '语音未启动，点击开启';
-            iconElement.style.animation = 'none';
-        } else if (isAwake) {
-            iconElement.style.backgroundColor = '#e74c3c';
-            iconElement.style.opacity = '1';
-            iconElement.innerHTML = '🎤🔴';
-            iconElement.title = '唤醒中，点击关闭';
-            iconElement.style.animation = 'voiceGuidePulse 1s infinite';
-        } else {
-            iconElement.style.backgroundColor = '#2ecc71';
-            iconElement.style.opacity = '0.9';
             iconElement.innerHTML = '🎤';
-            iconElement.title = '监听中，说“小吉他”唤醒';
+            iconElement.title = '语音助手 · 点击开启';
+            iconElement.style.backgroundColor = 'rgba(80,80,80,0.75)';
+            iconElement.style.backdropFilter = 'blur(8px)';
+            iconElement.style.webkitBackdropFilter = 'blur(8px)';
+            iconElement.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)';
+            iconElement.style.border = '1.5px solid rgba(255,255,255,0.12)';
+            iconElement.style.opacity = '0.6';
             iconElement.style.animation = 'none';
+            if (label) {
+                label.textContent = '语音已关闭';
+                label.style.color = '#999';
+                label.style.opacity = '0';
+                label.style.transform = 'translateX(10px)';
+            }
+        } else if (isAwake) {
+            iconElement.innerHTML = '🎤';
+            iconElement.title = '已唤醒 · 点击关闭';
+            iconElement.style.backgroundColor = 'rgba(231,76,60,0.88)';
+            iconElement.style.backdropFilter = 'blur(12px)';
+            iconElement.style.webkitBackdropFilter = 'blur(12px)';
+            iconElement.style.boxShadow = '0 0 24px rgba(231,76,60,0.5), 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)';
+            iconElement.style.border = '1.5px solid rgba(255,120,100,0.5)';
+            iconElement.style.opacity = '1';
+            iconElement.style.animation = 'voiceGuideWake 1s infinite';
+            if (label) {
+                label.textContent = '已唤醒 · 请说话';
+                label.style.color = '#ff6b6b';
+                label.style.opacity = '1';
+                label.style.transform = 'translateX(0)';
+            }
+        } else {
+            iconElement.innerHTML = '🎤';
+            iconElement.title = '监听中 · 说”小吉他”唤醒';
+            iconElement.style.backgroundColor = 'rgba(46,204,113,0.82)';
+            iconElement.style.backdropFilter = 'blur(10px)';
+            iconElement.style.webkitBackdropFilter = 'blur(10px)';
+            iconElement.style.boxShadow = '0 0 20px rgba(46,204,113,0.35), 0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15)';
+            iconElement.style.border = '1.5px solid rgba(100,230,150,0.4)';
+            iconElement.style.opacity = '0.95';
+            iconElement.style.animation = 'voiceGuidePulse 2.5s infinite';
+            if (label) {
+                label.textContent = '说”小吉他”唤醒';
+                label.style.color = '#4ecb71';
+                label.style.opacity = '1';
+                label.style.transform = 'translateX(0)';
+            }
         }
     }
 
     // ========== 音频播放队列 ==========
+    let currentAudio = null; // 追踪当前播放的音频
+
     function playNext() {
         if (isPlaying || audioQueue.length === 0) return;
         isPlaying = true;
         const item = audioQueue.shift();
         const audio = new Audio(item.url);
+        currentAudio = audio;
         const onEnded = () => {
             URL.revokeObjectURL(item.url);
             isPlaying = false;
+            currentAudio = null;
             playNext();
         };
         audio.onended = onEnded;
@@ -162,9 +231,23 @@ const VoiceGuide = (function() {
         playNext();
     }
 
+    function stopSpeaking() {
+        audioQueue = [];
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+        isPlaying = false;
+    }
+
     // ========== TTS 播放 ==========
     function playTTS(text, options = {}) {
         if (!text) return;
+        // 语音关闭时禁止所有 TTS 输出
+        if (!isListening) {
+            console.log('[TTS] 语音未开启，跳过:', text);
+            return;
+        }
         console.log('[TTS] 请求合成:', text);
         fetch('/api/tts/speak', {
             method: 'POST',
@@ -503,6 +586,8 @@ const VoiceGuide = (function() {
         wakeUp,
         sleep,
         speak: playTTS,
+        stop: stopSpeaking,
+        isEnabled: () => isListening,
         // 暴露状态用于调试
         getStatus: () => ({ isListening, isAwake, shouldAutoRestart })
     };

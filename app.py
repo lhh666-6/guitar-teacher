@@ -43,6 +43,10 @@ app = Flask(__name__)
 app.config.from_object(config)
 CORS(app)
 
+@app.context_processor
+def inject_version():
+    return dict(APP_VERSION=config.APP_VERSION)
+
 # ---------- 数据库初始化 ----------
 db.init_app(app)
 

@@ -513,7 +513,7 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/index.js') }}?v={{ APP_VERSION }}"></script>
 
     <script>
         async function loadUserStatus() {
@@ -774,6 +774,5 @@
         }
     </script>
     <script defer src="https://cdn.bootcdn.net/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
-    <script src="/static/js/voice_guide.js"></script>
-</body>
+    <script src="/static/js/voice_guide.js?v={{ APP_VERSION }}"></script></body>
 </html>

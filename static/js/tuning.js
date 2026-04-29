@@ -232,22 +232,6 @@ class YINTuner {
     }
 }
 
-// ==================== VoiceGuide 回退 ====================
-const VoiceGuideFallback = {
-    speak(text, options = {}) {
-        if (!window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = options.rate || 1.0;
-        utterance.pitch = options.pitch || 1.0;
-        utterance.lang = 'zh-CN';
-        window.speechSynthesis.speak(utterance);
-    },
-    stop() {
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-    }
-};
-
 // ==================== 页面逻辑 ====================
 (function () {
     let currentString = 6;
@@ -279,14 +263,13 @@ const VoiceGuideFallback = {
     const defaultGuideHTML = '<i class="fas fa-hand-pointer" aria-hidden="true"></i> 未开始调弦';
 
     function speak(text, rate = 0.9) {
-        // 优先使用全局 VoiceGuide（voice_guide.js），回退到 Web Speech
-        const vg = window.VoiceGuide || VoiceGuideFallback;
-        vg.speak(text, { rate });
+        // 统一走 VoiceGuide TTS，语音关闭时静默
+        if (!window.VoiceGuide || !window.VoiceGuide.isEnabled()) return;
+        window.VoiceGuide.speak(text, { rate });
     }
 
     function stopSpeak() {
-        const vg = window.VoiceGuide || VoiceGuideFallback;
-        vg.stop();
+        if (window.VoiceGuide) window.VoiceGuide.stop();
     }
 
     function resetTuningDisplay() {

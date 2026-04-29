@@ -9,7 +9,8 @@ load_dotenv()
 DEBUG = True                     # 控制日志输出级别
 
 # ---------- 静态资源缓存 ----------
-SEND_FILE_MAX_AGE_DEFAULT = 3600  # 静态文件浏览器缓存 1 小时（生产环境可调至 86400）
+SEND_FILE_MAX_AGE_DEFAULT = 0     # 开发环境禁用静态缓存，生产环境可调至 3600
+APP_VERSION = '20260429v2'        # 静态资源版本号，更新后递增强制刷新浏览器缓存
 
 # ---------- 模型路径 ----------
 YOLO_MODEL_PATH = "models/best.pt"                     # YOLO检测琴枕琴桥的模型

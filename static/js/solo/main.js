@@ -808,13 +808,8 @@
 
                 const dot = document.createElement('div');
                 dot.className = `dot ${p.type === 'standard' ? 'standard' : (p.correct ? 'user-correct' : 'user-wrong')}`;
-                dot.style.left = (x - DOT_RADIUS) + 'px';
-                if (p.type === 'standard') {
-                    dot.style.top = (y - DOT_RADIUS) + 'px';
-                } else {
-                    dot.style.top = (y - DOT_RADIUS) + 'px';
-                }
-                dot.textContent = p.fret;
+                dot.style.left = x + 'px';
+                dot.style.top = y + 'px';
                 container.appendChild(dot);
             });
 

@@ -5,7 +5,7 @@ chords_bp = Blueprint('chords', __name__)
 chords_data = [
     {
         "name": "C",
-        "desc": "C大调开放和弦", "difficulty": 1,
+        "desc": "C 是大三和弦，构成音 C-E-G，开放明亮，大调歌曲基石。如《老男孩》《童话》《安静》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 4, "fret": 2},
@@ -14,7 +14,7 @@ chords_data = [
     },
     {
         "name": "Cm",
-        "desc": "Cm 大横按3品", "difficulty": 2,
+        "desc": "Cm 是小三和弦，构成音 C-D#-G，柔和忧伤，情感色彩丰富。如《老男孩》《童话》《安静》。", "difficulty": 2,
         "barre": {"fret": 3, "startString": 5, "endString": 1},
         "positions": [
             {"string": 3, "fret": 4},
@@ -24,7 +24,7 @@ chords_data = [
     },
     {
         "name": "C7",
-        "desc": "C7 开放", "difficulty": 1,
+        "desc": "C7 是属七和弦，构成音 C-E-G-A#，张力感强，常用于属→主解决。如《老男孩》《童话》《安静》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 4, "fret": 2},
@@ -33,7 +33,7 @@ chords_data = [
     },
     {
         "name": "Cm7",
-        "desc": "Cm7 大横按3品", "difficulty": 2,
+        "desc": "Cm7 是小七和弦，构成音 C-D#-G-A#，忧郁爵士味，适合抒情弹唱。如《老男孩》《童话》《安静》。", "difficulty": 2,
         "barre": {"fret": 3, "startString": 5, "endString": 1},
         "positions": [
             {"string": 3, "fret": 4},
@@ -42,7 +42,7 @@ chords_data = [
     },
     {
         "name": "Cmaj7",
-        "desc": "Cmaj7 开放", "difficulty": 1,
+        "desc": "Cmaj7 是大七和弦，构成音 C-E-G-B，梦幻温暖，BossaNova/J-Pop必备。如《老男孩》《童话》《安静》。", "difficulty": 1,
         "positions": [
             {"string": 4, "fret": 2},
             {"string": 5, "fret": 3}
@@ -50,7 +50,7 @@ chords_data = [
     },
     {
         "name": "C6",
-        "desc": "C6 开放", "difficulty": 1,
+        "desc": "C6 是大六和弦，构成音 C-E-G-A，甜美复古，民谣常用。如《老男孩》《童话》《安静》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 3, "fret": 2},
@@ -60,7 +60,7 @@ chords_data = [
     },
     {
         "name": "Cm6",
-        "desc": "Cm6 大横按3品", "difficulty": 2,
+        "desc": "Cm6 是小六和弦，构成音 C-D#-G-A，忧伤中带暖，爵士标配。如《老男孩》《童话》《安静》。", "difficulty": 2,
         "barre": {"fret": 3, "startString": 5, "endString": 1},
         "positions": [
             {"string": 3, "fret": 4},
@@ -70,7 +70,7 @@ chords_data = [
     },
     {
         "name": "C9",
-        "desc": "C9 开放", "difficulty": 1,
+        "desc": "C9 是属九和弦，构成音 C-E-G-A#-D，丰富蓝调味，Funk/Soul专用。如《老男孩》《童话》《安静》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 4, "fret": 2},
@@ -79,7 +79,7 @@ chords_data = [
     },
     {
         "name": "Cadd9",
-        "desc": "Cadd9 开放", "difficulty": 1,
+        "desc": "Cadd9 是加九和弦，构成音 C-E-G-D，空灵开放，氛围感强。如《老男孩》《童话》《安静》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 4, "fret": 2},
@@ -89,7 +89,7 @@ chords_data = [
     },
     {
         "name": "Csus2",
-        "desc": "Csus2 开放", "difficulty": 1,
+        "desc": "Csus2 是挂二和弦，构成音 C-D-G，悬浮朦胧，替代大三和弦。如《老男孩》《童话》《安静》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 5, "fret": 3}
@@ -97,7 +97,7 @@ chords_data = [
     },
     {
         "name": "Csus4",
-        "desc": "Csus4 开放", "difficulty": 1,
+        "desc": "Csus4 是挂四和弦，构成音 C-F-G，紧张未解决，倾向回到大和弦。如《老男孩》《童话》《安静》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 3, "fret": 3},
@@ -106,7 +106,7 @@ chords_data = [
     },
     {
         "name": "C7sus4",
-        "desc": "C7sus4 开放", "difficulty": 1,
+        "desc": "C7sus4 是属七挂四，构成音 C-F-G-A#，双重张力，融合/Fusion风。如《老男孩》《童话》《安静》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 3, "fret": 3},
@@ -115,7 +115,7 @@ chords_data = [
     },
     {
         "name": "D",
-        "desc": "D大调开放", "difficulty": 1,
+        "desc": "D 是大三和弦，构成音 D-F#-A，开放明亮，大调歌曲基石。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 2},
             {"string": 2, "fret": 3},
@@ -124,7 +124,7 @@ chords_data = [
     },
     {
         "name": "Dm",
-        "desc": "Dm 开放", "difficulty": 1,
+        "desc": "Dm 是小三和弦，构成音 D-F-A，柔和忧伤，情感色彩丰富。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 1},
             {"string": 2, "fret": 3},
@@ -133,7 +133,7 @@ chords_data = [
     },
     {
         "name": "D7",
-        "desc": "D7 开放", "difficulty": 1,
+        "desc": "D7 是属七和弦，构成音 D-F#-A-C，张力感强，常用于属→主解决。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 2},
             {"string": 2, "fret": 1},
@@ -142,7 +142,7 @@ chords_data = [
     },
     {
         "name": "Dm7",
-        "desc": "Dm7 开放", "difficulty": 1,
+        "desc": "Dm7 是小七和弦，构成音 D-F-A-C，忧郁爵士味，适合抒情弹唱。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 1},
             {"string": 2, "fret": 1},
@@ -151,7 +151,7 @@ chords_data = [
     },
     {
         "name": "Dmaj7",
-        "desc": "Dmaj7 开放", "difficulty": 1,
+        "desc": "Dmaj7 是大七和弦，构成音 D-F#-A-C#，梦幻温暖，BossaNova/J-Pop必备。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 2},
             {"string": 2, "fret": 2},
@@ -160,7 +160,7 @@ chords_data = [
     },
     {
         "name": "D6",
-        "desc": "D6 开放", "difficulty": 1,
+        "desc": "D6 是大六和弦，构成音 D-F#-A-B，甜美复古，民谣常用。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 2},
             {"string": 2, "fret": 3},
@@ -170,7 +170,7 @@ chords_data = [
     },
     {
         "name": "Dm6",
-        "desc": "Dm6 开放", "difficulty": 1,
+        "desc": "Dm6 是小六和弦，构成音 D-F-A-B，忧伤中带暖，爵士标配。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 1},
             {"string": 2, "fret": 3},
@@ -180,7 +180,7 @@ chords_data = [
     },
     {
         "name": "D9",
-        "desc": "D9 开放", "difficulty": 1,
+        "desc": "D9 是属九和弦，构成音 D-F#-A-C-E，丰富蓝调味，Funk/Soul专用。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 2},
             {"string": 2, "fret": 1},
@@ -190,7 +190,7 @@ chords_data = [
     },
     {
         "name": "Dadd9",
-        "desc": "Dadd9 开放", "difficulty": 1,
+        "desc": "Dadd9 是加九和弦，构成音 D-F#-A-E，空灵开放，氛围感强。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 2},
             {"string": 2, "fret": 3},
@@ -200,7 +200,7 @@ chords_data = [
     },
     {
         "name": "Dsus2",
-        "desc": "Dsus2 开放", "difficulty": 1,
+        "desc": "Dsus2 是挂二和弦，构成音 D-E-A，悬浮朦胧，替代大三和弦。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 2},
             {"string": 2, "fret": 3},
@@ -209,7 +209,7 @@ chords_data = [
     },
     {
         "name": "Dsus4",
-        "desc": "Dsus4 开放", "difficulty": 1,
+        "desc": "Dsus4 是挂四和弦，构成音 D-G-A，紧张未解决，倾向回到大和弦。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 3},
             {"string": 2, "fret": 3},
@@ -218,7 +218,7 @@ chords_data = [
     },
     {
         "name": "D7sus4",
-        "desc": "D7sus4 开放", "difficulty": 1,
+        "desc": "D7sus4 是属七挂四，构成音 D-G-A-C，双重张力，融合/Fusion风。如《童年》《倔强》《后来》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 3},
             {"string": 2, "fret": 1},
@@ -227,7 +227,7 @@ chords_data = [
     },
     {
         "name": "E",
-        "desc": "E大调开放", "difficulty": 1,
+        "desc": "E 是大三和弦，构成音 E-G#-B，开放明亮，大调歌曲基石。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 3, "fret": 1},
             {"string": 4, "fret": 2},
@@ -236,7 +236,7 @@ chords_data = [
     },
     {
         "name": "Em",
-        "desc": "Em 开放", "difficulty": 1,
+        "desc": "Em 是小三和弦，构成音 E-G-B，柔和忧伤，情感色彩丰富。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 4, "fret": 2},
             {"string": 5, "fret": 2}
@@ -244,7 +244,7 @@ chords_data = [
     },
     {
         "name": "E7",
-        "desc": "E7 开放", "difficulty": 1,
+        "desc": "E7 是属七和弦，构成音 E-G#-B-D，张力感强，常用于属→主解决。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 3, "fret": 1},
             {"string": 4, "fret": 2},
@@ -253,7 +253,7 @@ chords_data = [
     },
     {
         "name": "Em7",
-        "desc": "Em7 开放", "difficulty": 1,
+        "desc": "Em7 是小七和弦，构成音 E-G-B-D，忧郁爵士味，适合抒情弹唱。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 4, "fret": 2},
             {"string": 5, "fret": 2}
@@ -261,7 +261,7 @@ chords_data = [
     },
     {
         "name": "Emaj7",
-        "desc": "Emaj7 开放", "difficulty": 1,
+        "desc": "Emaj7 是大七和弦，构成音 E-G#-B-D#，梦幻温暖，BossaNova/J-Pop必备。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 3, "fret": 1},
             {"string": 4, "fret": 1},
@@ -270,7 +270,7 @@ chords_data = [
     },
     {
         "name": "E6",
-        "desc": "E6 开放", "difficulty": 1,
+        "desc": "E6 是大六和弦，构成音 E-G#-B-C#，甜美复古，民谣常用。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 3, "fret": 1},
             {"string": 4, "fret": 2},
@@ -280,7 +280,7 @@ chords_data = [
     },
     {
         "name": "Em6",
-        "desc": "Em6 开放", "difficulty": 1,
+        "desc": "Em6 是小六和弦，构成音 E-G-B-C#，忧伤中带暖，爵士标配。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 4, "fret": 2},
             {"string": 5, "fret": 2},
@@ -289,7 +289,7 @@ chords_data = [
     },
     {
         "name": "E9",
-        "desc": "E9 开放", "difficulty": 1,
+        "desc": "E9 是属九和弦，构成音 E-G#-B-D-F#，丰富蓝调味，Funk/Soul专用。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 3, "fret": 1},
             {"string": 4, "fret": 2},
@@ -299,7 +299,7 @@ chords_data = [
     },
     {
         "name": "Eadd9",
-        "desc": "Eadd9 开放", "difficulty": 1,
+        "desc": "Eadd9 是加九和弦，构成音 E-G#-B-F#，空灵开放，氛围感强。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 4, "fret": 2},
             {"string": 5, "fret": 2},
@@ -308,7 +308,7 @@ chords_data = [
     },
     {
         "name": "Esus2",
-        "desc": "Esus2 开放", "difficulty": 1,
+        "desc": "Esus2 是挂二和弦，构成音 E-F#-B，悬浮朦胧，替代大三和弦。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 3, "fret": 1},
             {"string": 4, "fret": 2},
@@ -317,7 +317,7 @@ chords_data = [
     },
     {
         "name": "Esus4",
-        "desc": "Esus4 开放", "difficulty": 1,
+        "desc": "Esus4 是挂四和弦，构成音 E-A-B，紧张未解决，倾向回到大和弦。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 3, "fret": 2},
             {"string": 4, "fret": 2},
@@ -326,7 +326,7 @@ chords_data = [
     },
     {
         "name": "E7sus4",
-        "desc": "E7sus4 开放", "difficulty": 1,
+        "desc": "E7sus4 是属七挂四，构成音 E-A-B-D，双重张力，融合/Fusion风。如《海阔天空》《突然好想你》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 3},
             {"string": 3, "fret": 2},
@@ -335,7 +335,7 @@ chords_data = [
     },
     {
         "name": "F",
-        "desc": "F 大横按1品", "difficulty": 3,
+        "desc": "F 是大三和弦，构成音 F-A-C，开放明亮，大调歌曲基石。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 2},
@@ -345,7 +345,7 @@ chords_data = [
     },
     {
         "name": "Fm",
-        "desc": "Fm 大横按1品", "difficulty": 3,
+        "desc": "Fm 是小三和弦，构成音 F-G#-C，柔和忧伤，情感色彩丰富。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 4, "fret": 3},
@@ -354,7 +354,7 @@ chords_data = [
     },
     {
         "name": "F7",
-        "desc": "F7 大横按1品", "difficulty": 3,
+        "desc": "F7 是属七和弦，构成音 F-A-C-D#，张力感强，常用于属→主解决。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 2},
@@ -363,7 +363,7 @@ chords_data = [
     },
     {
         "name": "Fm7",
-        "desc": "Fm7 大横按1品", "difficulty": 3,
+        "desc": "Fm7 是小七和弦，构成音 F-G#-C-D#，忧郁爵士味，适合抒情弹唱。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 4, "fret": 3}
@@ -371,7 +371,7 @@ chords_data = [
     },
     {
         "name": "Fmaj7",
-        "desc": "Fmaj7 大横按1品", "difficulty": 3,
+        "desc": "Fmaj7 是大七和弦，构成音 F-A-C-E，梦幻温暖，BossaNova/J-Pop必备。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 2},
@@ -381,7 +381,7 @@ chords_data = [
     },
     {
         "name": "F6",
-        "desc": "F6 大横按1品", "difficulty": 3,
+        "desc": "F6 是大六和弦，构成音 F-A-C-D，甜美复古，民谣常用。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 2},
@@ -392,7 +392,7 @@ chords_data = [
     },
     {
         "name": "Fm6",
-        "desc": "Fm6 大横按1品", "difficulty": 3,
+        "desc": "Fm6 是小六和弦，构成音 F-G#-C-D，忧伤中带暖，爵士标配。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 4, "fret": 3},
@@ -402,7 +402,7 @@ chords_data = [
     },
     {
         "name": "F9",
-        "desc": "F9 大横按1品", "difficulty": 3,
+        "desc": "F9 是属九和弦，构成音 F-A-C-D#-G，丰富蓝调味，Funk/Soul专用。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 2},
@@ -412,7 +412,7 @@ chords_data = [
     },
     {
         "name": "Fadd9",
-        "desc": "Fadd9 大横按1品", "difficulty": 3,
+        "desc": "Fadd9 是加九和弦，构成音 F-A-C-G，空灵开放，氛围感强。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 2},
@@ -423,7 +423,7 @@ chords_data = [
     },
     {
         "name": "Fsus2",
-        "desc": "Fsus2 大横按1品", "difficulty": 3,
+        "desc": "Fsus2 是挂二和弦，构成音 F-G-C，悬浮朦胧，替代大三和弦。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 2},
@@ -433,7 +433,7 @@ chords_data = [
     },
     {
         "name": "Fsus4",
-        "desc": "Fsus4 大横按1品", "difficulty": 3,
+        "desc": "Fsus4 是挂四和弦，构成音 F-A#-C，紧张未解决，倾向回到大和弦。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 3},
@@ -443,7 +443,7 @@ chords_data = [
     },
     {
         "name": "F7sus4",
-        "desc": "F7sus4 大横按1品", "difficulty": 3,
+        "desc": "F7sus4 是属七挂四，构成音 F-A#-C-D#，双重张力，融合/Fusion风。如《夜空中最亮的星》《演员》。", "difficulty": 3,
         "barre": {"fret": 1, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 3},
@@ -452,7 +452,7 @@ chords_data = [
     },
     {
         "name": "G",
-        "desc": "G大调开放", "difficulty": 1,
+        "desc": "G 是大三和弦，构成音 G-B-D，开放明亮，大调歌曲基石。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 3},
             {"string": 5, "fret": 2},
@@ -461,7 +461,7 @@ chords_data = [
     },
     {
         "name": "Gm",
-        "desc": "Gm 大横按3品", "difficulty": 2,
+        "desc": "Gm 是小三和弦，构成音 G-A#-D，柔和忧伤，情感色彩丰富。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 2,
         "barre": {"fret": 3, "startString": 6, "endString": 1},
         "positions": [
             {"string": 4, "fret": 5},
@@ -470,7 +470,7 @@ chords_data = [
     },
     {
         "name": "G7",
-        "desc": "G7 开放", "difficulty": 1,
+        "desc": "G7 是属七和弦，构成音 G-B-D-F，张力感强，常用于属→主解决。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 1},
             {"string": 5, "fret": 2},
@@ -479,7 +479,7 @@ chords_data = [
     },
     {
         "name": "Gm7",
-        "desc": "Gm7 大横按3品", "difficulty": 2,
+        "desc": "Gm7 是小七和弦，构成音 G-A#-D-F，忧郁爵士味，适合抒情弹唱。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 2,
         "barre": {"fret": 3, "startString": 6, "endString": 1},
         "positions": [
             {"string": 4, "fret": 5}
@@ -487,7 +487,7 @@ chords_data = [
     },
     {
         "name": "Gmaj7",
-        "desc": "Gmaj7 开放", "difficulty": 1,
+        "desc": "Gmaj7 是大七和弦，构成音 G-B-D-F#，梦幻温暖，BossaNova/J-Pop必备。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 3},
             {"string": 5, "fret": 2},
@@ -496,7 +496,7 @@ chords_data = [
     },
     {
         "name": "G6",
-        "desc": "G6 开放", "difficulty": 1,
+        "desc": "G6 是大六和弦，构成音 G-B-D-E，甜美复古，民谣常用。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 3},
             {"string": 5, "fret": 2},
@@ -506,7 +506,7 @@ chords_data = [
     },
     {
         "name": "Gm6",
-        "desc": "Gm6 大横按3品", "difficulty": 2,
+        "desc": "Gm6 是小六和弦，构成音 G-A#-D-E，忧伤中带暖，爵士标配。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 2,
         "barre": {"fret": 3, "startString": 6, "endString": 1},
         "positions": [
             {"string": 4, "fret": 5},
@@ -516,7 +516,7 @@ chords_data = [
     },
     {
         "name": "G9",
-        "desc": "G9 开放", "difficulty": 1,
+        "desc": "G9 是属九和弦，构成音 G-B-D-F-A，丰富蓝调味，Funk/Soul专用。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 1},
             {"string": 5, "fret": 2},
@@ -526,7 +526,7 @@ chords_data = [
     },
     {
         "name": "Gadd9",
-        "desc": "Gadd9 开放", "difficulty": 1,
+        "desc": "Gadd9 是加九和弦，构成音 G-B-D-A，空灵开放，氛围感强。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 3},
             {"string": 5, "fret": 2},
@@ -536,7 +536,7 @@ chords_data = [
     },
     {
         "name": "Gsus2",
-        "desc": "Gsus2 开放", "difficulty": 1,
+        "desc": "Gsus2 是挂二和弦，构成音 G-A-D，悬浮朦胧，替代大三和弦。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 3},
             {"string": 5, "fret": 2},
@@ -545,7 +545,7 @@ chords_data = [
     },
     {
         "name": "Gsus4",
-        "desc": "Gsus4 开放", "difficulty": 1,
+        "desc": "Gsus4 是挂四和弦，构成音 G-C-D，紧张未解决，倾向回到大和弦。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 3},
             {"string": 2, "fret": 3},
@@ -554,7 +554,7 @@ chords_data = [
     },
     {
         "name": "G7sus4",
-        "desc": "G7sus4 开放", "difficulty": 1,
+        "desc": "G7sus4 是属七挂四，构成音 G-C-D-F，双重张力，融合/Fusion风。如《朋友》《蓝莲花》《真的爱你》。", "difficulty": 1,
         "positions": [
             {"string": 1, "fret": 3},
             {"string": 2, "fret": 3},
@@ -564,7 +564,7 @@ chords_data = [
     },
     {
         "name": "A",
-        "desc": "A大调开放", "difficulty": 1,
+        "desc": "A 是大三和弦，构成音 A-C#-E，开放明亮，大调歌曲基石。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 2},
             {"string": 3, "fret": 2},
@@ -573,7 +573,7 @@ chords_data = [
     },
     {
         "name": "Am",
-        "desc": "Am 开放", "difficulty": 1,
+        "desc": "Am 是小三和弦，构成音 A-C-E，柔和忧伤，情感色彩丰富。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 3, "fret": 2},
@@ -582,7 +582,7 @@ chords_data = [
     },
     {
         "name": "A7",
-        "desc": "A7 开放", "difficulty": 1,
+        "desc": "A7 是属七和弦，构成音 A-C#-E-G，张力感强，常用于属→主解决。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 3, "fret": 2},
@@ -591,7 +591,7 @@ chords_data = [
     },
     {
         "name": "Am7",
-        "desc": "Am7 开放", "difficulty": 1,
+        "desc": "Am7 是小七和弦，构成音 A-C-E-G，忧郁爵士味，适合抒情弹唱。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 3, "fret": 2},
@@ -600,7 +600,7 @@ chords_data = [
     },
     {
         "name": "Amaj7",
-        "desc": "Amaj7 开放", "difficulty": 1,
+        "desc": "Amaj7 是大七和弦，构成音 A-C#-E-G#，梦幻温暖，BossaNova/J-Pop必备。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 2},
             {"string": 3, "fret": 1},
@@ -609,7 +609,7 @@ chords_data = [
     },
     {
         "name": "A6",
-        "desc": "A6 开放", "difficulty": 1,
+        "desc": "A6 是大六和弦，构成音 A-C#-E-F#，甜美复古，民谣常用。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 2},
             {"string": 3, "fret": 2},
@@ -619,7 +619,7 @@ chords_data = [
     },
     {
         "name": "Am6",
-        "desc": "Am6 开放", "difficulty": 1,
+        "desc": "Am6 是小六和弦，构成音 A-C-E-F#，忧伤中带暖，爵士标配。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 3, "fret": 2},
@@ -629,7 +629,7 @@ chords_data = [
     },
     {
         "name": "A9",
-        "desc": "A9 开放", "difficulty": 1,
+        "desc": "A9 是属九和弦，构成音 A-C#-E-G-B，丰富蓝调味，Funk/Soul专用。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 3, "fret": 2},
@@ -639,7 +639,7 @@ chords_data = [
     },
     {
         "name": "Aadd9",
-        "desc": "Aadd9 开放", "difficulty": 1,
+        "desc": "Aadd9 是加九和弦，构成音 A-C#-E-B，空灵开放，氛围感强。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 2},
             {"string": 3, "fret": 2},
@@ -649,7 +649,7 @@ chords_data = [
     },
     {
         "name": "Asus2",
-        "desc": "Asus2 开放", "difficulty": 1,
+        "desc": "Asus2 是挂二和弦，构成音 A-B-E，悬浮朦胧，替代大三和弦。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 2},
             {"string": 3, "fret": 2},
@@ -658,7 +658,7 @@ chords_data = [
     },
     {
         "name": "Asus4",
-        "desc": "Asus4 开放", "difficulty": 1,
+        "desc": "Asus4 是挂四和弦，构成音 A-D-E，紧张未解决，倾向回到大和弦。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 3},
             {"string": 3, "fret": 2},
@@ -667,7 +667,7 @@ chords_data = [
     },
     {
         "name": "A7sus4",
-        "desc": "A7sus4 开放", "difficulty": 1,
+        "desc": "A7sus4 是属七挂四，构成音 A-D-E-G，双重张力，融合/Fusion风。如《光辉岁月》《平凡之路》《十年》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 3},
             {"string": 3, "fret": 2},
@@ -676,7 +676,7 @@ chords_data = [
     },
     {
         "name": "B",
-        "desc": "B 大横按2品", "difficulty": 3,
+        "desc": "B 是大三和弦，构成音 B-D#-F#，开放明亮，大调歌曲基石。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 4},
@@ -686,7 +686,7 @@ chords_data = [
     },
     {
         "name": "Bm",
-        "desc": "Bm 大横按2品", "difficulty": 3,
+        "desc": "Bm 是小三和弦，构成音 B-D-F#，柔和忧伤，情感色彩丰富。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 3},
@@ -696,7 +696,7 @@ chords_data = [
     },
     {
         "name": "B7",
-        "desc": "B7 大横按2品", "difficulty": 3,
+        "desc": "B7 是属七和弦，构成音 B-D#-F#-A，张力感强，常用于属→主解决。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 2, "fret": 4},
@@ -705,7 +705,7 @@ chords_data = [
     },
     {
         "name": "Bm7",
-        "desc": "Bm7 开放", "difficulty": 1,
+        "desc": "Bm7 是小七和弦，构成音 B-D-F#-A，忧郁爵士味，适合抒情弹唱。如《再见》《我好想你》《离歌》。", "difficulty": 1,
         "positions": [
             {"string": 2, "fret": 1},
             {"string": 3, "fret": 2},
@@ -715,7 +715,7 @@ chords_data = [
     },
     {
         "name": "Bmaj7",
-        "desc": "Bmaj7 大横按2品", "difficulty": 3,
+        "desc": "Bmaj7 是大七和弦，构成音 B-D#-F#-A#，梦幻温暖，BossaNova/J-Pop必备。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 3},
@@ -725,7 +725,7 @@ chords_data = [
     },
     {
         "name": "B6",
-        "desc": "B6 大横按2品", "difficulty": 3,
+        "desc": "B6 是大六和弦，构成音 B-D#-F#-G#，甜美复古，民谣常用。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 4},
@@ -736,7 +736,7 @@ chords_data = [
     },
     {
         "name": "Bm6",
-        "desc": "Bm6 大横按2品", "difficulty": 3,
+        "desc": "Bm6 是小六和弦，构成音 B-D-F#-G#，忧伤中带暖，爵士标配。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 3},
@@ -747,7 +747,7 @@ chords_data = [
     },
     {
         "name": "B9",
-        "desc": "B9 大横按2品", "difficulty": 3,
+        "desc": "B9 是属九和弦，构成音 B-D#-F#-A-C#，丰富蓝调味，Funk/Soul专用。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 3},
@@ -757,7 +757,7 @@ chords_data = [
     },
     {
         "name": "Badd9",
-        "desc": "Badd9 大横按2品", "difficulty": 3,
+        "desc": "Badd9 是加九和弦，构成音 B-D#-F#-C#，空灵开放，氛围感强。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 4},
@@ -768,7 +768,7 @@ chords_data = [
     },
     {
         "name": "Bsus2",
-        "desc": "Bsus2 大横按2品", "difficulty": 3,
+        "desc": "Bsus2 是挂二和弦，构成音 B-C#-F#，悬浮朦胧，替代大三和弦。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 4},
@@ -778,7 +778,7 @@ chords_data = [
     },
     {
         "name": "Bsus4",
-        "desc": "Bsus4 大横按2品", "difficulty": 3,
+        "desc": "Bsus4 是挂四和弦，构成音 B-E-F#，紧张未解决，倾向回到大和弦。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 5},
@@ -788,7 +788,7 @@ chords_data = [
     },
     {
         "name": "B7sus4",
-        "desc": "B7sus4 大横按2品", "difficulty": 3,
+        "desc": "B7sus4 是属七挂四，构成音 B-E-F#-A，双重张力，融合/Fusion风。如《再见》《我好想你》《离歌》。", "difficulty": 3,
         "barre": {"fret": 2, "startString": 6, "endString": 1},
         "positions": [
             {"string": 3, "fret": 5},

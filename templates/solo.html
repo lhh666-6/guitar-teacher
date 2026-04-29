@@ -375,226 +375,63 @@
         .fretboard-mini {
             width: 100%;
             height: 350px;
-            background:
-                /* 木纹纹理 */
-                repeating-linear-gradient(
-                    2deg,
-                    transparent,
-                    transparent 3px,
-                    rgba(139, 90, 43, 0.08) 3px,
-                    rgba(139, 90, 43, 0.08) 4px
-                ),
-                repeating-linear-gradient(
-                    -1deg,
-                    transparent,
-                    transparent 7px,
-                    rgba(0, 0, 0, 0.04) 7px,
-                    rgba(0, 0, 0, 0.04) 8px
-                ),
-                /* 基础木色渐变 */
-                linear-gradient(175deg, #a0764a 0%, #8B6340 15%, #7a5535 40%, #6b4425 65%, #5c3a1e 85%, #4e2f18 100%);
-            border-radius: 15px;
+            background: linear-gradient(180deg, #8B6340 0%, #6b4425 50%, #5c3a1e 100%);
+            border-radius: 12px;
             position: relative;
             padding: 30px 20px;
-            /* 3D 边框斜面 */
-            border-top: 2px solid rgba(255, 220, 180, 0.25);
-            border-bottom: 3px solid rgba(0, 0, 0, 0.4);
-            /* 多层阴影模拟3D深度 */
-            box-shadow:
-                0 25px 50px rgba(0, 0, 0, 0.5),
-                0 8px 16px rgba(0, 0, 0, 0.3),
-                inset 0 2px 4px rgba(255, 220, 180, 0.15),
-                inset 0 -8px 16px rgba(0, 0, 0, 0.25),
-                inset 2px 0 8px rgba(0, 0, 0, 0.15),
-                inset -2px 0 8px rgba(0, 0, 0, 0.15);
-            transform: perspective(900px) rotateX(2deg) rotateY(-4deg);
-            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.6s ease;
+            border-bottom: 2px solid rgba(0,0,0,0.3);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            transform: none;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
             isolation: isolate;
             margin-top: 4px;
-            animation: fretboardFloat 6s ease-in-out infinite;
-            will-change: transform;
-        }
-        @keyframes fretboardFloat {
-            0%, 100% { transform: perspective(900px) rotateX(2deg) rotateY(-4deg); }
-            50%      { transform: perspective(900px) rotateX(2.8deg) rotateY(-3.2deg); }
-        }
-        /* 镜面高光扫过 */
-        .fretboard-mini::after {
-            content: '';
-            position: absolute;
-            inset: 10px;
-            border-radius: 10px;
-            background: linear-gradient(135deg,
-                transparent 0%,
-                rgba(255,255,255,0.04) 40%,
-                rgba(255,255,255,0.08) 50%,
-                rgba(255,255,255,0.04) 60%,
-                transparent 100%);
-            pointer-events: none;
-            z-index: 55;
-            animation: glossSweep 5s ease-in-out infinite;
-        }
-        @keyframes glossSweep {
-            0%, 100% { opacity: 0.3; background-position: 0% 50%; }
-            50%      { opacity: 0.7; background-position: 200% 50%; }
-        }
-        .fretboard-mini::before {
-            content: '';
-            position: absolute;
-            inset: 5px;
-            border-radius: 12px;
-            background: transparent;
-            border: 1px solid rgba(255, 220, 180, 0.06);
-            pointer-events: none;
-            z-index: 50;
-        }
-        .fretboard-mini:hover {
-            transform: perspective(900px) rotateX(0deg) rotateY(0deg) scale(1.01);
-            animation: none;
-            box-shadow:
-                0 30px 60px rgba(0, 0, 0, 0.55),
-                0 12px 24px rgba(0, 0, 0, 0.35),
-                inset 0 3px 6px rgba(255, 220, 180, 0.2),
-                inset 0 -10px 20px rgba(0, 0, 0, 0.3),
-                inset 3px 0 10px rgba(0, 0, 0, 0.2),
-                inset -3px 0 10px rgba(0, 0, 0, 0.2),
-                0 0 60px rgba(255, 200, 100, 0.15);
-        }
-        /* 3D 视差倾斜（JS 驱动） */
-        .fretboard-mini.tilt-active {
-            transition: transform 0.15s ease-out, box-shadow 0.3s ease;
         }
 
         .fret-mini {
             position: absolute;
             top: 0; bottom: 0;
-            width: 4px;
-            background: linear-gradient(90deg,
-                rgba(160, 160, 160, 0.5) 0%,
-                rgba(200, 200, 200, 0.85) 25%,
-                rgba(255, 255, 255, 0.95) 50%,
-                rgba(190, 190, 190, 0.8) 75%,
-                rgba(130, 130, 130, 0.5) 100%
-            );
-            box-shadow:
-                2px 0 5px rgba(0,0,0,0.4),
-                4px 0 10px rgba(255,255,255,0.5),
-                -1px 0 3px rgba(0,0,0,0.3),
-                inset 0 1px 0 rgba(255,255,255,0.3);
+            width: 2px;
+            background: rgba(255,255,255,0.35);
             z-index: 10;
-            border-radius: 2px;
-            transform: translateX(-2px);
-            /* 3D 增强：底部阴影模拟品丝凸起 */
-        }
-        /* 品丝 3D 凸起底部阴影 */
-        .fret-mini::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: -2px;
-            right: -2px;
-            height: 3px;
-            background: rgba(0,0,0,0.35);
-            border-radius: 0 0 3px 3px;
-            filter: blur(2px);
+            border-radius: 1px;
+            transform: translateX(-1px);
         }
         .string-mini {
             position: absolute;
             left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(180deg,
-                rgba(200, 180, 140, 0.7) 0%,
-                rgba(240, 225, 190, 0.95) 40%,
-                rgba(255, 240, 210, 1) 50%,
-                rgba(220, 200, 160, 0.85) 60%,
-                rgba(170, 150, 120, 0.6) 100%
-            );
+            height: 1.5px;
+            background: rgba(220,210,190,0.55);
             z-index: 20;
-            box-shadow:
-                0 1px 2px rgba(0, 0, 0, 0.35),
-                0 2px 6px rgba(0, 0, 0, 0.15);
-            animation: stringShimmer 4s ease-in-out infinite;
-        }
-        .string-mini:nth-child(odd)  { animation-delay: 0s; }
-        .string-mini:nth-child(even) { animation-delay: 1.5s; }
-        @keyframes stringShimmer {
-            0%, 100% { opacity: 0.85; }
-            50%      { opacity: 1; }
         }
         .dot-container {
             position: absolute;
             inset: 0;
-            width: auto;
-            height: auto;
             z-index: 22;
             pointer-events: none;
         }
         .dot {
             position: absolute;
-            width: 26px;
-            height: 26px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            color: white;
             z-index: 30;
             pointer-events: none;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
         }
-        .dot:active { transform: translate(-50%, -50%) scale(0.9); }
-        /* ========== 高级珍珠母贝镶嵌指板圆点 ========== */
         .dot.standard {
-            background:
-                radial-gradient(circle at 50% 40%, rgba(255,255,255,0.25) 0%, transparent 50%),
-                radial-gradient(circle at 30% 25%, #c9f0d5 0%, #7dd48f 15%, #3da85c 40%, #1e6b35 70%, #0f3d1c 100%);
-            box-shadow:
-                0 0 0 1.5px rgba(180,220,180,0.5),
-                0 0 0 3px rgba(30,100,50,0.55),
-                0 0 16px rgba(60,180,80,0.55),
-                0 3px 6px rgba(0,0,0,0.5),
-                inset 0 1px 2px rgba(255,255,255,0.35),
-                inset 0 -2px 3px rgba(0,0,0,0.2);
+            background: radial-gradient(circle at 40% 35%, #f5ede0 0%, #c4b498 60%, #a89070 100%);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25);
         }
         .dot.user-correct {
-            background:
-                radial-gradient(circle at 50% 38%, rgba(255,255,255,0.3) 0%, transparent 55%),
-                radial-gradient(circle at 30% 25%, #d4f5e0 0%, #5eea8b 12%, #28c054 38%, #158a38 68%, #0b4f1e 100%);
-            box-shadow:
-                0 0 0 2px rgba(255,215,140,0.9),
-                0 0 0 5px rgba(30,120,50,0.65),
-                0 0 24px rgba(40,200,70,0.8),
-                0 0 44px rgba(40,180,70,0.35),
-                0 4px 8px rgba(0,0,0,0.55),
-                inset 0 1px 2px rgba(255,255,255,0.4),
-                inset 0 -2px 3px rgba(0,0,0,0.2);
-            animation: dotPopIn 0.4s cubic-bezier(0.2,0.9,0.4,1), dotShimmerEmerald 3s ease-in-out infinite 0.4s;
+            background: radial-gradient(circle at 40% 35%, #4ae07a 0%, #1f8b4c 60%, #145a30 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(46,204,113,0.35);
+            animation: dotPopIn 0.3s cubic-bezier(0.2,0.9,0.4,1);
         }
         .dot.user-wrong {
-            background:
-                radial-gradient(circle at 50% 38%, rgba(255,255,255,0.25) 0%, transparent 55%),
-                radial-gradient(circle at 30% 25%, #fcd0d0 0%, #f57070 12%, #e6314a 38%, #b01a30 68%, #6b0d1c 100%);
-            box-shadow:
-                0 0 0 2px rgba(255,200,200,0.85),
-                0 0 0 5px rgba(160,30,50,0.6),
-                0 0 24px rgba(230,50,70,0.75),
-                0 0 44px rgba(210,50,65,0.3),
-                0 4px 8px rgba(0,0,0,0.55),
-                inset 0 1px 2px rgba(255,255,255,0.35),
-                inset 0 -2px 3px rgba(0,0,0,0.2);
-            animation: dotPopIn 0.4s cubic-bezier(0.2,0.9,0.4,1), dotShimmerRuby 3s ease-in-out infinite 0.4s;
-        }
-        @keyframes dotShimmerEmerald {
-            0%, 100% { box-shadow: 0 0 0 2px rgba(255,215,140,0.9), 0 0 0 5px rgba(30,120,50,0.65), 0 0 24px rgba(40,200,70,0.8), 0 0 44px rgba(40,180,70,0.35), 0 4px 8px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -2px 3px rgba(0,0,0,0.2); }
-            50%      { box-shadow: 0 0 0 2px rgba(255,230,170,1), 0 0 0 5px rgba(40,150,60,0.75), 0 0 32px rgba(60,230,90,0.95), 0 0 56px rgba(50,200,80,0.45), 0 4px 8px rgba(0,0,0,0.55), inset 0 1px 3px rgba(255,255,255,0.55), inset 0 -2px 3px rgba(0,0,0,0.2); }
-        }
-        @keyframes dotShimmerRuby {
-            0%, 100% { box-shadow: 0 0 0 2px rgba(255,200,200,0.85), 0 0 0 5px rgba(160,30,50,0.6), 0 0 24px rgba(230,50,70,0.75), 0 0 44px rgba(210,50,65,0.3), 0 4px 8px rgba(0,0,0,0.55), inset 0 1px 2px rgba(255,255,255,0.35), inset 0 -2px 3px rgba(0,0,0,0.2); }
-            50%      { box-shadow: 0 0 0 2px rgba(255,220,220,0.95), 0 0 0 5px rgba(180,40,60,0.7), 0 0 32px rgba(250,60,85,0.9), 0 0 56px rgba(230,60,80,0.4), 0 4px 8px rgba(0,0,0,0.55), inset 0 1px 3px rgba(255,255,255,0.5), inset 0 -2px 3px rgba(0,0,0,0.2); }
+            background: radial-gradient(circle at 40% 35%, #f26878 0%, #c0392b 60%, #7b1a1a 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(231,76,60,0.35);
+            animation: dotPopIn 0.3s cubic-bezier(0.2,0.9,0.4,1);
         }
         @keyframes dotPopIn {
             0%   { transform: translate(-50%, -50%) scale(0); }
@@ -603,53 +440,26 @@
         }
         .barre {
             position: absolute;
-            width: 8px;
-            border-radius: 4px;
+            width: 6px;
+            border-radius: 3px;
             transform: none;
             z-index: 25;
             pointer-events: none;
-            transition: opacity 0.2s ease, box-shadow 0.2s ease;
+            transition: opacity 0.2s ease;
         }
-        /* ========== 高级横按指示条 ========== */
         .barre.standard {
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 40%),
-                linear-gradient(90deg, #0f3d1c 0%, #2ca04a 20%, #3db858 50%, #2ca04a 80%, #0f3d1c 100%);
+            background: #b8976e;
             opacity: 0.85;
-            box-shadow:
-                0 0 0 1px rgba(150,200,150,0.4),
-                0 0 10px rgba(50,160,70,0.4),
-                0 2px 4px rgba(0,0,0,0.4),
-                inset 0 1px 1px rgba(255,255,255,0.3),
-                inset 0 -1px 2px rgba(0,0,0,0.2);
         }
         .barre.user-correct {
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.25) 0%, transparent 40%),
-                linear-gradient(90deg, #0b4f1e 0%, #1ea83a 20%, #34d055 50%, #1ea83a 80%, #0b4f1e 100%);
-            opacity: 0.95;
-            box-shadow:
-                0 0 0 1.5px rgba(255,215,140,0.85),
-                0 0 0 3px rgba(30,110,45,0.55),
-                0 0 16px rgba(50,200,80,0.6),
-                0 0 28px rgba(40,180,70,0.3),
-                0 2px 4px rgba(0,0,0,0.45),
-                inset 0 1px 1px rgba(255,255,255,0.35),
-                inset 0 -1px 2px rgba(0,0,0,0.2);
+            background: #2ecc71;
+            opacity: 0.9;
+            box-shadow: 0 0 8px rgba(46,204,113,0.3);
         }
         .barre.user-wrong {
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 40%),
-                linear-gradient(90deg, #6b0d1c 0%, #c42038 20%, #e84055 50%, #c42038 80%, #6b0d1c 100%);
-            opacity: 0.95;
-            box-shadow:
-                0 0 0 1.5px rgba(255,200,200,0.8),
-                0 0 0 3px rgba(150,30,45,0.55),
-                0 0 16px rgba(230,50,70,0.55),
-                0 0 28px rgba(210,50,65,0.25),
-                0 2px 4px rgba(0,0,0,0.45),
-                inset 0 1px 1px rgba(255,255,255,0.3),
-                inset 0 -1px 2px rgba(0,0,0,0.2);
+            background: #e74c3c;
+            opacity: 0.9;
+            box-shadow: 0 0 8px rgba(231,76,60,0.3);
         }
         .fret-label {
             position: absolute;
@@ -1305,6 +1115,15 @@
 
         /* 6. 卡片辉光 — hover 微妙提升 */
         .chord-info {
+            font-size: 0.82rem;
+            line-height: 1.6;
+            color: #c0a88b;
+            padding: 8px 10px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 8px;
+            border: 1px solid rgba(255,215,140,0.1);
+            min-height: 24px;
+            word-break: break-word;
             transition: box-shadow 0.35s ease, border-color 0.35s ease;
         }
         .chord-info:hover {
@@ -1560,16 +1379,16 @@
     <!-- MediaPipe（必须阻塞加载，后续 JS 依赖它；camera_utils 未被使用已移除） -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <!-- 本地模块 JS -->
-    <script src="/static/js/solo/constants.js"></script>
-    <script src="/static/js/solo/filters.js"></script>
-    <script src="/static/js/solo/ui_helpers.js"></script>
+    <script src="/static/js/solo/constants.js?v={{ APP_VERSION }}"></script>
+    <script src="/static/js/solo/filters.js?v={{ APP_VERSION }}"></script>
+    <script src="/static/js/solo/ui_helpers.js?v={{ APP_VERSION }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/meyda@5.5.1/dist/web/meyda.min.js"></script>
-    <script src="/static/js/solo/chord_verifier.js"></script>
-    <script src="/static/js/solo/chord_validator.js"></script>
-    <script src="/static/js/solo/fingering_detector.js"></script>
-    <script src="/static/js/solo/camera_manager.js"></script>
-    <script src="/static/js/solo/socket_manager.js"></script>
-    <script src="/static/js/solo/main.js"></script>
+    <script src="/static/js/solo/chord_verifier.js?v={{ APP_VERSION }}"></script>
+    <script src="/static/js/solo/chord_validator.js?v={{ APP_VERSION }}"></script>
+    <script src="/static/js/solo/fingering_detector.js?v={{ APP_VERSION }}"></script>
+    <script src="/static/js/solo/camera_manager.js?v={{ APP_VERSION }}"></script>
+    <script src="/static/js/solo/socket_manager.js?v={{ APP_VERSION }}"></script>
+    <script src="/static/js/solo/main.js?v={{ APP_VERSION }}"></script>
 
     <!-- 新增：全屏按钮逻辑 -->
     <script>
@@ -1769,34 +1588,6 @@
     }
     </script>
     <script defer src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <script src="/static/js/voice_guide.js"></script>
-    <!-- 3D 视差倾斜：指板随鼠标微动 -->
-    <script>
-    (function() {
-        var board = document.getElementById('fretboardMini');
-        if (!board) return;
-        var maxTilt = 6; // 最大倾斜角度
-        board.addEventListener('mousemove', function(e) {
-            var rect = board.getBoundingClientRect();
-            var x = (e.clientX - rect.left) / rect.width;   // 0~1
-            var y = (e.clientY - rect.top) / rect.height;    // 0~1
-            var tiltX = (y - 0.5) * maxTilt * 1.4;           // 上下倾斜
-            var tiltY = (x - 0.5) * -maxTilt;                // 左右倾斜
-            board.classList.add('tilt-active');
-            board.style.transform = 'perspective(900px) rotateX(' + (2 - tiltX).toFixed(1) + 'deg) rotateY(' + (-4 + tiltY).toFixed(1) + 'deg) scale(1.01)';
-            board.style.boxShadow =
-                '0 ' + (25 - tiltX * 2).toFixed(0) + 'px ' + (50 - tiltX * 3).toFixed(0) + 'px rgba(0,0,0,0.5),' +
-                '0 8px 16px rgba(0,0,0,0.3),' +
-                'inset 0 2px 4px rgba(255,220,180,0.15),' +
-                'inset 0 -8px 16px rgba(0,0,0,0.25),' +
-                '0 0 ' + (30 + Math.abs(tiltY) * 5).toFixed(0) + 'px rgba(255,200,100,' + (0.15 + Math.abs(tiltY) * 0.02).toFixed(2) + ')';
-        });
-        board.addEventListener('mouseleave', function() {
-            board.classList.remove('tilt-active');
-            board.style.transform = '';
-            board.style.boxShadow = '';
-        });
-    })();
-    </script>
+    <script src="/static/js/voice_guide.js?v={{ APP_VERSION }}"></script>    <!-- 3D 视差倾斜：指板随鼠标微动 -->
 </body>
 </html>

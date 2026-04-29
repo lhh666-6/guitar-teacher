@@ -275,6 +275,23 @@ class LLMService:
             "请基于以上完整数据，撰写一份全面的吉他学习评估报告。",
             "=" * 40,
         ]
+
+        # 正确率高时追加歌曲推荐请求
+        avg_acc = o.get('avg_accuracy', 0)
+        if avg_acc >= 80:
+            best_chords = [c.get('name','') for c in chords_sorted[:5] if c.get('value', 0) >= 70]
+            chord_list = '、'.join(best_chords) if best_chords else '无'
+            sections.append("")
+            sections.append("=" * 40)
+            sections.append("🎵 用户整体正确率较高，请额外推荐适合学习的歌曲")
+            sections.append("=" * 40)
+            sections.append(f"用户已掌握的和弦: {chord_list}")
+            sections.append("请推荐2-3首适合用户当前水平的弹唱歌曲（中文优先），每首列出：")
+            sections.append("1. 歌曲名 + 原唱")
+            sections.append("2. 歌曲使用的核心和弦进行（如 C-G-Am-F）")
+            sections.append("3. 用户已会哪些和弦、还需练哪个")
+            sections.append("4. 弹奏难度评估（用★表示，1-5星）")
+
         return '\n'.join(sections)
 
     def _build_chord_recommendation_prompt(self, user_stats: Dict) -> str:
@@ -315,6 +332,12 @@ class LLMService:
             "## 六、针对性建议（4-5条）\n"
             "每条建议包含：1）针对的具体问题（引用数据）；2）具体的练习方法；"
             "3）建议的练习频率或时长。用1.2.3.4.编号，每条60-100字。\n\n"
+            "## 七、歌曲推荐（仅当用户整体正确率≥80%时有此章节）\n"
+            "如果数据报告末尾有「🎵歌曲推荐」请求，则输出此章节。\n"
+            "推荐2-3首适合的中文弹唱歌曲，每首包含：\n"
+            "① 歌曲名 + 原唱\n"
+            "② 和弦进行（如 C-G-Am-F，标注每个和弦在第几拍切换）\n"
+            "③ 难度评估（★1-5），说明用户还需练习哪个和弦\n\n"
             "要求：语气温暖鼓励，像一位关心学生的老师，不要像冷冰冰的数据报告。"
             "用「你」称呼用户。精确引用数据中的数字。"
         )

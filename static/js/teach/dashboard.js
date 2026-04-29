@@ -212,6 +212,11 @@ function stopAutoRotate(panel) {
 
 // ========== 加载仪表盘数据 ==========
 function loadDashboardData() {
+    if (typeof Charts === 'undefined') {
+        console.error('Charts 模块未加载，跳过仪表盘渲染');
+        hideLoading();
+        return Promise.reject(new Error('Charts module not loaded'));
+    }
     return fetch('/api/teach/dashboard')
         .then(function (res) {
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -220,12 +225,12 @@ function loadDashboardData() {
         .then(function (data) {
             dashboardData = data;
             renderStats(data);
-            renderCharts(data);
+            try { renderCharts(data); } catch (e) { console.error('renderCharts 异常:', e); }
             renderRecords(data);
             renderMiniStats(data);
             initCarousel();
-            switchCarouselView('radar', data);
-            switchCarouselView('progress', data);
+            try { switchCarouselView('radar', data); } catch (e) { console.error('radar 轮播初始化异常:', e); }
+            try { switchCarouselView('progress', data); } catch (e) { console.error('progress 轮播初始化异常:', e); }
             startAutoRotate();
         })
         .catch(function (err) {

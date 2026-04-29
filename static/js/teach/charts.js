@@ -14,8 +14,15 @@ var Charts = {
     },
 
     _initChart: function (containerId) {
+        if (typeof echarts === 'undefined') {
+            console.error('ECharts 库未加载，无法初始化图表:', containerId);
+            return null;
+        }
         var el = document.getElementById(containerId);
-        if (!el) return null;
+        if (!el) {
+            console.warn('图表容器元素未找到:', containerId);
+            return null;
+        }
         if (this._instances[containerId]) {
             this._instances[containerId].dispose();
         }
