@@ -527,7 +527,7 @@ body {
     max-height: 500px;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 215, 140, 0.25) transparent;
+    scrollbar-color: rgba(200, 155, 100, 0.35) transparent;
 }
 .advice-content::-webkit-scrollbar {
     width: 6px;
@@ -537,12 +537,12 @@ body {
     border-radius: 3px;
 }
 .advice-content::-webkit-scrollbar-thumb {
-    background: rgba(255, 215, 140, 0.25);
+    background: rgba(200, 155, 100, 0.35);
     border-radius: 3px;
     transition: background 0.3s;
 }
 .advice-content::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 215, 140, 0.45);
+    background: rgba(200, 155, 100, 0.55);
 }
 .advice-text {
     margin: 0;

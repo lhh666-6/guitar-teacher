@@ -1,11 +1,9 @@
-import eventlet
-eventlet.monkey_patch(thread=False)
-
 import logging
 import base64
 import os
 import json
 import threading
+import queue
 import time
 import io
 from concurrent.futures import ThreadPoolExecutor
@@ -168,6 +166,7 @@ def handle_thumbnail(data):
 
     def _process_thumb(img_b64, sid):
         global _frame_busy
+        t_start = time.perf_counter()
         try:
             frame = base64_to_cv2(img_b64)
             if frame is None:
@@ -176,6 +175,7 @@ def handle_thumbnail(data):
             if success:
                 params = recognizer.get_fretboard_params()
                 if params:
+                    params['server_timing_ms'] = round((time.perf_counter() - t_start) * 1000, 1)
                     socketio.emit('fretboard_params', params, room=sid)
         except Exception as e:
             logger.exception("缩略图处理异常")
@@ -227,11 +227,13 @@ def process_and_emit(image_base64: str, sid: str):
         processed_frame, result = recognizer.process_frame(frame, timestamp)
         timings['inference'] = (time.perf_counter() - t_infer) * 1000
 
+        total_ms = (time.perf_counter() - t_start) * 1000
+        result['server_timing_ms'] = round(total_ms, 1)
+
         t_emit = time.perf_counter()
         _safe_emit('detection_result', result, room=sid)
         timings['emit'] = (time.perf_counter() - t_emit) * 1000
 
-        total_ms = (time.perf_counter() - t_start) * 1000
         if config.DEBUG:
             logger.info(
                 f"[APP_TIMING] 解码={timings['decode']:.1f}ms, 推理={timings['inference']:.1f}ms, "
@@ -543,9 +545,7 @@ def generate_advice_stream():
     stats = _build_advice_stats(current_user.id)
 
     def generate():
-        import eventlet
-        from eventlet.queue import Queue, Empty
-        q = Queue()
+        q = queue.Queue()
 
         def worker():
             try:
@@ -556,7 +556,8 @@ def generate_advice_stream():
                 logger.error(f"流式生成异常: {e}")
                 q.put(('error', str(e)))
 
-        eventlet.spawn(worker)
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
 
         while True:
             try:
@@ -573,8 +574,7 @@ def generate_advice_stream():
                 elif kind == 'error':
                     yield f"data: {json.dumps({'error': value})}\n\n"
                     return
-            except Empty:
-                # 10 秒无数据 → 心跳注释，保持代理连接不超时
+            except queue.Empty:
                 yield ": heartbeat\n\n"
 
     return Response(

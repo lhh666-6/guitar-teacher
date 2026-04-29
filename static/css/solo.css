@@ -249,13 +249,40 @@ body {
     color: #f5e6d3;
 }
 /* 测试列表样式 */
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.right-panel > div:first-child {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+.right-panel .test-progress-area {
+    flex: 0 0 auto;
+    margin-top: 10px;
+}
 .test-list {
+    flex: 1 1 auto;
+    min-height: 60px;
     background: rgba(0,0,0,0.2);
     border-radius: 12px;
     padding: 8px;
-    min-height: 120px;
-    max-height: 180px;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 215, 140, 0.25) transparent;
+}
+.test-list::-webkit-scrollbar {
+    width: 5px;
+}
+.test-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.test-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 140, 0.25);
+    border-radius: 3px;
 }
 .test-item {
     display: flex;

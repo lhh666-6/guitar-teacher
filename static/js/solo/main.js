@@ -24,6 +24,8 @@
             // 状态变量
             this.thumbnailDynamicInterval = 200;
             this.thumbnailRttHistory = [];
+            this._serverTimingHistory = [];
+            this._lastServerTiming = 0;
             this.thumbnailFastStartTime = null;
             this.thumbnailModeCheckTimer = null;
             this.thumbnailModeDecided = false;
@@ -593,6 +595,10 @@
                 this._logFretboardReady = true;
                 this._logFretboardMissing = false;
             }
+            if (params.server_timing_ms) {
+                this._lastServerTiming = params.server_timing_ms;
+                this._updateServerTiming(params.server_timing_ms);
+            }
             this.fingeringDetector.setParams(params);
             const drawingData = this._buildDrawingDataFromParams(params);
             this.cachedDrawingData = drawingData;
@@ -993,10 +999,15 @@
                     if (options.forceSkip) {
                         this.recordSkip();
                     } else {
-                        this._showResultFlash(false);
+                        this.recordWrong();
+                        // 重置状态，允许同一和弦继续检测、再次记录
+                        this.recordedForCurrentChord = false;
                         this._visualStablePassed = false;
                         this._visualStableReady = false;
                         this._visualErrorStart = null;
+                        this.audioResultCache = null;
+                        this.audioWaiting = false;
+                        if (this.audioTimeout) { clearTimeout(this.audioTimeout); this.audioTimeout = null; }
                     }
                     break;
             }
@@ -1013,7 +1024,7 @@
         }
 
         _startAudioTimeout() {
-            if (this.audioWaiting || this.audioResultCache) return;
+            if (this.audioWaiting || this.audioResultCache || this.recordedForCurrentChord) return;
             this.audioWaiting = true;
             this.audioTimeout = setTimeout(() => {
                 this.audioResultCache = null;
@@ -1022,9 +1033,9 @@
         }
 
         handleDetectionResult = (data) => {
-            const receiveTime = performance.now();
-            if (this.lastFrameSendTime > 0) {
-                const totalDelay = receiveTime - this.lastFrameSendTime;
+            if (data.server_timing_ms) {
+                this._lastServerTiming = data.server_timing_ms;
+                this._updateServerTiming(data.server_timing_ms);
             }
             if (data.drawing_data) {
                 this.cachedDrawingData = data.drawing_data;
@@ -1150,10 +1161,10 @@
             // 动态映射：速度越小 → mincutoff 越小，beta 越小 (更强平滑)
             // 静止时 avgSpeed ≈ 0 → mincutoff 取 BASE_MIN_CUTOFF * 0.5
             // 快速运动时 avgSpeed > 阈值 → 恢复原始值
-            const speedThreshold = 0.02;   // 经验阈值，可调
+            const speedThreshold = 0.015;   // 降低阈值，提升快速运动检测灵敏度
             const speedRatio = Math.min(1, avgSpeed / speedThreshold);
-            const dynamicMinCutoff = BASE_MIN_CUTOFF * (0.5 + 0.5 * speedRatio);
-            const dynamicBeta = BASE_BETA * (0.3 + 0.7 * speedRatio);
+            const dynamicMinCutoff = BASE_MIN_CUTOFF * (0.4 + 0.6 * speedRatio);
+            const dynamicBeta = BASE_BETA * (0.2 + 0.8 * speedRatio);
 
             // 保存本帧原始点，供下一帧计算速度
             this._prevLandmarks = landmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z }));
@@ -1256,6 +1267,27 @@
             }
         }
 
+        _updateServerTiming(ms) {
+            this._serverTimingHistory.push(ms);
+            if (this._serverTimingHistory.length > 5) {
+                this._serverTimingHistory.shift();
+            }
+            this._adjustThumbnailInterval();
+        }
+
+        _adjustThumbnailInterval() {
+            // 前 2 秒由 _evaluateThumbnailMode 负责初始快评，之后持续自适应
+            if (!this.thumbnailModeDecided) return;
+            if (this._serverTimingHistory.length === 0) return;
+
+            const avgServer = this._serverTimingHistory.reduce((a, b) => a + b, 0) / this._serverTimingHistory.length;
+            // 目标：让后端处理时间不超过帧间隔的 70%，避免积压
+            // 帧间隔 = max(server_time / 0.7, 150)，clamp 到 [150, 600]
+            const target = Math.max(150, Math.min(600, Math.round(avgServer / 0.7)));
+            // 平滑过渡，避免突变
+            this.thumbnailDynamicInterval = Math.round(this.thumbnailDynamicInterval * 0.7 + target * 0.3);
+        }
+
         _evaluateThumbnailMode() {
             this.thumbnailModeDecided = true;
             if (this.thumbnailModeCheckTimer) {
@@ -1336,8 +1368,9 @@
             this._lastPerfUpdate = now;
             var fps = this._perfFrameTimes ? this._perfFrameTimes.length : 0;
             var rtt = this._lastThumbnailRtt || 0;
-            var imgSize = THUMBNAIL_WIDTH + 'px';
-            el.textContent = fps + 'fps | ' + rtt + 'ms | ' + imgSize;
+            var serverMs = this._lastServerTiming || 0;
+            var interval = this.thumbnailDynamicInterval;
+            el.textContent = fps + 'fps | sv:' + serverMs + 'ms | rtt:' + rtt + 'ms | →' + interval + 'ms';
         }
 
 

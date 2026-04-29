@@ -159,6 +159,7 @@ class GuitarFingeringRecognizer:
         self.frame_count = 0
         self.filter_last_use = {}
 
+        self._last_yolo_time = 0
         self.last_nut_center = None
         self.last_bridge_center = None
         self.last_nut_box = None
@@ -221,8 +222,17 @@ class GuitarFingeringRecognizer:
 
     # ---------- 指板参数更新（由缩略图触发） ----------
     def update_fretboard(self, frame):
-        """接收一帧图像，运行YOLO检测琴枕和琴桥，更新指板几何参数"""
+        """接收一帧图像，运行YOLO检测琴枕和琴桥，限频300ms以平衡实时性与性能"""
+        now = time.time()
+        if (self.last_nut_center is not None and self.last_bridge_center is not None
+                and now - self._last_yolo_time < 0.3):
+            return True
+
         with self.fretboard_lock:
+            # 二次检查，避免锁等待期间其他线程已更新
+            if self.last_nut_center is not None and now - self._last_yolo_time < 0.3:
+                return True
+            self._last_yolo_time = now
             h_img, w_img = frame.shape[:2]
             t0 = time.time()
             results = self.yolo_model(frame, conf=self.YOLO_CONF, verbose=False)

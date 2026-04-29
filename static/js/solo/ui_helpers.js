@@ -96,17 +96,17 @@ function drawOverlay(ctx, canvasWidth, canvasHeight, drawingData) {
                 const x = canvasWidth - p.tip_x * scaleX;
                 const y = p.tip_y * scaleY;
                 ctx.beginPath();
-                ctx.arc(x, y, 8, 0, 2 * Math.PI);
-                ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
+                ctx.arc(x, y, 11, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(34, 197, 94, 0.85)';
                 ctx.fill();
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#16a34a';
+                ctx.lineWidth = 2.5;
                 ctx.stroke();
-                ctx.font = '12px Arial';
+                ctx.font = 'bold 11px Arial';
                 ctx.fillStyle = '#ffffff';
                 ctx.shadowColor = '#000';
                 ctx.shadowBlur = 4;
-                ctx.fillText(p.finger, x + 10, y - 10);
+                ctx.fillText(p.fret, x - 4, y + 4);
                 ctx.shadowBlur = 0;
             }
         });

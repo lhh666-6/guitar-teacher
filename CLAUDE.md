@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pip install -r requirements.txt    # 安装依赖
-python app.py                      # 启动开发服务器 (0.0.0.0:5000, eventlet 异步模式)
+python app.py                      # 启动开发服务器 (0.0.0.0:5000)
 ```
 
 - MySQL 数据库必须运行，连接字符串在 `config.py` 的 `SQLALCHEMY_DATABASE_URI`
