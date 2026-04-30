@@ -407,3 +407,11 @@ button[type="submit"]:active {
 [data-theme="light"] .message { color: #8b5820; }
 [data-theme="light"] .message.error { color: #c04030; }
 [data-theme="light"] .message.success { color: #408040; }
+[data-theme="light"] input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 30px rgba(245,235,220,0.95) inset;
+    -webkit-text-fill-color: #3d2e1e;
+}
+[data-theme="light"] .particle {
+    background: radial-gradient(circle at 40% 35%, rgba(180,140,80,0.25), rgba(160,120,60,0.04));
+    box-shadow: 0 0 6px rgba(180,130,60,0.15);
+}

@@ -455,9 +455,11 @@ document.addEventListener('DOMContentLoaded', function () {
         function formatText(text, applyHeading) {
             var out = text
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/\n/g, '<br>');
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.+?)\*\*/g, '$1');  // 删除 ** 标记
             if (applyHeading) {
-                out = out.replace(/## (.*?)(<br>|$)/g, '<strong style="color:#ffd966;font-size:1.05em;">$1</strong><br>');
+                var hdrColor = document.documentElement.getAttribute('data-theme') === 'light' ? '#8b5820' : '#ffd966';
+                out = out.replace(/## (.*?)(<br>|$)/g, '<strong style="color:' + hdrColor + ';font-size:1.05em;">$1</strong><br>');
             }
             return out;
         }

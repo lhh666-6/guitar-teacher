@@ -72,7 +72,7 @@ PINKY_SMOOTH_ALPHA = 0.4
 PINKY_ANGLE_THRESH = 30                                 # 小拇指弯曲角度阈值
 
 # ---------- 琴枕琴桥方向配置 ----------
-FORCE_NUT_LEFT = True                                   # 根据前端镜像情况设置
+FORCE_NUT_LEFT = False                                  # 视频 CSS 镜像已处理左右翻转
 
 # ---------- Flask应用配置（新增，仅用于满足Flask要求）----------
 SECRET_KEY = 'dev-secret-key'                           # Flask密钥，任意字符串即可

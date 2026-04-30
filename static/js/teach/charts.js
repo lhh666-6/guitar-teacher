@@ -1,6 +1,6 @@
 var Charts = {
     _instances: {},
-    _theme: {
+    _darkTheme: {
         gold: '#ffd966',
         goldDim: '#c0a88b',
         green: '#2ecc71',
@@ -8,9 +8,38 @@ var Charts = {
         red: '#e74c3c',
         orange: '#e6a817',
         text: '#ecd9b4',
+        textDim: '#c0a88b',
         bgGlow: 'rgba(255,215,140,0.06)',
         gridLine: 'rgba(255,215,140,0.06)',
-        axisLine: 'rgba(255,215,140,0.15)'
+        axisLine: 'rgba(255,215,140,0.15)',
+        tooltipBg: 'rgba(30,20,15,0.95)',
+        tooltipBorder: 'rgba(255,215,140,0.4)',
+        itemBorder: 'rgba(30,20,15,0.8)',
+        calendarEmpty: 'rgba(255,215,140,0.03)',
+        calendarBorder: 'rgba(255,215,140,0.06)'
+    },
+    _lightTheme: {
+        gold: '#8b5820',
+        goldDim: '#6b5040',
+        green: '#2d8a4e',
+        blue: '#3b7ec4',
+        red: '#c0392b',
+        orange: '#b87a14',
+        text: '#3d2e1e',
+        textDim: '#6b5040',
+        bgGlow: 'rgba(180,130,80,0.06)',
+        gridLine: 'rgba(180,130,80,0.08)',
+        axisLine: 'rgba(180,130,80,0.2)',
+        tooltipBg: 'rgba(255,250,242,0.95)',
+        tooltipBorder: 'rgba(180,130,80,0.4)',
+        itemBorder: 'rgba(220,200,170,0.8)',
+        calendarEmpty: 'rgba(180,140,90,0.04)',
+        calendarBorder: 'rgba(180,140,90,0.08)'
+    },
+
+    _theme: function() {
+        return document.documentElement.getAttribute('data-theme') === 'light'
+            ? this._lightTheme : this._darkTheme;
     },
 
     _initChart: function (containerId) {
@@ -45,7 +74,7 @@ var Charts = {
     // ========== 和弦掌握度 — 雷达图 ==========
     renderMastery: function (containerId, data) {
         var chart = this._initChart(containerId);
-        var t = this._theme;
+        var t = this._theme();
         if (!chart || !data || !data.chords || !data.chords.length) {
             return null;
         }
@@ -94,7 +123,7 @@ var Charts = {
     // ========== 难度分布 — 玫瑰图 ==========
     renderDifficulty: function (containerId, data) {
         var chart = this._initChart(containerId);
-        var t = this._theme;
+        var t = this._theme();
         if (!chart || !data || !data.length) return null;
 
         var opt = this._animationOpts();
@@ -139,7 +168,7 @@ var Charts = {
     // ========== 练习频次 — 日历热力图 ==========
     renderCalendar: function (containerId, data) {
         var chart = this._initChart(containerId);
-        var t = this._theme;
+        var t = this._theme();
         if (!chart || !data || !data.length) return null;
 
         var maxVal = Math.max.apply(null, data.map(function (d) { return d[1]; })) || 1;
@@ -204,7 +233,7 @@ var Charts = {
     // ========== 进步趋势 — 双折线图 + 平均线 ==========
     renderProgress: function (containerId, progressData, similarityData, avgAccuracy) {
         var chart = this._initChart(containerId);
-        var t = this._theme;
+        var t = this._theme();
         if (!chart || !progressData || !progressData.dates || !progressData.dates.length) {
             return null;
         }
@@ -303,7 +332,7 @@ var Charts = {
 
     renderAccuracyOnly: function (containerId, progressData, avgAccuracy) {
         var chart = this._initChart(containerId);
-        var t = this._theme;
+        var t = this._theme();
         if (!chart || !progressData || !progressData.dates || !progressData.dates.length) return null;
 
         var opt = this._animationOpts();
@@ -360,7 +389,7 @@ var Charts = {
 
     renderSimilarityOnly: function (containerId, progressData, similarityData) {
         var chart = this._initChart(containerId);
-        var t = this._theme;
+        var t = this._theme();
         if (!chart || !progressData || !progressData.dates || !progressData.dates.length) return null;
 
         var simValues = similarityData ? similarityData.map(function (v) { return +(v * 100).toFixed(1); }) : [];
@@ -413,7 +442,7 @@ var Charts = {
     // ========== 稳定度 — 环形图 ==========
     renderStabilityDonut: function (containerId, correct, error, unstable) {
         var chart = this._initChart(containerId);
-        var t = this._theme;
+        var t = this._theme();
         if (!chart) return null;
 
         var total = correct + error + unstable;

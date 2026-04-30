@@ -1001,3 +1001,32 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
     color: #6b4020;
     text-shadow: 0 0 6px rgba(180,130,60,0.4), 0 1px 2px rgba(0,0,0,0.3);
 }
+[data-theme="light"] .test-item-time,
+[data-theme="light"] .test-list-item-time {
+    color: #3d7a3d;
+}
+[data-theme="light"] .test-item-order {
+    background: rgba(140,110,70,0.1);
+    border-color: rgba(140,110,70,0.2);
+    color: #6b5040;
+}
+[data-theme="light"] .chord-cat-tab {
+    background: rgba(140,110,70,0.08);
+    color: #6b5040;
+    border-color: rgba(140,110,70,0.15);
+}
+[data-theme="light"] .chord-cat-tab.active {
+    background: rgba(140,110,70,0.18);
+    color: #8b5820;
+}
+[data-theme="light"] .chord-recent-label,
+[data-theme="light"] .chord-selected-count {
+    color: #6b5040;
+}
+[data-theme="light"] .popup-chord-desc {
+    color: #6b5040;
+}
+[data-theme="light"] .particle {
+    background: rgba(180,140,90,0.15);
+    box-shadow: 0 0 10px rgba(160,120,60,0.2);
+}

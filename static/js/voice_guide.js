@@ -132,19 +132,21 @@ const VoiceGuide = (function() {
     function updateIcon() {
         if (!iconElement) return;
         const label = document.getElementById('voice-guide-label');
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
         if (!isListening) {
             iconElement.innerHTML = '🎤';
             iconElement.title = '语音助手 · 点击开启';
-            iconElement.style.backgroundColor = 'rgba(80,80,80,0.75)';
+            iconElement.style.backgroundColor = isLight ? 'rgba(180,160,140,0.7)' : 'rgba(80,80,80,0.75)';
             iconElement.style.backdropFilter = 'blur(8px)';
             iconElement.style.webkitBackdropFilter = 'blur(8px)';
-            iconElement.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)';
-            iconElement.style.border = '1.5px solid rgba(255,255,255,0.12)';
-            iconElement.style.opacity = '0.6';
+            iconElement.style.boxShadow = isLight ? '0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.2)' : '0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)';
+            iconElement.style.border = isLight ? '1.5px solid rgba(160,120,80,0.25)' : '1.5px solid rgba(255,255,255,0.12)';
+            iconElement.style.opacity = isLight ? '0.7' : '0.6';
             iconElement.style.animation = 'none';
             if (label) {
                 label.textContent = '语音已关闭';
-                label.style.color = '#999';
+                label.style.color = isLight ? '#6b5040' : '#999';
+                label.style.background = isLight ? 'rgba(240,230,215,0.85)' : 'rgba(0,0,0,0.7)';
                 label.style.opacity = '0';
                 label.style.transform = 'translateX(10px)';
             }
@@ -161,6 +163,7 @@ const VoiceGuide = (function() {
             if (label) {
                 label.textContent = '已唤醒 · 请说话';
                 label.style.color = '#ff6b6b';
+                label.style.background = isLight ? 'rgba(240,230,215,0.85)' : 'rgba(0,0,0,0.7)';
                 label.style.opacity = '1';
                 label.style.transform = 'translateX(0)';
             }
@@ -177,6 +180,7 @@ const VoiceGuide = (function() {
             if (label) {
                 label.textContent = '说”小吉”唤醒';
                 label.style.color = '#4ecb71';
+                label.style.background = isLight ? 'rgba(240,230,215,0.85)' : 'rgba(0,0,0,0.7)';
                 label.style.opacity = '1';
                 label.style.transform = 'translateX(0)';
             }
@@ -570,6 +574,12 @@ const VoiceGuide = (function() {
         init() {
             injectIconStyles();  // 动态注入动画样式
             createIcon();        // 创建悬浮图标（默认关闭，点击开启）
+            // 监听主题切换，自动刷新图标颜色
+            if (window.MutationObserver) {
+                new MutationObserver(function() {
+                    updateIcon();
+                }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+            }
             if (typeof io !== 'undefined') {
                 socket = io("https://www.hnuguitarteacher.xyz", { transports: ['websocket'] });
                 socket.on('voice_response', onVoiceResponse);

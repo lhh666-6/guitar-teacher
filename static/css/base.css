@@ -411,10 +411,15 @@ body {
   background: rgba(255,248,240,0.7);
   border-color: rgba(180,130,80,0.3);
   color: #3d2e1e;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06) inset;
+}
+[data-theme="light"] .gt-input::placeholder {
+  color: rgba(140,110,70,0.4);
 }
 
 [data-theme="light"] .gt-input:focus {
   background: rgba(255,252,248,0.9);
+  box-shadow: 0 0 0 4px rgba(180,120,50,0.08), 0 0 16px rgba(180,120,50,0.08), 0 2px 8px rgba(0,0,0,0.06) inset;
 }
 
 [data-theme="light"] .gt-select {

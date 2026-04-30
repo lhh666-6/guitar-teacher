@@ -768,3 +768,10 @@ body {
     border-color: rgba(180,130,80,0.3);
     color: #5a4030;
 }
+[data-theme="light"] #particles .particle {
+    background: radial-gradient(circle at 30% 30%, rgba(180,140,90,0.25), rgba(160,120,70,0.02));
+}
+[data-theme="light"] .loading-spinner {
+    border-color: rgba(180,130,80,0.2);
+    border-top-color: #8b5820;
+}

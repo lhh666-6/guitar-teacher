@@ -176,33 +176,44 @@
         }
         chartInstance = echarts.init(dom);
         var safe = (accuracies || []).map(function(v) { return parseFloat(v) || 0; });
+        var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        var t = {
+            tooltipBg: isLight ? 'rgba(255,250,242,0.95)' : 'rgba(30,20,15,0.95)',
+            tooltipBorder: isLight ? 'rgba(180,130,80,0.4)' : 'rgba(255,215,140,0.4)',
+            tooltipText: isLight ? '#3d2e1e' : '#ecd9b4',
+            axisLabel: isLight ? '#6b5040' : '#c0a88b',
+            axisLine: isLight ? 'rgba(180,130,80,0.2)' : 'rgba(255,215,140,0.15)',
+            splitLine: isLight ? 'rgba(180,130,80,0.08)' : 'rgba(255,215,140,0.06)',
+            barTop: isLight ? '#8b5820' : '#ffd966',
+            barBot: isLight ? '#c0a070' : '#c0a070'
+        };
         chartInstance.setOption({
             tooltip: {
                 trigger: 'axis', axisPointer: { type: 'shadow' },
-                backgroundColor: 'rgba(30,20,15,0.95)', borderColor: 'rgba(255,215,140,0.4)',
-                textStyle: { color: '#ecd9b4', fontSize: 13 }
+                backgroundColor: t.tooltipBg, borderColor: t.tooltipBorder,
+                textStyle: { color: t.tooltipText, fontSize: 13 }
             },
             xAxis: {
                 type: 'category', data: chords,
-                axisLabel: { rotate: 30, color: '#c0a88b', fontSize: 11 },
-                axisLine: { lineStyle: { color: 'rgba(255,215,140,0.15)' } },
+                axisLabel: { rotate: 30, color: t.axisLabel, fontSize: 11 },
+                axisLine: { lineStyle: { color: t.axisLine } },
                 axisTick: { show: false }
             },
             yAxis: {
                 type: 'value', name: '正确率 (%)', max: 100,
-                nameTextStyle: { color: '#c0a88b', fontSize: 11 },
-                axisLabel: { color: '#c0a88b', fontSize: 10 },
-                splitLine: { lineStyle: { color: 'rgba(255,215,140,0.06)' } }
+                nameTextStyle: { color: t.axisLabel, fontSize: 11 },
+                axisLabel: { color: t.axisLabel, fontSize: 10 },
+                splitLine: { lineStyle: { color: t.splitLine } }
             },
             series: [{
                 type: 'bar', data: safe,
                 itemStyle: {
                     borderRadius: [8,8,0,0],
                     color: new echarts.graphic.LinearGradient(0,0,0,1, [
-                        {offset:0,color:'#ffd966'},{offset:1,color:'#c0a070'}
+                        {offset:0,color: t.barTop},{offset:1,color: t.barBot}
                     ])
                 },
-                label: { show: true, position: 'top', formatter: '{c}%', color: '#c0a88b', fontSize: 11 },
+                label: { show: true, position: 'top', formatter: '{c}%', color: t.axisLabel, fontSize: 11 },
                 emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(255,217,102,0.3)' } }
             }],
             grid: { containLabel: true, left: '8%', right: '4%', top: 45, bottom: 20 }

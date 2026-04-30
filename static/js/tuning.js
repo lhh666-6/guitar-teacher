@@ -436,7 +436,7 @@ class YINTuner {
                     vibrateString.classList.remove('vibrating');
                 } else if (status === 'noSignal') {
                     guideEl.innerHTML = '<i class="fas fa-triangle-exclamation" aria-hidden="true"></i> 没有检测到琴声，请拨动琴弦';
-                    guideEl.style.color = '#ffaa00';
+                    guideEl.style.color = document.documentElement.getAttribute('data-theme') === 'light' ? '#b87a14' : '#ffaa00';
                     vibrateString.classList.remove('vibrating');
                     const now = Date.now();
                     if (lastSpokenGuide !== 'noSignal' && now - lastVoiceTime > voiceCooldown) {

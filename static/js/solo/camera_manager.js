@@ -58,6 +58,7 @@ class CameraManager {
 
         const video = this.videoElement;
         video.srcObject = this.stream;
+        video.style.transform = 'scaleX(-1)';
 
         this.stream.getTracks().forEach(track => {
             track.addEventListener('ended', () => {
@@ -80,7 +81,7 @@ class CameraManager {
             this._cropCtx = this._cropCanvas.getContext('2d');
         }
 
-        const cropRatio = 0.6; // 左侧保留比例
+        const cropRatio = 0.6; // 按弦手在画面右侧（原始帧），保留右侧60%
         const handLoop = async () => {
             if (!this._handLoopRunning || !this.hands || !this.stream) return;
             if (videoElement.readyState >= 2) {
@@ -93,10 +94,10 @@ class CameraManager {
                         this._cropCanvas.height = vh;
                     }
                     const ctx = this._cropCtx;
-                    // 先画全帧，再把右侧40%涂黑
+                    // 全帧 → 把左侧40%涂黑 → MediaPipe 只看右侧60%（原始帧中按弦手区域）
                     ctx.drawImage(videoElement, 0, 0, vw, vh);
                     ctx.fillStyle = '#000';
-                    ctx.fillRect(cropW, 0, vw - cropW, vh);
+                    ctx.fillRect(0, 0, vw - cropW, vh);
                     await this.hands.send({ image: this._cropCanvas });
                 } catch (e) {
                     if (!this._logCameraStartFail) {
