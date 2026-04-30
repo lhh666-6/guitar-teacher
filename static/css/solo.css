@@ -829,15 +829,15 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
    ============================================================ */
 [data-theme="light"] body {
     background:
-        radial-gradient(ellipse at 50% 20%, rgba(200,160,100,0.08) 0%, transparent 55%),
-        radial-gradient(ellipse at 80% 70%, rgba(180,140,90,0.06) 0%, transparent 50%),
-        linear-gradient(180deg, #f5efe0 0%, #ede0cc 35%, #f0e5d4 70%, #f5efe0 100%);
+        radial-gradient(ellipse at 50% 20%, rgba(200,160,100,0.06) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 70%, rgba(180,140,90,0.04) 0%, transparent 50%),
+        linear-gradient(180deg, #faf5ed 0%, #f5ece0 35%, #f8f2e8 70%, #faf5ed 100%);
 }
 [data-theme="light"] .left-panel,
 [data-theme="light"] .center-panel,
 [data-theme="light"] .right-panel {
-    background: rgba(255,250,242,0.6);
-    border-color: rgba(180,140,90,0.3);
+    background: rgba(255,252,246,0.65);
+    border-color: rgba(180,140,90,0.25);
 }
 [data-theme="light"] .back-btn {
     background: rgba(220,200,170,0.6);
@@ -916,20 +916,19 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 [data-theme="light"] .fretboard-mini {
     background:
         repeating-linear-gradient(90deg,
-            transparent, transparent 6px,
-            rgba(0,0,0,0.01) 6px, rgba(0,0,0,0.01) 7px,
-            transparent 7px, transparent 12px,
+            transparent, transparent 6px, rgba(0,0,0,0.01) 6px,
+            rgba(0,0,0,0.01) 7px, transparent 7px, transparent 12px,
             rgba(0,0,0,0.005) 12px, rgba(0,0,0,0.005) 13px),
         repeating-linear-gradient(0deg,
             transparent, transparent 3px,
-            rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px),
+            rgba(255,255,255,0.08) 3px, rgba(255,255,255,0.08) 4px),
         linear-gradient(180deg,
-            #f5e6d0 0%, #ecd8b8 8%, #e0c8a0 18%,
-            #d4b888 35%, #c8a870 55%, #c0a068 75%, #b89860 100%);
-    border-bottom: 3px solid #c0a878;
+            #faf0e0 0%, #f0dcc0 8%, #e8d0a8 18%,
+            #dcc098 35%, #d4b888 55%, #ccb078 75%, #c4a870 100%);
+    border-bottom: 3px solid #d4b888;
     box-shadow:
-        0 6px 20px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.1),
-        inset 0 4px 10px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.12);
+        0 6px 20px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08),
+        inset 0 4px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 [data-theme="light"] .fretboard-mini::before {
     background:

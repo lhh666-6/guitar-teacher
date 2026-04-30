@@ -187,13 +187,13 @@ tbody tr.page-enter { animation: rowFadeIn 0.35s ease-out both; }
 
 /* ---- 日间主题 ---- */
 [data-theme="light"] body {
-    background: radial-gradient(ellipse at 40% 20%, rgba(200,150,80,0.06) 0%, transparent 55%),
-                radial-gradient(ellipse at 70% 60%, rgba(160,120,70,0.05) 0%, transparent 50%),
-                linear-gradient(180deg, #f5efe0 0%, #f0e5d4 50%, #f5efe0 100%);
+    background: radial-gradient(ellipse at 40% 20%, rgba(200,150,80,0.04) 0%, transparent 55%),
+                radial-gradient(ellipse at 70% 60%, rgba(160,120,70,0.03) 0%, transparent 50%),
+                linear-gradient(180deg, #faf5ed 0%, #f5ece0 50%, #faf5ed 100%);
 }
 [data-theme="light"] .container {
-    background: rgba(255,250,242,0.8);
-    border-color: rgba(180,140,90,0.25);
+    background: rgba(255,252,248,0.88);
+    border-color: rgba(180,140,90,0.2);
 }
 [data-theme="light"] h1 { color: #8b5820; }
 [data-theme="light"] .back-link {
