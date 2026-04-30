@@ -7,18 +7,14 @@ import queue
 import time
 import io
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
-from functools import wraps
 
 from api.chords import chords_bp
 
-import cv2
-import numpy as np
-from flask import Flask, jsonify, request, render_template, send_file, session, redirect, url_for, Response, stream_with_context
+from flask import Flask, jsonify, request, render_template, send_file, redirect, url_for, Response, stream_with_context
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from flask_login import LoginManager, login_required, current_user
-from sqlalchemy import func, case
+from sqlalchemy import func
 
 from core.detector import GuitarFingeringRecognizer
 import config
@@ -32,6 +28,8 @@ from core.voice_commands import (
     process_general_command
 )
 from core.recommendation import generate_smart_recommendations
+from core.utils import base64_to_cv2, safe_socketio_emit, cache_result, check_model_files
+from core.video_processor import process_and_emit
 
 # ---------- 日志配置 ----------
 logging.basicConfig(
@@ -82,16 +80,7 @@ socketio = SocketIO(
 )
 
 # ---------- 模型文件检查 ----------
-def check_model_files():
-    missing = []
-    if not os.path.exists(config.YOLO_MODEL_PATH):
-        missing.append(config.YOLO_MODEL_PATH)
-    if missing:
-        logger.error(f"模型文件缺失: {missing}")
-        raise FileNotFoundError(f"模型文件缺失: {missing}")
-    logger.info("模型文件已找到")
-
-check_model_files()
+check_model_files(config.YOLO_MODEL_PATH)
 
 # ---------- 识别器初始化 ----------
 recognizer = GuitarFingeringRecognizer(
@@ -99,7 +88,7 @@ recognizer = GuitarFingeringRecognizer(
 )
 
 executor = ThreadPoolExecutor(max_workers=1)
-_frame_busy = False
+_frame_busy = {'value': False}
 _frame_lock = threading.Lock()
 
 play_records = {}
@@ -109,27 +98,8 @@ MAX_RECORDS = 100
 # ---------- TTS 服务 ----------
 tts_service = VolcTTS()
 
-# ---------- 工具函数 ----------
-def base64_to_cv2(image_base64: str):
-    try:
-        if ',' in image_base64:
-            image_base64 = image_base64.split(',')[-1]
-        image_base64 = image_base64.strip()
-        img_bytes = base64.b64decode(image_base64)
-        img_np = np.frombuffer(img_bytes, np.uint8)
-        frame = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
-        if frame is None:
-            logger.warning("cv2.imdecode 返回 None，图片可能损坏")
-        return frame
-    except Exception as e:
-        logger.error(f"Base64 转图片失败: {e}")
-        return None
-
-def _safe_emit(event, data, room=None):
-    try:
-        socketio.emit(event, data, room=room)
-    except Exception as e:
-        logger.error(f"发送消息失败 (event={event}): {e}")
+# ---------- 工具函数（已迁移至 core/utils.py） ----------
+# base64_to_cv2, safe_socketio_emit, cache_result 从 core.utils 导入
 
 # ---------- SocketIO 事件处理 ----------
 @socketio.on('hand_landmarks')
@@ -141,31 +111,28 @@ def handle_hand_landmarks(data):
 
     if not landmarks or len(landmarks) != 21:
         logger.warning("收到无效的关键点数据")
-        _safe_emit('detection_result', {'status': 'failed', 'error': '关键点数据无效'})
+        safe_socketio_emit(socketio, 'detection_result', {'status': 'failed', 'error': '关键点数据无效'})
         return
 
     sid = request.sid
     try:
         result = recognizer.process_landmarks(landmarks, timestamp, img_width, img_height)
-        _safe_emit('detection_result', result, room=sid)
+        safe_socketio_emit(socketio, 'detection_result', result, room=sid)
     except Exception as e:
         logger.exception("处理关键点时发生异常")
-        _safe_emit('detection_result', {'status': 'failed', 'error': '处理失败'})
+        safe_socketio_emit(socketio, 'detection_result', {'status': 'failed', 'error': '处理失败'})
 
 @socketio.on('thumbnail')
 def handle_thumbnail(data):
-    global _frame_busy
     image_base64 = data.get('image')
     if not image_base64:
         return True
-    # 缩略图更新不与帧处理争抢 CPU，busy 则跳过
     with _frame_lock:
-        if _frame_busy:
+        if _frame_busy['value']:
             return True
-        _frame_busy = True
+        _frame_busy['value'] = True
 
     def _process_thumb(img_b64, sid):
-        global _frame_busy
         t_start = time.perf_counter()
         try:
             frame = base64_to_cv2(img_b64)
@@ -181,74 +148,28 @@ def handle_thumbnail(data):
             logger.exception("缩略图处理异常")
         finally:
             with _frame_lock:
-                _frame_busy = False
+                _frame_busy['value'] = False
 
     executor.submit(_process_thumb, image_base64, request.sid)
     return True
 
 @socketio.on('frame')
 def handle_frame(data, callback=None):
-    global _frame_busy
     image_base64 = data.get('image')
     if not image_base64:
         if callback:
             callback('failed')
         return
-    # 低配服务器防拥塞：上一帧还在处理就跳过，不留积压
     with _frame_lock:
-        if _frame_busy:
+        if _frame_busy['value']:
             if callback:
                 callback('busy')
             return
-        _frame_busy = True
+        _frame_busy['value'] = True
     sid = request.sid
-    executor.submit(process_and_emit, image_base64, sid)
+    executor.submit(process_and_emit, image_base64, sid, socketio, recognizer, _frame_lock, _frame_busy, config.DEBUG)
     if callback:
         callback('ok')
-
-def process_and_emit(image_base64: str, sid: str):
-    global _frame_busy
-    timings = {}
-    t_start = time.perf_counter()
-
-    try:
-        t_decode = time.perf_counter()
-        frame = base64_to_cv2(image_base64)
-        if frame is None:
-            _safe_emit('detection_result', {
-                'status': 'failed',
-                'error': '图片解码失败'
-            }, room=sid)
-            return
-        timings['decode'] = (time.perf_counter() - t_decode) * 1000
-
-        t_infer = time.perf_counter()
-        timestamp = time.time()
-        processed_frame, result = recognizer.process_frame(frame, timestamp)
-        timings['inference'] = (time.perf_counter() - t_infer) * 1000
-
-        total_ms = (time.perf_counter() - t_start) * 1000
-        result['server_timing_ms'] = round(total_ms, 1)
-
-        t_emit = time.perf_counter()
-        _safe_emit('detection_result', result, room=sid)
-        timings['emit'] = (time.perf_counter() - t_emit) * 1000
-
-        if config.DEBUG:
-            logger.info(
-                f"[APP_TIMING] 解码={timings['decode']:.1f}ms, 推理={timings['inference']:.1f}ms, "
-                f"发送={timings['emit']:.1f}ms, 总计={total_ms:.1f}ms | "
-                f"按点: {len(result.get('positions', []))} | 横按: {result.get('barre') is not None}"
-            )
-    except Exception as e:
-        logger.exception("处理帧时发生异常")
-        _safe_emit('detection_result', {
-            'status': 'failed',
-            'error': '处理失败，请稍后重试'
-        }, room=sid)
-    finally:
-        with _frame_lock:
-            _frame_busy = False
 
 # ---------- HTTP 接口 ----------
 @app.route('/api/solo/save_record', methods=['POST'])
@@ -363,7 +284,7 @@ def history_data():
 
     total = query.count()
     records = query.order_by(TrainingRecord.created_at.desc()).offset((page-1)*per_page).limit(per_page).all()
-    records_data = [r.to_dict() for r in records]   # 使用 to_dict 即可包含新字段
+    records_data = [r.to_dict() for r in records]
 
     return jsonify({
         'records': records_data,
@@ -372,20 +293,6 @@ def history_data():
         'per_page': per_page
     })
 
-def cache_result(ttl=5):
-    def decorator(func):
-        cache = {}
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            key = str(args) + str(kwargs)
-            now = time.time()
-            if key in cache and now - cache[key]['time'] < ttl:
-                return cache[key]['value']
-            result = func(*args, **kwargs)
-            cache[key] = {'value': result, 'time': now}
-            return result
-        return wrapper
-    return decorator
 
 @app.route('/api/history/stats')
 @cache_result(ttl=5)
@@ -426,111 +333,23 @@ def history_stats():
         'chords': chords,
         'accuracies': accuracies
     })
+
+
 # ---------- 教学驾驶舱 API ----------
 llm_service = LLMService()
-
-
-def _build_advice_stats(user_id):
-    """构建 LLM 建议所需的统计数据，两个 endpoint 共用"""
-    overview = user_stats.get_overview(user_id)
-    mastery = user_stats.get_chord_mastery(user_id)
-    progress = user_stats.get_progress_trend(user_id)
-    recent = user_stats.get_recent_records(user_id, limit=10)
-    mode_ratio = user_stats.get_mode_ratio(user_id)
-    chord_diff_dist = user_stats.get_chord_difficulty_distribution(user_id)
-
-    unstable_count = db.session.query(func.count(TrainingRecord.id))\
-        .filter(TrainingRecord.user_id == user_id, TrainingRecord.is_unstable == True).scalar()
-    total_count = db.session.query(func.count(TrainingRecord.id))\
-        .filter(TrainingRecord.user_id == user_id).scalar()
-    unstable_ratio = round((unstable_count / total_count * 100) if total_count else 0.0, 1)
-
-    rates = progress.get('rates', [])
-    if len(rates) >= 3:
-        recent_avg = sum(rates[-3:]) / 3
-        earlier_avg = sum(rates[:3]) / 3 if len(rates) >= 6 else rates[0]
-        if recent_avg - earlier_avg > 5:
-            trend_desc = '上升'
-        elif recent_avg - earlier_avg < -5:
-            trend_desc = '下降'
-        else:
-            trend_desc = '平稳'
-    else:
-        trend_desc = '数据不足'
-
-    recent_similarities = db.session.query(
-        TrainingRecord.similarity
-    ).filter(
-        TrainingRecord.user_id == user_id,
-        TrainingRecord.similarity.isnot(None)
-    ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
-    sim_trend = [float(r.similarity) for r in reversed(recent_similarities)]
-
-    return {
-        'overview': overview,
-        'mastery': mastery,
-        'progress': progress,
-        'recent_records': recent,
-        'mode_ratio': mode_ratio,
-        'unstable_ratio': unstable_ratio,
-        'unstable_count': unstable_count,
-        'trend_desc': trend_desc,
-        'chord_difficulty': chord_diff_dist,
-        'similarity_trend': sim_trend
-    }
 
 
 @app.route('/api/teach/dashboard')
 @login_required
 def get_teach_dashboard():
-    overview = user_stats.get_overview(current_user.id)
-    mastery = user_stats.get_chord_mastery(current_user.id)
-    progress = user_stats.get_progress_trend(current_user.id)
-    recent = user_stats.get_recent_records(current_user.id)
-    mode_ratio = user_stats.get_mode_ratio(current_user.id)
-    daily_practice = user_stats.get_daily_practice_count(current_user.id)
-    chord_diff_dist = user_stats.get_chord_difficulty_distribution(current_user.id)
-
-    unstable_count = db.session.query(func.count(TrainingRecord.id))\
-        .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.is_unstable == True).scalar()
-    total_count = db.session.query(func.count(TrainingRecord.id))\
-        .filter(TrainingRecord.user_id == current_user.id).scalar()
-    unstable_ratio = (unstable_count / total_count * 100) if total_count else 0.0
-
-    recent_similarities = db.session.query(
-        TrainingRecord.correct, TrainingRecord.similarity
-    ).filter(
-        TrainingRecord.user_id == current_user.id,
-        TrainingRecord.similarity.isnot(None)
-    ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
-    adjusted_trend = []
-    for correct_val, sim in reversed(recent_similarities):
-        sim = float(sim)
-        if correct_val:
-            adjusted = min(sim * 1.1, 1.0)
-        else:
-            adjusted = sim * 0.9
-        adjusted_trend.append(round(adjusted, 3))
-
-    return jsonify({
-        'overview': overview,
-        'mastery': mastery,
-        'progress': progress,
-        'recent_records': recent,
-        'mode_ratio': mode_ratio,
-        'daily_practice': daily_practice,
-        'chord_difficulty': chord_diff_dist,
-        'unstable_count': unstable_count,
-        'unstable_ratio': round(unstable_ratio, 1),
-        'similarity_trend': adjusted_trend,
-        'recent_mode': mode_ratio.get('quick', 0) > 0 and 'quick' or 'normal'
-    })
+    stats = user_stats.get_advice_stats(current_user.id, include_daily=True)
+    return jsonify(stats)
 
 
 @app.route('/api/teach/generate_advice', methods=['POST'])
 @login_required
 def generate_advice():
-    stats = _build_advice_stats(current_user.id)
+    stats = user_stats.get_advice_stats(current_user.id)
     advice = llm_service.generate_advice(stats)
     if advice:
         return jsonify({'advice': advice})
@@ -541,8 +360,7 @@ def generate_advice():
 @app.route('/api/teach/advice/stream')
 @login_required
 def generate_advice_stream():
-    """SSE 流式生成教学建议，避免 504 超时"""
-    stats = _build_advice_stats(current_user.id)
+    stats = user_stats.get_advice_stats(current_user.id)
 
     def generate():
         q = queue.Queue()
@@ -591,13 +409,11 @@ def generate_advice_stream():
 @app.route('/api/teach/recommend_chords', methods=['POST'])
 @login_required
 def recommend_chords():
-    """基于用户练习数据生成智能推荐和弦（带理由）"""
     try:
         recommendations = generate_smart_recommendations(current_user.id, count=5)
         return jsonify({'chords': recommendations})
     except Exception as e:
         logger.exception("生成推荐和弦失败")
-        # 降级：返回默认推荐列表
         fallback = [
             {'name': 'C', 'reason': '基础开放和弦'},
             {'name': 'G', 'reason': '常用和弦'},

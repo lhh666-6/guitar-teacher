@@ -103,7 +103,10 @@
             this.createParticles();
 
             // 加载和弦数据
-            this.loadChords();
+            this.loadChords().then(() => {
+                // 和弦数据加载完毕后初始化指板布局（琴弦+品丝）
+                this.initFretboardLayout();
+            });
 
             // 绑定事件
             this.bindEvents();
@@ -744,6 +747,38 @@
             this.moveToNextTest();
         }
 
+        initFretboardLayout() {
+            // 仅在未开始训练时初始化指板弦线、品丝位置（不画按点）
+            const fretboard = this.elements.fretboardMini;
+            if (!fretboard) return;
+            const style = window.getComputedStyle(fretboard);
+            const topPadding = parseFloat(style.paddingTop);
+            const leftPadding = parseFloat(style.paddingLeft);
+            const rightPadding = parseFloat(style.paddingRight);
+            const containerWidth = fretboard.clientWidth;
+            const containerHeight = fretboard.clientHeight;
+            const innerWidth = containerWidth - leftPadding - rightPadding;
+            const innerHeight = containerHeight - topPadding - parseFloat(style.paddingBottom);
+            const stringSpacing = innerHeight / (STRING_COUNT - 1);
+            const fretSpacing = innerWidth / (FRET_COUNT - 1);
+            const baseY = topPadding;
+            const baseX = leftPadding;
+
+            const stringOffset = 4;
+            document.querySelectorAll('.string-mini').forEach((el, idx) => {
+                el.style.top = (baseY + stringOffset + idx * stringSpacing - 1) + 'px';
+            });
+            document.querySelectorAll('.string-label').forEach((el, idx) => {
+                el.style.top = (baseY + stringOffset + idx * stringSpacing - 8) + 'px';
+            });
+            document.querySelectorAll('.fret-mini').forEach((el, idx) => {
+                el.style.left = (baseX + idx * fretSpacing - 1) + 'px';
+            });
+            document.querySelectorAll('.fret-label').forEach((el, idx) => {
+                el.style.left = (baseX + idx * fretSpacing - 15) + 'px';
+            });
+        }
+
         renderStandardDots(chord, userPositions = [], userBarre = null) {
             const container = this.elements.dotContainer;
             container.innerHTML = '';
@@ -766,14 +801,15 @@
             const baseY = topPadding;
             const baseX = leftPadding;
 
+            const stringOffset = 4;
             const stringLines = document.querySelectorAll('.string-mini');
             stringLines.forEach((el, idx) => {
-                const y = baseY + idx * stringSpacing;
+                const y = baseY + stringOffset + idx * stringSpacing;
                 el.style.top = (y - 1) + 'px';
             });
             const stringLabels = document.querySelectorAll('.string-label');
             stringLabels.forEach((el, idx) => {
-                const y = baseY + idx * stringSpacing;
+                const y = baseY + stringOffset + idx * stringSpacing;
                 el.style.top = (y - 8) + 'px';
             });
 
@@ -825,7 +861,7 @@
                 const colIndex = fretToCol[p.fret];
                 const idx = this.backendToDisplayIndex(p.string);
                 const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
-                const y = baseY + idx * stringSpacing;
+                const y = baseY + stringOffset + idx * stringSpacing;
 
                 const dot = document.createElement('div');
                 dot.className = `dot ${p.type === 'standard' ? 'standard' : (p.correct ? 'user-correct' : 'user-wrong')}`;
@@ -842,8 +878,8 @@
                 const endIdx = this.backendToDisplayIndex(b.endString);
                 const idxMin = Math.min(startIdx, endIdx);
                 const idxMax = Math.max(startIdx, endIdx);
-                const yStart = baseY + idxMin * stringSpacing;
-                const yEnd = baseY + idxMax * stringSpacing;
+                const yStart = baseY + stringOffset + idxMin * stringSpacing;
+                const yEnd = baseY + stringOffset + idxMax * stringSpacing;
                 const topY = Math.min(yStart, yEnd) - DOT_RADIUS;
                 const bottomY = Math.max(yStart, yEnd) + DOT_RADIUS;
                 const height = bottomY - topY;
@@ -1104,7 +1140,7 @@
                         sumX += landmarks[j].x;
                     }
                     const avgX = sumX / landmarks.length;
-                    if (avgX > screenMidX && avgX > candidateAvgX) {
+                    if (avgX < screenMidX && avgX > candidateAvgX) {
                         candidateAvgX = avgX;
                         candidateIndex = i;
                     }
@@ -1138,66 +1174,46 @@
                 return;
             }
 
-            // ──────────────────────────────────────
-            // 新增：自适应参数计算
-            // ──────────────────────────────────────
-            // 使用默认参数，若 constants.js 未定义则回退
-            const BASE_MIN_CUTOFF = (typeof FILTER_MIN_CUTOFF !== 'undefined') ? FILTER_MIN_CUTOFF : 1.0;
-            const BASE_BETA = (typeof FILTER_BETA !== 'undefined') ? FILTER_BETA : 0.03;
-            const DCUTOFF = (typeof FILTER_DCUTOFF !== 'undefined') ? FILTER_DCUTOFF : 1.0;
+            const smoothed = [];
 
-            // 计算手部所有关键点的平均帧间位移（速度指标）
+            // 自适应参数：根据手部运动速度动态调整滤波强度
+            const BASE_MIN_CUTOFF = FILTER_MIN_CUTOFF;
+            const BASE_BETA = FILTER_BETA;
+            const DCUTOFF = FILTER_DCUTOFF;
+
             let totalSpeed = 0;
             if (this._prevLandmarks && this._prevLandmarks.length === landmarks.length) {
                 for (let i = 0; i < landmarks.length; i++) {
                     const dx = landmarks[i].x - this._prevLandmarks[i].x;
                     const dy = landmarks[i].y - this._prevLandmarks[i].y;
                     const dz = landmarks[i].z - this._prevLandmarks[i].z;
-                    totalSpeed += Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    totalSpeed += Math.sqrt(dx * dx + dy * dy + dz * dz);
                 }
             }
             const avgSpeed = totalSpeed / landmarks.length;
-
-            // 动态映射：速度越小 → mincutoff 越小，beta 越小 (更强平滑)
-            // 静止时 avgSpeed ≈ 0 → mincutoff 取 BASE_MIN_CUTOFF * 0.5
-            // 快速运动时 avgSpeed > 阈值 → 恢复原始值
-            const speedThreshold = 0.015;   // 降低阈值，提升快速运动检测灵敏度
+            const speedThreshold = 0.015;
             const speedRatio = Math.min(1, avgSpeed / speedThreshold);
             const dynamicMinCutoff = BASE_MIN_CUTOFF * (0.4 + 0.6 * speedRatio);
             const dynamicBeta = BASE_BETA * (0.2 + 0.8 * speedRatio);
 
-            // 保存本帧原始点，供下一帧计算速度
             this._prevLandmarks = landmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z }));
 
-            // ──────────────────────────────────────
-            // 平滑滤波（支持 Kalman / OneEuro 两种类型）
-            // ──────────────────────────────────────
-            const smoothed = [];
-            const useKalman = (typeof FILTER_TYPE !== 'undefined' && FILTER_TYPE === 'kalman');
             for (let i = 0; i < landmarks.length; i++) {
                 const lm = landmarks[i];
                 if (!this.filters[i]) {
-                    if (useKalman) {
-                        this.filters[i] = {
-                            x: new KalmanFilter(now, lm.x, KALMAN_Q, KALMAN_R),
-                            y: new KalmanFilter(now, lm.y, KALMAN_Q, KALMAN_R),
-                            z: new KalmanFilter(now, lm.z, KALMAN_Q, KALMAN_R)
-                        };
-                    } else {
-                        this.filters[i] = {
-                            x: new OneEuroFilter(now, lm.x, dynamicMinCutoff, dynamicBeta, DCUTOFF),
-                            y: new OneEuroFilter(now, lm.y, dynamicMinCutoff, dynamicBeta, DCUTOFF),
-                            z: new OneEuroFilter(now, lm.z, dynamicMinCutoff, dynamicBeta, DCUTOFF)
-                        };
-                    }
+                    this.filters[i] = {
+                        x: new OneEuroFilter(now, lm.x, dynamicMinCutoff, dynamicBeta, DCUTOFF),
+                        y: new OneEuroFilter(now, lm.y, dynamicMinCutoff, dynamicBeta, DCUTOFF),
+                        z: new OneEuroFilter(now, lm.z, dynamicMinCutoff, dynamicBeta, DCUTOFF)
+                    };
                     smoothed.push({ x: lm.x, y: lm.y, z: lm.z });
                 } else {
-                    if (!useKalman) {
-                        ['x', 'y', 'z'].forEach(axis => {
-                            this.filters[i][axis].mincutoff = dynamicMinCutoff;
-                            this.filters[i][axis].beta = dynamicBeta;
-                        });
-                    }
+                    this.filters[i].x.mincutoff = dynamicMinCutoff;
+                    this.filters[i].x.beta = dynamicBeta;
+                    this.filters[i].y.mincutoff = dynamicMinCutoff;
+                    this.filters[i].y.beta = dynamicBeta;
+                    this.filters[i].z.mincutoff = dynamicMinCutoff;
+                    this.filters[i].z.beta = dynamicBeta;
                     const sx = this.filters[i].x.filter(now, lm.x);
                     const sy = this.filters[i].y.filter(now, lm.y);
                     const sz = this.filters[i].z.filter(now, lm.z);
@@ -1377,7 +1393,6 @@
 
         _handleStreamEnded() {
             console.warn('摄像头流意外终止');
-            this.cameraManager.close();
             this._closeCamera();
         }
 
@@ -1618,7 +1633,11 @@
         cleanup() {
             this.sendingEnabled = false;
             this._stopRttLogging();
-            this._cleanupCoreState();
+            if (this.timerInterval) {
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }
+            this._clearAllTimers();
             this.cameraManager.close();
             this.socketManager.disconnect();
             if (this.audioVerifier) this.audioVerifier.destroy();

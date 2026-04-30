@@ -131,3 +131,69 @@ def get_recent_records(user_id, limit=10):
             'mode': r.mode or 'normal'
         })
     return records
+
+
+def get_advice_stats(user_id, include_daily=False):
+    """构建教学仪表盘和 LLM 建议共用的统计数据"""
+    overview = get_overview(user_id)
+    mastery = get_chord_mastery(user_id)
+    progress = get_progress_trend(user_id)
+    recent = get_recent_records(user_id, limit=10)
+    mode_ratio = get_mode_ratio(user_id)
+    chord_diff_dist = get_chord_difficulty_distribution(user_id)
+
+    unstable_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == user_id, TrainingRecord.is_unstable == True).scalar()
+    total_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == user_id).scalar()
+    unstable_ratio = round((unstable_count / total_count * 100) if total_count else 0.0, 1)
+
+    rates = progress.get('rates', [])
+    if len(rates) >= 3:
+        recent_avg = sum(rates[-3:]) / 3
+        earlier_avg = sum(rates[:3]) / 3 if len(rates) >= 6 else rates[0]
+        if recent_avg - earlier_avg > 5:
+            trend_desc = '上升'
+        elif recent_avg - earlier_avg < -5:
+            trend_desc = '下降'
+        else:
+            trend_desc = '平稳'
+    else:
+        trend_desc = '数据不足'
+
+    recent_similarities = db.session.query(
+        TrainingRecord.correct, TrainingRecord.similarity
+    ).filter(
+        TrainingRecord.user_id == user_id,
+        TrainingRecord.similarity.isnot(None)
+    ).order_by(TrainingRecord.created_at.desc()).limit(20).all()
+
+    sim_trend = []
+    adjusted_trend = []
+    for correct_val, sim in reversed(recent_similarities):
+        sim = float(sim)
+        sim_trend.append(round(sim, 3))
+        if include_daily:
+            adjusted = min(sim * 1.1, 1.0) if correct_val else sim * 0.9
+            adjusted_trend.append(round(adjusted, 3))
+
+    result = {
+        'overview': overview,
+        'mastery': mastery,
+        'progress': progress,
+        'recent_records': recent,
+        'mode_ratio': mode_ratio,
+        'unstable_ratio': unstable_ratio,
+        'unstable_count': unstable_count,
+        'trend_desc': trend_desc,
+        'chord_difficulty': chord_diff_dist,
+        'similarity_trend': sim_trend
+    }
+
+    if include_daily:
+        daily_practice = get_daily_practice_count(user_id)
+        result['daily_practice'] = daily_practice
+        result['similarity_trend'] = adjusted_trend
+        result['recent_mode'] = 'quick' if mode_ratio.get('quick', 0) > 0 else 'normal'
+
+    return result

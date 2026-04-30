@@ -279,25 +279,33 @@ class LLMService:
     def generate_advice(self, user_stats: Dict) -> Optional[str]:
         prompt = self._build_advice_prompt(user_stats)
         system_prompt = (
-            "你是吉他教练。根据数据给出精简评估，包含："
-            "1)整体状态一句话 2)最强/最弱和弦各一 3)趋势判断 4)1-2条具体建议。"
-            "语气温暖，用「你」称呼，直接引用数据中的数字。"
+            "你是吉他教练。根据用户训练数据，写一段100-500字的详细指导。必须分段落："
+            "1)整体评估（引用数据中的准确率、趋势描述、不稳定比例等数字）；"
+            "2)优势分析（列出掌握最好的2-3个和弦及其正确率）；"
+            "3)薄弱点分析（列出需要加强的2-3个和弦及改进建议）；"
+            "4)具体练习建议（根据弱项推荐针对性练习，如爬格子、换和弦练习等）；"
+            "5)如果综合正确率≥75%，推荐1-2首适合用户当前水平的中文弹唱歌曲。"
+            "语气温暖鼓励，用「你」称呼，每个部分都要有实质内容。"
         )
-        return self.generate(prompt, system_prompt, temperature=0.5, max_tokens=600)
+        return self.generate(prompt, system_prompt, temperature=0.5, max_tokens=1200)
 
     def generate_advice_stream(self, user_stats: Dict):
         """流式生成教学建议，逐块 yield 文本内容"""
         prompt = self._build_advice_prompt(user_stats)
         system_prompt = (
-            "你是吉他教练。根据数据给出精简评估，包含："
-            "1)整体状态一句话 2)最强/最弱和弦各一 3)趋势判断 4)1-2条具体建议。"
-            "语气温暖，用「你」称呼，直接引用数据中的数字。"
+            "你是吉他教练。根据用户训练数据，写一段100-500字的详细指导。必须分段落："
+            "1)整体评估（引用数据中的准确率、趋势描述、不稳定比例等数字）；"
+            "2)优势分析（列出掌握最好的2-3个和弦及其正确率）；"
+            "3)薄弱点分析（列出需要加强的2-3个和弦及改进建议）；"
+            "4)具体练习建议（根据弱项推荐针对性练习，如爬格子、换和弦练习等）；"
+            "5)如果综合正确率≥75%，推荐1-2首适合用户当前水平的中文弹唱歌曲。"
+            "语气温暖鼓励，用「你」称呼，每个部分都要有实质内容。"
         )
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ]
-        for chunk in self._call_api_stream(messages, temperature=0.5, max_tokens=600):
+        for chunk in self._call_api_stream(messages, temperature=0.5, max_tokens=1200):
             yield chunk
 
     def generate_chord_recommendations(self, user_stats: Dict) -> Optional[List[str]]:

@@ -393,16 +393,20 @@ class ChordVerifier {
         this.recordingChunks = [];
     }
 
-    async stop() {
-        this._log('停止验证器');
-        this.isActive = false;
+    _teardownAudio() {
         if (this.workletNode) { this.workletNode.disconnect(); this.workletNode = null; }
         if (this.meydaAnalyzer) { this.meydaAnalyzer.stop(); this.meydaAnalyzer = null; }
         if (this.scriptProcessor) { this.scriptProcessor.disconnect(); this.scriptProcessor = null; }
+        if (this.mediaStream) { this.mediaStream.getTracks().forEach(t => t.stop()); this.mediaStream = null; }
+    }
+
+    async stop() {
+        this._log('停止验证器');
+        this.isActive = false;
+        this._teardownAudio();
         if (this.audioContext && this.audioContext.state !== 'closed') {
             try { await this.audioContext.suspend(); } catch (e) { /* 忽略 */ }
         }
-        if (this.mediaStream) { this.mediaStream.getTracks().forEach(t => t.stop()); this.mediaStream = null; }
         this._resetForNext();
         if (this.onStopListening) this.onStopListening();
         this._log('已停止');
@@ -411,11 +415,8 @@ class ChordVerifier {
     destroy() {
         this._log('销毁验证器');
         this.isActive = false;
-        if (this.workletNode) { this.workletNode.disconnect(); this.workletNode = null; }
-        if (this.meydaAnalyzer) { this.meydaAnalyzer.stop(); this.meydaAnalyzer = null; }
-        if (this.scriptProcessor) { this.scriptProcessor.disconnect(); this.scriptProcessor = null; }
+        this._teardownAudio();
         if (this.audioContext) { this.audioContext.close(); this.audioContext = null; }
-        if (this.mediaStream) { this.mediaStream.getTracks().forEach(t => t.stop()); this.mediaStream = null; }
         if (this._meydaBlobUrl) { URL.revokeObjectURL(this._meydaBlobUrl); this._meydaBlobUrl = null; }
         this._meydaCodeCache = null;
         this._resetForNext();

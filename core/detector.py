@@ -180,6 +180,12 @@ class GuitarFingeringRecognizer:
         return 1.0 - (2.0 ** (-n / 12.0))
 
     @staticmethod
+    def _get_thumbnail_size(w, h):
+        thumb_w = THUMBNAIL_WIDTH
+        thumb_h = int(thumb_w * h / w)
+        return thumb_w, thumb_h
+
+    @staticmethod
     def _point_to_line_distance(pt, line_p1, line_p2):
         line_vec = line_p2 - line_p1
         pt_vec = pt - line_p1
@@ -263,9 +269,9 @@ class GuitarFingeringRecognizer:
                 logger.warning("update_fretboard: 未同时检测到琴枕和琴桥")
                 return False
 
-            nut_height = nut_box[3] - nut_box[1]
-            bridge_height = bridge_box[3] - bridge_box[1]
-            if nut_height <= self.MIN_BOX_WIDTH or bridge_height <= self.MIN_BOX_WIDTH:
+            nut_h = nut_box[3] - nut_box[1]
+            bridge_h = bridge_box[3] - bridge_box[1]
+            if nut_h <= self.MIN_BOX_WIDTH or bridge_h <= self.MIN_BOX_WIDTH:
                 logger.warning(f"update_fretboard: 检测框高度过小，跳过")
                 return False
 
@@ -299,9 +305,6 @@ class GuitarFingeringRecognizer:
             self.global_v_len = v_len
             self.global_perp_unit = perp_unit
 
-            nut_h = nut_box[3] - nut_box[1]
-            bridge_h = bridge_box[3] - bridge_box[1]
-
             nut_top = nut_center + perp_unit * (nut_h / 2)
             nut_bottom = nut_center - perp_unit * (nut_h / 2)
             bridge_top = bridge_center + perp_unit * (bridge_h / 2)
@@ -309,8 +312,10 @@ class GuitarFingeringRecognizer:
 
             # 生成品丝线
             self.fret_lines = []
+            fret_ratios = [0.0] * (self.NUM_FRETS + 1)
             for n in range(1, self.NUM_FRETS + 1):
                 fret_ratio = self._get_fret_position_ratio(n)
+                fret_ratios[n] = fret_ratio
                 if 0 <= fret_ratio <= 1:
                     fret_center = self._get_point_on_line(nut_center, bridge_center, fret_ratio)
                     fret_p1 = fret_center + perp_unit * (max(nut_h, bridge_h) * 0.85 / 2)
@@ -319,6 +324,7 @@ class GuitarFingeringRecognizer:
 
             self.fret_p1s = np.array([p1 for _, p1, _, _ in self.fret_lines], dtype=np.float32)
             self.fret_p2s = np.array([p2 for _, _, p2, _ in self.fret_lines], dtype=np.float32)
+            self.global_fret_ratios = fret_ratios
 
             # 生成琴弦线
             self.string_lines = []
@@ -335,12 +341,6 @@ class GuitarFingeringRecognizer:
 
             self.string_nut_pts = np.array([p_nut for _, p_nut, _ in self.string_lines], dtype=np.float32)
             self.string_bridge_pts = np.array([p_bridge for _, _, p_bridge in self.string_lines], dtype=np.float32)
-
-            # 品丝比例
-            fret_ratios = [0.0] * (self.NUM_FRETS + 1)
-            for n in range(1, self.NUM_FRETS + 1):
-                fret_ratios[n] = self._get_fret_position_ratio(n)
-            self.global_fret_ratios = fret_ratios
 
             # 建立弦号映射（根据琴弦线的垂直位置）
             if self.string_lines:
@@ -389,8 +389,7 @@ class GuitarFingeringRecognizer:
                 y = int(lm[1] * img_height)
                 landmarks_px.append((x, y))
 
-            thumb_w = THUMBNAIL_WIDTH
-            thumb_h = int(thumb_w * img_height / img_width)
+            thumb_w, thumb_h = self._get_thumbnail_size(img_width, img_height)
             scale_x = thumb_w / img_width
             scale_y = thumb_h / img_height
             scale = scale_x  # 假设等比例
@@ -580,8 +579,7 @@ class GuitarFingeringRecognizer:
         drawing_data = {}
         drawing_data['image_size'] = [int(w_img), int(h_img)]
 
-        thumb_w = THUMBNAIL_WIDTH
-        thumb_h = int(thumb_w * h_img / w_img)
+        thumb_w, thumb_h = self._get_thumbnail_size(w_img, h_img)
 
         strings_data = []
         for s, p_nut, p_bridge in self.string_lines:

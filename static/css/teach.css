@@ -465,16 +465,23 @@ body {
     display: flex;
     align-items: baseline;
     gap: 14px;
+    min-width: 0;
+    flex: 1;
 }
 .chord-name {
     font-size: 1.2rem;
     font-weight: 600;
     color: var(--accent-gold);
     min-width: 50px;
+    flex-shrink: 0;
 }
 .chord-reason {
     font-size: 0.82rem;
     color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 .add-btn {
     background: rgba(255, 215, 140, 0.12);
@@ -685,3 +692,19 @@ body {
     .mini-stat-card { padding: 12px 16px; }
     .mini-stat-value { font-size: 1.2rem; }
 }
+
+/* 木色滚动条全局风格 */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(200, 155, 100, 0.25) transparent;
+}
+*::-webkit-scrollbar { width: 5px; height: 5px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+    background: rgba(200, 155, 100, 0.3);
+    border-radius: 3px;
+}
+*::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 155, 100, 0.5);
+}
+*::-webkit-scrollbar-corner { background: transparent; }

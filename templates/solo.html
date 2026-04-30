@@ -387,56 +387,30 @@
             width: 100%;
             height: 350px;
             background:
-                radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.03) 0%, transparent 60%),
-                repeating-linear-gradient(
-                    0deg,
-                    transparent,
-                    transparent 2px,
-                    rgba(0,0,0,0.03) 2px,
-                    rgba(0,0,0,0.03) 4px
-                ),
-                repeating-linear-gradient(
-                    90deg,
-                    transparent,
-                    transparent 6px,
-                    rgba(0,0,0,0.02) 6px,
-                    rgba(0,0,0,0.02) 7px
-                ),
-                linear-gradient(180deg, #4a2c17 0%, #5c361e 15%, #6b4126 30%, #5a351d 80%, #3d2010 100%);
+                radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 55%),
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 6px, rgba(0,0,0,0.015) 6px, rgba(0,0,0,0.015) 7px),
+                linear-gradient(180deg, #c4a07a 0%, #b8946e 15%, #a08060 30%, #9a7a54 60%, #8a6c48 100%);
             border-radius: 12px;
             position: relative;
-            padding: 38px 24px 30px 30px;  /* 上边留出琴枕空间 */
-            border-bottom: 3px solid #2a1508;
+            padding: 38px 24px 30px 30px;
+            border-bottom: 3px solid #705030;
             box-shadow:
-                0 8px 32px rgba(0,0,0,0.5),
-                0 2px 8px rgba(0,0,0,0.3),
-                inset 0 8px 20px rgba(0,0,0,0.15);
+                0 8px 32px rgba(0,0,0,0.4),
+                0 2px 8px rgba(0,0,0,0.25),
+                inset 0 6px 16px rgba(0,0,0,0.12);
             transform: perspective(900px) rotateX(4deg);
             transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.5s ease;
             isolation: isolate;
             margin-top: 4px;
         }
         .fretboard-mini:hover {
-            transform: perspective(900px) rotateX(0deg);
+            transform: perspective(900px) rotateX(1deg);
             box-shadow:
-                0 12px 40px rgba(0,0,0,0.55),
+                0 12px 40px rgba(0,0,0,0.5),
                 0 4px 12px rgba(0,0,0,0.35),
-                inset 0 8px 20px rgba(0,0,0,0.15);
+                inset 0 6px 16px rgba(0,0,0,0.12);
         }
-        /* 琴枕 */
-        .fretboard-mini::before {
-            content: '';
-            position: absolute;
-            top: 38px;
-            left: 24px;
-            right: 24px;
-            height: 4px;
-            background: linear-gradient(180deg, #f5f0e8 0%, #e8e0d0 40%, #d4c8b0 60%, #b8a890 100%);
-            border-radius: 2px;
-            z-index: 35;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-
         .fret-mini {
             position: absolute;
             top: 0; bottom: 0;
@@ -495,20 +469,17 @@
             letter-spacing: -0.5px;
         }
         .dot.standard {
-            background: radial-gradient(circle at 40% 35%, #5dfc8e 0%, #16a34a 45%, #0d7a32 80%, #064e1e 100%);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.35), 0 0 12px rgba(34,197,94,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
-            border: 1.5px solid rgba(0,0,0,0.15);
+            background: #28a745;
+            box-shadow: 0 0 12px rgba(40,167,69,0.5);
         }
         .dot.user-correct {
-            background: radial-gradient(circle at 40% 35%, #5dfc8e 0%, #16a34a 45%, #0d7a32 80%, #064e1e 100%);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.35), 0 0 16px rgba(34,197,94,0.6), 0 0 0 3px rgba(255,255,255,0.7);
-            border: 1.5px solid rgba(0,0,0,0.15);
+            background: #28a745;
+            box-shadow: 0 0 12px rgba(40,167,69,0.5), 0 0 0 2px rgba(255,255,255,0.8);
             animation: dotPopIn 0.3s cubic-bezier(0.2,0.9,0.4,1);
         }
         .dot.user-wrong {
-            background: radial-gradient(circle at 40% 35%, #f87171 0%, #dc2626 55%, #991b1b 100%);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.35), 0 0 14px rgba(239,68,68,0.5), 0 0 0 3px rgba(255,255,255,0.5);
-            border: 1.5px solid rgba(0,0,0,0.15);
+            background: #dc3545;
+            box-shadow: 0 0 12px rgba(220,53,69,0.5), 0 0 0 2px rgba(255,255,255,0.6);
             animation: dotPopIn 0.3s cubic-bezier(0.2,0.9,0.4,1);
         }
         @keyframes dotPopIn {
@@ -759,7 +730,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            flex: 1;
+            flex: 0 0 auto;
         }
         .progress-actions {
             display: grid;
@@ -1008,7 +979,8 @@
             pointer-events: none;
         }
         body.video-overlay-active .train-layout.test-mode .center-panel-header {
-            display: none;
+            display: flex;
+            padding-bottom: 8px;
         }
         body.video-overlay-active .train-layout.test-mode .fretboard-mini {
             height: 236px;
@@ -1309,6 +1281,45 @@
             opacity: 1;
             transform: scale(1);
         }
+
+        /* 12. 木色滚动条（全局统一风格，覆盖默认白色滑杆） */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 215, 140, 0.2) transparent;
+        }
+        *::-webkit-scrollbar { width: 5px; height: 5px; }
+        *::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        *::-webkit-scrollbar-thumb {
+            background: rgba(200, 155, 100, 0.3);
+            border-radius: 3px;
+            transition: background 0.3s;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+            background: rgba(200, 155, 100, 0.5);
+        }
+        *::-webkit-scrollbar-corner { background: transparent; }
+
+        /* 13. 底部详情区分隔线 */
+        .chord-detail-footer {
+            margin-top: 30px;
+            padding: 24px 28px;
+            background: rgba(101, 67, 33, 0.75);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 215, 140, 0.25);
+            border-radius: 20px;
+            position: relative;
+        }
+        .chord-detail-footer::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 140, 0.35), transparent);
+        }
     </style>
 </head>
 <body>
@@ -1386,18 +1397,11 @@
                 <div class="dot-container" id="dotContainer"></div>
             </div>
             <div class="chord-select">
-                <label for="chordSelect" class="panel-label"><i class="fas fa-book-open" aria-hidden="true"></i> 和弦简介</label>
+                <label for="chordSelect" class="panel-label"><i class="fas fa-book-open" aria-hidden="true"></i> 选择和弦</label>
             <button class="btn-custom" id="chordPopupBtn" type="button" style="width:100%">
                 <i class="fas fa-guitar"></i> <span id="chordPopupLabel">选择和弦</span>
             </button>
             <select id="chordSelect" style="display:none;"></select>
-
-
-
-                <div class="chord-info" id="chordInfo">
-                    和弦名称: <span id="selChordName">-</span><br>
-                    简介: <span id="selChordDesc">-</span>
-                </div>
             </div>
         </div>
 
