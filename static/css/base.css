@@ -5,12 +5,12 @@
 
 :root {
   /* ---- 木色底层 ---- */
-  --wood-deepest: #140a04;
-  --wood-deeper: #1f110a;
-  --wood-dark: #2e1a10;
-  --wood-medium: #4a2c1a;
-  --wood-warm: #6b3f28;
-  --wood-light: #9a6040;
+  --wood-deepest: #1f110a;
+  --wood-deeper: #2e1c12;
+  --wood-dark: #3d2618;
+  --wood-medium: #5c3a24;
+  --wood-warm: #7d4e32;
+  --wood-light: #a86e48;
 
   /* ---- 金色强调 ---- */
   --gold-primary: #f0c060;
@@ -172,7 +172,7 @@ body {
 
 /* ---- 通用毛玻璃卡片 ---- */
 .gt-glass {
-  background: rgba(40,22,14,0.65);
+  background: rgba(60,38,24,0.55);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-medium);
@@ -199,7 +199,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   color: var(--text-primary);
-  background: linear-gradient(135deg, rgba(107,63,40,0.7), rgba(74,44,28,0.7));
+  background: linear-gradient(135deg, rgba(120,80,50,0.7), rgba(90,55,35,0.7));
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   transition: transform var(--duration-fast) var(--ease-spring),
@@ -212,7 +212,7 @@ body {
 }
 .gt-btn:hover {
   transform: translateY(-2px);
-  background: linear-gradient(135deg, rgba(140,80,50,0.8), rgba(100,60,38,0.8));
+  background: linear-gradient(135deg, rgba(155,100,65,0.8), rgba(120,80,50,0.8));
   border-color: var(--border-glow);
   box-shadow: var(--shadow-sm), 0 0 20px rgba(240,192,96,0.15);
 }
@@ -303,8 +303,8 @@ body {
 .gt-input {
   width: 100%;
   padding: 12px 18px;
-  background: rgba(20,12,6,0.7);
-  border: 1.5px solid rgba(180,130,70,0.25);
+  background: rgba(28,18,10,0.6);
+  border: 1.5px solid rgba(180,130,70,0.3);
   border-radius: var(--radius-pill);
   color: var(--text-primary);
   font-size: 0.92rem;
@@ -324,7 +324,7 @@ body {
     0 0 0 4px rgba(212,160,48,0.08),
     0 0 20px rgba(212,160,48,0.1),
     0 2px 8px rgba(0,0,0,0.2) inset;
-  background: rgba(28,18,10,0.85);
+  background: rgba(35,22,14,0.85);
 }
 
 /* ---- 下拉选择框统一风格 ---- */
@@ -351,4 +351,86 @@ body {
 .gt-select option {
   background: var(--wood-dark);
   color: var(--text-primary);
+}
+
+/* ============================================================
+   日间主题 「云杉米白 Spruce Cream」
+   ============================================================ */
+[data-theme="light"] {
+  --wood-deepest: #e8dcc8;
+  --wood-deeper: #f0e5d4;
+  --wood-dark: #e0d0b8;
+  --wood-medium: #c8b088;
+  --wood-warm: #a08060;
+  --wood-light: #8b6848;
+
+  --gold-primary: #b87830;
+  --gold-bright: #d49840;
+  --gold-warm: #8b5820;
+  --gold-pale: #5a4030;
+  --gold-dim: #7a5a3a;
+
+  --text-primary: #3d2e1e;
+  --text-secondary: #6b5040;
+  --text-muted: #8a7565;
+
+  --border-subtle: rgba(180,130,80,0.18);
+  --border-medium: rgba(180,130,80,0.35);
+  --border-glow: rgba(180,130,80,0.5);
+
+  --shadow-xs: 0 2px 6px rgba(0,0,0,0.08);
+  --shadow-sm: 0 4px 14px rgba(0,0,0,0.12);
+  --shadow-md: 0 8px 28px rgba(0,0,0,0.16);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.22);
+  --shadow-glow: 0 0 36px rgba(180,130,60,0.1);
+  --shadow-glow-strong: 0 0 48px rgba(180,130,60,0.16);
+}
+
+[data-theme="light"] body {
+  background-color: #f5efe0;
+}
+
+[data-theme="light"] .gt-glass {
+  background: rgba(255,248,240,0.7);
+}
+
+[data-theme="light"] .gt-btn {
+  background: linear-gradient(135deg, rgba(180,140,100,0.6), rgba(160,120,80,0.55));
+}
+
+[data-theme="light"] .gt-btn:hover {
+  background: linear-gradient(135deg, rgba(200,150,110,0.7), rgba(180,130,90,0.65));
+}
+
+[data-theme="light"] .gt-btn-primary {
+  background: linear-gradient(135deg, #b87830, #8b5820);
+  color: #fff;
+}
+
+[data-theme="light"] .gt-input {
+  background: rgba(255,248,240,0.7);
+  border-color: rgba(180,130,80,0.3);
+  color: #3d2e1e;
+}
+
+[data-theme="light"] .gt-input:focus {
+  background: rgba(255,252,248,0.9);
+}
+
+[data-theme="light"] .gt-select {
+  background-color: #e0d0b8;
+  color: #3d2e1e;
+}
+
+[data-theme="light"] .gt-select option {
+  background: #f0e5d4;
+  color: #3d2e1e;
+}
+
+[data-theme="light"] .gt-wood-bg {
+  background-color: #f0e5d4;
+}
+
+[data-theme="light"] .gt-section-title {
+  color: #8b5820;
 }

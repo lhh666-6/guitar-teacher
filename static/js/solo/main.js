@@ -1126,27 +1126,10 @@
 
             const now = performance.now();
 
-            // 选择目标手部 (保持不变)
+            // MediaPipe 已通过画面裁剪只看左侧区域，直接取第一只手
             let targetHandIndex = -1;
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const screenMidX = 0.5;
-                let candidateIndex = -1;
-                let candidateAvgX = Infinity;
-                for (let i = 0; i < results.multiHandLandmarks.length; i++) {
-                    const landmarks = results.multiHandLandmarks[i];
-                    if (!landmarks) continue;
-                    let sumX = 0;
-                    for (let j = 0; j < landmarks.length; j++) {
-                        sumX += landmarks[j].x;
-                    }
-                    const avgX = sumX / landmarks.length;
-                    // 未镜像画面中，左手（按弦手）在画面右边 (avgX > 0.5)，选右边最靠中的手
-                    if (avgX > screenMidX && avgX < candidateAvgX) {
-                        candidateAvgX = avgX;
-                        candidateIndex = i;
-                    }
-                }
-                targetHandIndex = candidateIndex;
+                targetHandIndex = 0;
             }
 
             if (targetHandIndex === -1) {

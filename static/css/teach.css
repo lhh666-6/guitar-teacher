@@ -16,7 +16,7 @@ body {
     justify-content: center;
     gap: 28px;
     padding: 18px 0;
-    background: rgba(44, 26, 14, 0.5);
+    background: rgba(55, 35, 20, 0.45);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255, 215, 140, 0.15);
 }
@@ -56,7 +56,7 @@ body {
     margin-bottom: 24px;
 }
 .stat-card {
-    background: linear-gradient(135deg, rgba(90, 58, 36, 0.9), rgba(62, 42, 26, 0.9));
+    background: linear-gradient(135deg, rgba(110, 75, 50, 0.85), rgba(80, 52, 35, 0.85));
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-medium);
     border-radius: 24px;
@@ -137,7 +137,7 @@ body {
     margin-bottom: 24px;
 }
 .chart-panel {
-    background: rgba(30, 20, 15, 0.75);
+    background: rgba(45, 30, 20, 0.65);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-medium);
     border-radius: 24px;
@@ -296,7 +296,7 @@ body {
     align-items: stretch;
 }
 .mini-stat-card {
-    background: rgba(30, 20, 15, 0.75);
+    background: rgba(45, 30, 20, 0.65);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-medium);
     border-radius: 18px;
@@ -351,7 +351,7 @@ body {
 
 /* ========== AI 推荐 ========== */
 .recommend-section {
-    background: rgba(30, 20, 15, 0.75);
+    background: rgba(45, 30, 20, 0.65);
     backdrop-filter: blur(8px);
     border-radius: 24px;
     padding: 20px 28px;
@@ -498,7 +498,7 @@ body {
 }
 .advice-section,
 .records-section {
-    background: rgba(30, 20, 15, 0.75);
+    background: rgba(45, 30, 20, 0.65);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-medium);
     border-radius: 24px;
@@ -694,3 +694,77 @@ body {
     background: rgba(200, 155, 100, 0.5);
 }
 *::-webkit-scrollbar-corner { background: transparent; }
+
+/* ---- 日间主题 ---- */
+[data-theme="light"] body {
+    background:
+        radial-gradient(ellipse at 50% 0%, rgba(200,160,100,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 50%, rgba(180,130,80,0.04) 0%, transparent 50%),
+        #f5efe0;
+}
+[data-theme="light"] .top-nav {
+    background: rgba(240,225,210,0.5);
+    border-bottom: 1px solid rgba(180,140,90,0.2);
+}
+[data-theme="light"] .top-nav a { color: #5a4030; }
+[data-theme="light"] .top-nav a.active,
+[data-theme="light"] .top-nav a:hover {
+    background: rgba(180,130,80,0.12);
+    color: #8b5820;
+}
+[data-theme="light"] .stat-card {
+    background: linear-gradient(135deg, rgba(230,210,180,0.85), rgba(210,190,160,0.85));
+    border-color: rgba(180,140,90,0.35);
+}
+[data-theme="light"] .stat-value { color: #8b5820; }
+[data-theme="light"] .stat-label { color: #5a4030; }
+[data-theme="light"] .chart-panel {
+    background: rgba(255,248,240,0.7);
+    border-color: rgba(180,140,90,0.3);
+}
+[data-theme="light"] .chart-panel-header h3 { color: #8b5820; }
+[data-theme="light"] .chart-sub { color: #6b5040; }
+[data-theme="light"] .mini-stat-card {
+    background: rgba(255,248,240,0.7);
+    border-color: rgba(180,140,90,0.3);
+}
+[data-theme="light"] .mini-stat-label { color: #6b5040; }
+[data-theme="light"] .mini-stat-value { color: #8b5820; }
+[data-theme="light"] .recommend-section {
+    background: rgba(255,248,240,0.7);
+    border-color: rgba(180,140,90,0.3);
+}
+[data-theme="light"] .recommend-item {
+    background: rgba(180,140,100,0.06);
+    border-color: rgba(180,140,100,0.12);
+}
+[data-theme="light"] .recommend-item:hover {
+    background: rgba(180,140,100,0.15);
+}
+[data-theme="light"] .chord-name { color: #8b5820; }
+[data-theme="light"] .chord-reason { color: #6b5040; }
+[data-theme="light"] .advice-section,
+[data-theme="light"] .records-section {
+    background: rgba(255,248,240,0.7);
+    border-color: rgba(180,140,90,0.3);
+}
+[data-theme="light"] .advice-text { color: #3d2e1e; }
+[data-theme="light"] .section-header h3 { color: #8b5820; }
+[data-theme="light"] .table thead th {
+    background: rgba(200,170,130,0.4);
+    color: #8b5820;
+}
+[data-theme="light"] .table tbody td { color: #3d2e1e; }
+[data-theme="light"] .table tbody tr:nth-child(even) { background: rgba(180,150,110,0.05); }
+[data-theme="light"] .table tbody tr:hover td { background: rgba(180,150,110,0.15); }
+[data-theme="light"] .refresh-btn,
+[data-theme="light"] .mini-btn {
+    background: rgba(180,130,80,0.12);
+    border-color: rgba(180,130,80,0.3);
+    color: #5a4030;
+}
+[data-theme="light"] .add-btn {
+    background: rgba(180,130,80,0.12);
+    border-color: rgba(180,130,80,0.3);
+    color: #5a4030;
+}

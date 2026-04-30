@@ -24,7 +24,7 @@ const VoiceGuide = (function() {
     let iconElement = null;
 
     // 配置
-    const WAKE_WORD = '小吉他';
+    const WAKE_WORD = '小吉';
     const SLEEP_TIMEOUT = 10000;
     const RESTART_DELAY = 500;
 
@@ -166,7 +166,7 @@ const VoiceGuide = (function() {
             }
         } else {
             iconElement.innerHTML = '🎤';
-            iconElement.title = '监听中 · 说”小吉他”唤醒';
+            iconElement.title = '监听中 · 说”小吉”唤醒';
             iconElement.style.backgroundColor = 'rgba(46,204,113,0.82)';
             iconElement.style.backdropFilter = 'blur(10px)';
             iconElement.style.webkitBackdropFilter = 'blur(10px)';
@@ -175,7 +175,7 @@ const VoiceGuide = (function() {
             iconElement.style.opacity = '0.95';
             iconElement.style.animation = 'voiceGuidePulse 2.5s infinite';
             if (label) {
-                label.textContent = '说”小吉他”唤醒';
+                label.textContent = '说”小吉”唤醒';
                 label.style.color = '#4ecb71';
                 label.style.opacity = '1';
                 label.style.transform = 'translateX(0)';
@@ -203,21 +203,20 @@ const VoiceGuide = (function() {
 
         audio.play().catch(e => {
             if (e.name === 'NotAllowedError') {
-                console.warn('自动播放被阻止，等待用户交互');
+                console.warn('[TTS] 自动播放被阻止，等待用户交互');
                 audioQueue.unshift(item);
                 isPlaying = false;
-                if (!userInteracted) {
-                    showStatus('🔊 点击页面任意位置启用语音');
-                    const enablePlayback = () => {
-                        userInteracted = true;
-                        document.removeEventListener('click', enablePlayback);
-                        showStatus('🎤 语音已启用');
-                        playNext();
-                    };
-                    document.addEventListener('click', enablePlayback, { once: true });
-                }
+                userInteracted = false; // 需要新的用户交互
+                showStatus('点击页面任意位置以启用语音播报');
+                const enablePlayback = () => {
+                    userInteracted = true;
+                    document.removeEventListener('click', enablePlayback);
+                    showStatus('语音已启用');
+                    playNext();
+                };
+                document.addEventListener('click', enablePlayback, { once: true });
             } else {
-                console.warn('音频播放失败', e);
+                console.warn('[TTS] 音频播放失败', e);
                 URL.revokeObjectURL(item.url);
                 isPlaying = false;
                 playNext();
@@ -243,11 +242,6 @@ const VoiceGuide = (function() {
     // ========== TTS 播放 ==========
     function playTTS(text, options = {}) {
         if (!text) return;
-        // 语音关闭时禁止所有 TTS 输出
-        if (!isListening) {
-            console.log('[TTS] 语音未开启，跳过:', text);
-            return;
-        }
         console.log('[TTS] 请求合成:', text);
         fetch('/api/tts/speak', {
             method: 'POST',
@@ -306,8 +300,7 @@ const VoiceGuide = (function() {
         isAwake = false;
         if (wakeTimeout) clearTimeout(wakeTimeout);
         if (countdownTimer) clearTimeout(countdownTimer);
-        playTTS('需要帮助时请叫我小吉他');
-        showStatus('😴 已休眠');
+        showStatus('已休眠');
         updateIcon();
     }
 
@@ -431,7 +424,7 @@ const VoiceGuide = (function() {
         // 🔥 扩展结束语：再见、拜拜、晚安、退下等触发休眠
         if (text.includes('谢谢') || text.includes('结束') || text.includes('再见') || text.includes('拜拜') || text.includes('晚安') || text.includes('退下')) {
             sleep();
-            playTTS('好的，需要时请说小吉他唤醒我');
+            playTTS('好的，需要时请说小吉唤醒我');
             return;
         }
 
@@ -482,6 +475,12 @@ const VoiceGuide = (function() {
             if (isAwake) resetSleepTimer();
             if (!isAwake && text.includes(WAKE_WORD)) {
                 wakeUp();
+                // 提取唤醒词后面的指令部分
+                const idx = text.indexOf(WAKE_WORD);
+                const cmd = text.substring(idx + WAKE_WORD.length).trim();
+                if (cmd) {
+                    setTimeout(() => handleCommand(cmd), 1500);
+                }
             } else if (isAwake) {
                 handleCommand(text);
             }
@@ -508,13 +507,23 @@ const VoiceGuide = (function() {
         
         recognition.onend = () => {
             console.log('[语音识别] 识别结束');
-            isListening = false;
             if (shouldAutoRestart && !window.closed) {
-                setTimeout(() => startListening(), RESTART_DELAY);
+                // 自动重启：静默恢复，不闪 UI
+                setTimeout(() => {
+                    isListening = false;
+                    try {
+                        recognition.start();
+                        isListening = true;
+                    } catch(e) {
+                        console.warn('[语音识别] 自动重启失败:', e.name);
+                        updateIcon();
+                    }
+                }, RESTART_DELAY);
             } else {
-                showStatus('🎤 语音已关闭，请点击按钮开启');
+                isListening = false;
+                showStatus('语音已关闭，请点击按钮开启');
+                updateIcon();
             }
-            updateIcon();
         };
         return true;
     }
@@ -525,26 +534,33 @@ const VoiceGuide = (function() {
         try {
             recognition.start();
             isListening = true;
-            shouldAutoRestart = true;   // 🔥 手动开启时恢复自动重启标志
-            showStatus('🎤 语音识别已启动，说“小吉他”唤醒');
+            shouldAutoRestart = true;   // 手动开启时恢复自动重启标志
+            userInteracted = true;       // 标记用户已交互，允许音频播放
+            // 预解锁音频：播放静音以获取播放权限
+            const unlockAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+            unlockAudio.play().then(() => { unlockAudio.pause(); }).catch(() => {});
+            showStatus('语音识别已启动，说"小吉"唤醒');
             updateIcon();
         } catch (e) {
             console.error('启动语音识别失败', e);
             if (e.name === 'InvalidStateError') {
                 isListening = true;
             } else {
-                showStatus('❌ 启动失败，请检查麦克风权限');
+                showStatus('启动失败，请检查麦克风权限');
                 shouldAutoRestart = false;
             }
         }
     }
 
     function stopListening() {
+        shouldAutoRestart = false;
         if (recognition && isListening) {
-            recognition.stop();
+            try { recognition.stop(); } catch(e) {
+                isListening = false;
+                updateIcon();
+            }
+        } else {
             isListening = false;
-            shouldAutoRestart = false;   // 🔥 手动关闭后不再自动重启
-            showStatus('🎤 语音已关闭（需手动开启）');
             updateIcon();
         }
     }

@@ -17,6 +17,8 @@ class CameraManager {
         this._logMediaPipeFallback = false;
         this._logMediaPipeReady = false;
         this._logCameraStartFail = false;
+        this._cropCanvas = null;
+        this._cropCtx = null;
     }
 
     async open() {
@@ -72,11 +74,30 @@ class CameraManager {
         if (!this.useMediaPipe || !this.hands) return;
         this._handLoopRunning = true;
 
+        // 创建离屏裁剪画布（只保留左侧60%，右侧40%涂黑）
+        if (!this._cropCanvas) {
+            this._cropCanvas = document.createElement('canvas');
+            this._cropCtx = this._cropCanvas.getContext('2d');
+        }
+
+        const cropRatio = 0.6; // 左侧保留比例
         const handLoop = async () => {
             if (!this._handLoopRunning || !this.hands || !this.stream) return;
             if (videoElement.readyState >= 2) {
                 try {
-                    await this.hands.send({ image: videoElement });
+                    const vw = videoElement.videoWidth;
+                    const vh = videoElement.videoHeight;
+                    const cropW = Math.floor(vw * cropRatio);
+                    if (this._cropCanvas.width !== vw || this._cropCanvas.height !== vh) {
+                        this._cropCanvas.width = vw;
+                        this._cropCanvas.height = vh;
+                    }
+                    const ctx = this._cropCtx;
+                    // 先画全帧，再把右侧40%涂黑
+                    ctx.drawImage(videoElement, 0, 0, vw, vh);
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(cropW, 0, vw - cropW, vh);
+                    await this.hands.send({ image: this._cropCanvas });
                 } catch (e) {
                     if (!this._logCameraStartFail) {
                         console.error('❌ MediaPipe hands.send() 失败:', e);
@@ -126,5 +147,7 @@ class CameraManager {
             this.videoElement.style.transform = '';
         }
         this.hands = null;
+        this._cropCanvas = null;
+        this._cropCtx = null;
     }
 }

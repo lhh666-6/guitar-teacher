@@ -13,7 +13,7 @@ body {
     background:
         radial-gradient(ellipse at 50% 30%, rgba(180,120,50,0.12) 0%, transparent 60%),
         radial-gradient(ellipse at 75% 60%, rgba(100,50,25,0.1) 0%, transparent 50%),
-        linear-gradient(180deg, #1f110a 0%, #2e1a10 40%, #1a0d06 100%);
+        linear-gradient(180deg, #2e1c12 0%, #3d2618 40%, #2a1a10 100%);
     background-attachment: fixed;
     position: relative;
 }
@@ -204,7 +204,7 @@ body::before {
 .tuning-panel {
     max-width: 800px;
     margin: 0 auto;
-    background: linear-gradient(135deg, rgba(60,43,33,0.3), rgba(255,255,255,0.05));
+    background: linear-gradient(135deg, rgba(60,43,33,0.3), rgba(255,255,255,0.08));
     backdrop-filter: blur(20px);
     border: 1px solid var(--border-medium);
     border-radius: var(--radius-lg);
@@ -455,3 +455,69 @@ body::before {
     .auto-mode-btn:active, .string-btn:hover::before, .start-btn:hover, .back-btn:hover { transform: none !important; }
     .pitch-needle { transition: none !important; }
 }
+
+/* ---- 日间主题 ---- */
+[data-theme="light"] body {
+    background:
+        radial-gradient(ellipse at 50% 30%, rgba(200,150,80,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 75% 60%, rgba(160,120,70,0.06) 0%, transparent 50%),
+        linear-gradient(180deg, #f5efe0 0%, #ede0cc 40%, #f0e5d4 100%);
+}
+[data-theme="light"] body::before {
+    background:
+        repeating-linear-gradient(1.5deg, transparent, transparent 4px, rgba(160,130,90,0.03) 4px, rgba(160,130,90,0.03) 5px),
+        repeating-linear-gradient(92deg, transparent, transparent 10px, rgba(0,0,0,0.01) 10px, rgba(0,0,0,0.01) 11px);
+}
+[data-theme="light"] .header h2 {
+    background: linear-gradient(135deg, #b87830, #8b5820);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+[data-theme="light"] .tuning-panel {
+    background: linear-gradient(135deg, rgba(230,210,180,0.3), rgba(255,255,255,0.08));
+    border-color: rgba(180,140,90,0.3);
+}
+[data-theme="light"] .string-btn {
+    background: linear-gradient(135deg, rgba(220,200,170,0.6), rgba(200,180,150,0.5));
+    color: #3d2e1e;
+    border-color: rgba(180,140,90,0.3);
+}
+[data-theme="light"] .string-btn.active {
+    background: linear-gradient(135deg, #b87830, #8b5820);
+    color: #fff;
+}
+[data-theme="light"] .back-btn {
+    background: linear-gradient(135deg, #e0d0b8, #d4c4a8);
+    color: #5a4030;
+    border-color: rgba(180,140,90,0.3);
+}
+[data-theme="light"] .back-btn:hover {
+    background: linear-gradient(135deg, #d8c8b0, #c8b898);
+}
+[data-theme="light"] .auto-mode-btn {
+    background: rgba(220,200,180,0.5);
+    border-color: rgba(180,140,90,0.3);
+}
+[data-theme="light"] .auto-text { color: #3d2e1e; }
+[data-theme="light"] .auto-status { color: #5a4030; background: rgba(0,0,0,0.05); }
+[data-theme="light"] .string-name {
+    background: linear-gradient(90deg, #b87830, #8b5820);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+[data-theme="light"] .tuning-info { color: #3d2e1e; }
+[data-theme="light"] .guide-text {
+    background: rgba(200,180,150,0.2);
+    border-color: rgba(180,140,90,0.3);
+    color: #3d2e1e;
+}
+[data-theme="light"] .info-note { color: #6b5040; border-top-color: rgba(180,140,90,0.3); }
+[data-theme="light"] .start-btn {
+    background: linear-gradient(135deg, #c8a060, #a08040);
+    border-color: rgba(180,140,90,0.4);
+}
+[data-theme="light"] .guitar-bg { opacity: 0.1; }
