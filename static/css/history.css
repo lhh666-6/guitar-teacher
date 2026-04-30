@@ -189,7 +189,7 @@ tbody tr.page-enter { animation: rowFadeIn 0.35s ease-out both; }
 [data-theme="light"] body {
     background: radial-gradient(ellipse at 40% 20%, rgba(200,150,80,0.04) 0%, transparent 55%),
                 radial-gradient(ellipse at 70% 60%, rgba(160,120,70,0.03) 0%, transparent 50%),
-                linear-gradient(180deg, #faf5ed 0%, #f5ece0 50%, #faf5ed 100%);
+                linear-gradient(180deg, #ede0cc 0%, #f5ece0 50%, #ede0cc 100%);
 }
 [data-theme="light"] .container {
     background: rgba(255,252,248,0.88);

@@ -700,7 +700,7 @@ body {
     background:
         radial-gradient(ellipse at 50% 0%, rgba(200,160,100,0.06) 0%, transparent 60%),
         radial-gradient(ellipse at 80% 50%, rgba(180,130,80,0.04) 0%, transparent 50%),
-        #f5efe0;
+        #ede0cc;
 }
 [data-theme="light"] .top-nav {
     background: rgba(240,225,210,0.5);

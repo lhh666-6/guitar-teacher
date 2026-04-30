@@ -415,7 +415,7 @@ body::after {
 
 /* ---- 日间主题 ---- */
 [data-theme="light"] body {
-    background: #f5efe0;
+    background: #ede0cc;
 }
 [data-theme="light"] body::before {
     background-image:

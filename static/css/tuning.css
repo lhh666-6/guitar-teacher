@@ -461,7 +461,7 @@ body::before {
     background:
         radial-gradient(ellipse at 50% 30%, rgba(200,150,80,0.08) 0%, transparent 60%),
         radial-gradient(ellipse at 75% 60%, rgba(160,120,70,0.06) 0%, transparent 50%),
-        linear-gradient(180deg, #f5efe0 0%, #ede0cc 40%, #f0e5d4 100%);
+        linear-gradient(180deg, #ede0cc 0%, #ede0cc 40%, #f0e5d4 100%);
 }
 [data-theme="light"] body::before {
     background:

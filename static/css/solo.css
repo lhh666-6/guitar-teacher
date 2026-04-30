@@ -831,7 +831,7 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
     background:
         radial-gradient(ellipse at 50% 20%, rgba(200,160,100,0.06) 0%, transparent 55%),
         radial-gradient(ellipse at 80% 70%, rgba(180,140,90,0.04) 0%, transparent 50%),
-        linear-gradient(180deg, #faf5ed 0%, #f5ece0 35%, #f8f2e8 70%, #faf5ed 100%);
+        linear-gradient(180deg, #ede0cc 0%, #f5ece0 35%, #f8f2e8 70%, #ede0cc 100%);
 }
 [data-theme="light"] .left-panel,
 [data-theme="light"] .center-panel,
@@ -848,8 +848,11 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
     background: rgba(200,170,140,0.8);
 }
 [data-theme="light"] .camera-container {
-    background: rgba(240,225,210,0.6);
+    background: #fff;
     border-color: rgba(180,140,90,0.2);
+}
+[data-theme="light"] #cameraFeed {
+    background: #f0e8d8;
 }
 [data-theme="light"] .stat-panel {
     background: rgba(0,0,0,0.05);
@@ -916,24 +919,24 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 [data-theme="light"] .fretboard-mini {
     background:
         repeating-linear-gradient(90deg,
-            transparent, transparent 6px, rgba(0,0,0,0.01) 6px,
-            rgba(0,0,0,0.01) 7px, transparent 7px, transparent 12px,
-            rgba(0,0,0,0.005) 12px, rgba(0,0,0,0.005) 13px),
+            transparent, transparent 6px, rgba(0,0,0,0.015) 6px,
+            rgba(0,0,0,0.015) 7px, transparent 7px, transparent 12px,
+            rgba(0,0,0,0.008) 12px, rgba(0,0,0,0.008) 13px),
         repeating-linear-gradient(0deg,
             transparent, transparent 3px,
-            rgba(255,255,255,0.08) 3px, rgba(255,255,255,0.08) 4px),
+            rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px),
         linear-gradient(180deg,
-            #faf0e0 0%, #f0dcc0 8%, #e8d0a8 18%,
-            #dcc098 35%, #d4b888 55%, #ccb078 75%, #c4a870 100%);
-    border-bottom: 3px solid #d4b888;
+            #e8d5b0 0%, #dcc898 8%, #d0bc88 18%,
+            #c4b078 35%, #bca870 55%, #b4a068 75%, #ac9860 100%);
+    border-bottom: 3px solid #b89850;
     box-shadow:
-        0 6px 20px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08),
-        inset 0 4px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.15);
+        0 6px 20px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.1),
+        inset 0 4px 10px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.1);
 }
 [data-theme="light"] .fretboard-mini::before {
     background:
-        radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.15) 0%, transparent 55%),
-        linear-gradient(180deg, #f5e6d0 0%, #e0c8a0 25%, #d4b888 50%, #c8a870 100%);
+        radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.12) 0%, transparent 55%),
+        linear-gradient(180deg, #e8d5b0 0%, #d0bc88 25%, #c4b078 50%, #bca870 100%);
 }
 [data-theme="light"] .fretboard-mini::after {
     background:

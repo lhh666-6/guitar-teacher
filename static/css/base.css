@@ -357,12 +357,12 @@ body {
    日间主题 「云杉米白 Spruce Cream」
    ============================================================ */
 [data-theme="light"] {
-  --wood-deepest: #e8dcc8;
-  --wood-deeper: #f0e5d4;
-  --wood-dark: #e0d0b8;
-  --wood-medium: #c8b088;
-  --wood-warm: #a08060;
-  --wood-light: #8b6848;
+  --wood-deepest: #ddd0b8;
+  --wood-deeper: #e8dcc8;
+  --wood-dark: #d8c8b0;
+  --wood-medium: #c0a880;
+  --wood-warm: #987858;
+  --wood-light: #826040;
 
   --gold-primary: #b87830;
   --gold-bright: #d49840;
@@ -387,11 +387,11 @@ body {
 }
 
 [data-theme="light"] body {
-  background-color: #f5efe0;
+  background-color: #ede0cc;
 }
 
 [data-theme="light"] .gt-glass {
-  background: rgba(255,248,240,0.7);
+  background: rgba(245,235,220,0.7);
 }
 
 [data-theme="light"] .gt-btn {
@@ -408,7 +408,7 @@ body {
 }
 
 [data-theme="light"] .gt-input {
-  background: rgba(255,248,240,0.7);
+  background: rgba(245,235,220,0.7);
   border-color: rgba(180,130,80,0.3);
   color: #3d2e1e;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06) inset;
@@ -418,7 +418,7 @@ body {
 }
 
 [data-theme="light"] .gt-input:focus {
-  background: rgba(255,252,248,0.9);
+  background: rgba(250,242,230,0.9);
   box-shadow: 0 0 0 4px rgba(180,120,50,0.08), 0 0 16px rgba(180,120,50,0.08), 0 2px 8px rgba(0,0,0,0.06) inset;
 }
 
