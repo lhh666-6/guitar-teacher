@@ -1,43 +1,29 @@
-/* ========== 专业调音器 — 统一主题 ========== */
+/* ========== 专业调音器 — 漆面玫瑰木主题 ========== */
+/* 局部变量覆盖（仅本页特殊需求） */
 :root {
-    --wood-dark: #3c2b21;
-    --wood-medium: #5a3e2b;
-    --wood-light: #8b6b4f;
-    --gold-primary: #FFD700;
-    --gold-secondary: #FFA500;
-    --copper: #E64A19;
-    --text-light: #f2e9d8;
-    --border-gold: rgba(255, 215, 0, 0.3);
-    --shadow-heavy: 0 20px 50px rgba(0, 0, 0, 0.3);
-    --shadow-light: 0 10px 20px rgba(0, 0, 0, 0.2);
-    --border-radius: 50px;
-    --panel-radius: 20px;
+    --tuning-shadow-heavy: 0 20px 50px rgba(0, 0, 0, 0.3);
+    --tuning-shadow-light: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
-
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Microsoft YaHei', -apple-system, sans-serif; }
 
 body {
     min-height: 100vh;
     padding: 20px;
-    color: var(--text-light);
-    background-color: #6b4a2e;
-    background-image:
-        linear-gradient(45deg, #8b5a2b 25%, transparent 25%),
-        linear-gradient(-45deg, #8b5a2b 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #8b5a2b 75%),
-        linear-gradient(-45deg, transparent 75%, #8b5a2b 75%);
-    background-size: 30px 30px;
-    background-position: 0 0, 0 15px, 15px -15px, -15px 0px;
-    background-blend-mode: overlay;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    background:
+        radial-gradient(ellipse at 50% 30%, rgba(180,120,50,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse at 75% 60%, rgba(100,50,25,0.1) 0%, transparent 50%),
+        linear-gradient(180deg, #1f110a 0%, #2e1a10 40%, #1a0d06 100%);
     background-attachment: fixed;
     position: relative;
 }
 body::before {
     content: "";
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(60, 43, 33, 0.3);
+    inset: 0;
+    background:
+        repeating-linear-gradient(1.5deg, transparent, transparent 4px, rgba(100,55,25,0.03) 4px, rgba(100,55,25,0.03) 5px),
+        repeating-linear-gradient(92deg, transparent, transparent 10px, rgba(0,0,0,0.02) 10px, rgba(0,0,0,0.02) 11px);
     pointer-events: none;
     z-index: 0;
 }
@@ -124,7 +110,7 @@ body::before {
     justify-content: center;
     filter: drop-shadow(0 0 4px gold);
 }
-.auto-text { font-size: 15px; font-weight: 500; color: var(--text-light); }
+.auto-text { font-size: 15px; font-weight: 500; color: var(--text-primary); }
 .auto-status {
     font-size: 13px;
     padding: 2px 8px;
@@ -143,8 +129,8 @@ body::before {
     padding: 8px 20px;
     background: linear-gradient(135deg, var(--wood-dark), #2b1e16);
     color: var(--gold-primary);
-    border: 2px solid var(--border-gold);
-    border-radius: var(--border-radius);
+    border: 2px solid var(--border-medium);
+    border-radius: var(--radius-pill);
     cursor: pointer;
     backdrop-filter: blur(10px);
     transition: transform 0.2s cubic-bezier(0.2,0.9,0.4,1), box-shadow 0.2s ease, background 0.25s;
@@ -152,7 +138,7 @@ body::before {
     font-size: 15px;
     backface-visibility: hidden;
 }
-.back-btn:hover { background: linear-gradient(135deg, #4b3828, #382818); border-color: rgba(255, 215, 0, 0.6); transform: translateY(-2px); box-shadow: var(--shadow-light); }
+.back-btn:hover { background: linear-gradient(135deg, #4b3828, #382818); border-color: rgba(255, 215, 0, 0.6); transform: translateY(-2px); box-shadow: var(--tuning-shadow-light); }
 .back-btn:active { transform: translateY(1px); }
 
 /* ========== 琴弦选择 ========== */
@@ -167,9 +153,9 @@ body::before {
 .string-btn {
     padding: 10px 24px;
     border: none;
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-pill);
     background: linear-gradient(135deg, rgba(60,43,33,0.6), rgba(43,30,22,0.4));
-    color: var(--text-light);
+    color: var(--text-primary);
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
@@ -177,7 +163,7 @@ body::before {
     transition: transform 0.2s cubic-bezier(0.2,0.9,0.4,1), box-shadow 0.2s, background 0.25s;
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--border-gold);
+    border: 1px solid var(--border-medium);
     min-width: 92px;
     backface-visibility: hidden;
 }
@@ -192,7 +178,7 @@ body::before {
 .string-btn:hover::before { left: 100%; }
 .string-btn:hover { transform: translateY(-2px); }
 .string-btn.active {
-    background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+    background: linear-gradient(135deg, var(--gold-primary), var(--gold-warm));
     color: #1a2a6c;
     box-shadow: 0 10px 30px rgba(255,215,0,0.4);
     transform: translateY(-3px);
@@ -220,10 +206,10 @@ body::before {
     margin: 0 auto;
     background: linear-gradient(135deg, rgba(60,43,33,0.3), rgba(255,255,255,0.05));
     backdrop-filter: blur(20px);
-    border: 1px solid var(--border-gold);
-    border-radius: var(--panel-radius);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
     padding: 28px 32px;
-    box-shadow: var(--shadow-heavy);
+    box-shadow: var(--tuning-shadow-heavy);
     animation: popIn 0.8s cubic-bezier(0.2,0.9,0.4,1);
 }
 .string-name {
@@ -232,7 +218,7 @@ body::before {
     text-align: center;
     margin-bottom: 20px;
     text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    background: linear-gradient(90deg, var(--gold-primary), var(--gold-secondary));
+    background: linear-gradient(90deg, var(--gold-primary), var(--gold-warm));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -285,7 +271,7 @@ body::before {
     border-radius: 10px;
     margin: 15px 0;
     overflow: hidden;
-    border: 1px solid var(--border-gold);
+    border: 1px solid var(--border-medium);
 }
 .volume-bar {
     height: 100%; width: 0%;
@@ -316,7 +302,7 @@ body::before {
     margin: 30px 0;
     box-shadow: inset 0 5px 15px rgba(0,0,0,0.2);
     overflow: hidden;
-    border: 2px solid var(--border-gold);
+    border: 2px solid var(--border-medium);
 }
 .pitch-center {
     position: absolute;
@@ -330,7 +316,7 @@ body::before {
     position: absolute;
     top: 0; bottom: 0; left: 50%;
     width: 4px;
-    background: linear-gradient(to bottom, #FF5722, var(--copper));
+    background: linear-gradient(to bottom, #FF5722, #E64A19);
     border-radius: 2px;
     transform: translateX(-50%);
     transition: left 0.25s cubic-bezier(0.2,0.9,0.4,1);
@@ -361,11 +347,11 @@ body::before {
     background: rgba(0,0,0,0.5);
     padding: 5px 15px;
     border-radius: 30px;
-    border: 1px solid var(--border-gold);
+    border: 1px solid var(--border-medium);
 }
 
 /* 文本信息 */
-.tuning-info { text-align: center; font-size: 20px; margin: 15px 0; font-weight: 500; color: var(--text-light); }
+.tuning-info { text-align: center; font-size: 20px; margin: 15px 0; font-weight: 500; color: var(--text-primary); }
 .guide-text {
     display: flex;
     align-items: center;
@@ -380,8 +366,8 @@ body::before {
     backdrop-filter: blur(5px);
     margin: 10px 0;
     animation: pulse 2s infinite ease-in-out;
-    border: 1px solid var(--border-gold);
-    color: var(--text-light);
+    border: 1px solid var(--border-medium);
+    color: var(--text-primary);
 }
 @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -396,7 +382,7 @@ body::before {
     background: linear-gradient(135deg, #b97734, #8b5a2b);
     color: white;
     border: none;
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-pill);
     font-size: 20px;
     font-weight: 600;
     cursor: pointer;
@@ -404,7 +390,7 @@ body::before {
     box-shadow: 0 10px 30px rgba(139, 90, 43, 0.35);
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--border-gold);
+    border: 1px solid var(--border-medium);
     backface-visibility: hidden;
 }
 .start-btn::before {
@@ -425,7 +411,7 @@ body::before {
     font-size: 14px;
     color: #d1c7b8;
     text-align: center;
-    border-top: 1px solid var(--border-gold);
+    border-top: 1px solid var(--border-medium);
     padding-top: 15px;
 }
 

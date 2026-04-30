@@ -1,0 +1,354 @@
+/* ============================================================
+   Guitar Teacher — 统一设计体系 「漆面玫瑰木 Lacquered Rosewood」
+   所有页面共享的 CSS 变量、重置、排版、通用组件
+   ============================================================ */
+
+:root {
+  /* ---- 木色底层 ---- */
+  --wood-deepest: #140a04;
+  --wood-deeper: #1f110a;
+  --wood-dark: #2e1a10;
+  --wood-medium: #4a2c1a;
+  --wood-warm: #6b3f28;
+  --wood-light: #9a6040;
+
+  /* ---- 金色强调 ---- */
+  --gold-primary: #f0c060;
+  --gold-bright: #ffe08a;
+  --gold-warm: #d4a030;
+  --gold-pale: #f5e6d3;
+  --gold-dim: #b8945c;
+
+  /* ---- 功能色 ---- */
+  --green: #5cb870;
+  --green-glow: rgba(92,184,112,0.5);
+  --red: #e05555;
+  --red-glow: rgba(224,85,85,0.5);
+  --blue: #5b9bd5;
+  --blue-glow: rgba(91,155,213,0.4);
+  --orange: #e6a817;
+
+  /* ---- 文字 ---- */
+  --text-primary: #f5e6d3;
+  --text-secondary: #c4aa88;
+  --text-muted: #8a7565;
+
+  /* ---- 边框 ---- */
+  --border-subtle: rgba(240,192,96,0.12);
+  --border-medium: rgba(240,192,96,0.28);
+  --border-glow: rgba(240,192,96,0.5);
+
+  /* ---- 阴影 ---- */
+  --shadow-xs: 0 2px 6px rgba(0,0,0,0.2);
+  --shadow-sm: 0 4px 14px rgba(0,0,0,0.3);
+  --shadow-md: 0 8px 28px rgba(0,0,0,0.4);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.55);
+  --shadow-glow: 0 0 36px rgba(240,192,96,0.12);
+  --shadow-glow-strong: 0 0 48px rgba(240,192,96,0.2);
+
+  /* ---- 圆角 ---- */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 50px;
+
+  /* ---- 动效 ---- */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-back: cubic-bezier(0.68, -0.4, 0.27, 1.4);
+  --duration-fast: 0.18s;
+  --duration-normal: 0.3s;
+  --duration-slow: 0.5s;
+
+  /* ---- 字体 ---- */
+  --font-display: 'Georgia', 'Noto Serif SC', 'STSong', serif;
+  --font-body: 'Microsoft YaHei', 'PingFang SC', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace;
+}
+
+/* ---- 全局重置 ---- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ---- 全局滚动条 ---- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200,155,100,0.25) transparent;
+}
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(200,155,100,0.3);
+  border-radius: 3px;
+  transition: background var(--duration-normal);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(200,155,100,0.55);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---- 通用动画 ---- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes gentlePulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.03); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ---- 减少动效偏好 ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- 通用粒子背景 ---- */
+.gt-particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+.gt-particle-gold {
+  background: radial-gradient(circle at 35% 30%, rgba(240,192,96,0.35), rgba(200,140,40,0.04));
+  box-shadow: 0 0 8px rgba(240,192,96,0.18);
+}
+
+/* ---- 通用毛玻璃卡片 ---- */
+.gt-glass {
+  background: rgba(40,22,14,0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+  transition: transform var(--duration-slow) var(--ease-out),
+              box-shadow var(--duration-slow) var(--ease-out),
+              border-color var(--duration-slow) var(--ease-out);
+}
+.gt-glass:hover {
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-strong);
+}
+
+/* ---- 通用按钮 ---- */
+.gt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-pill);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, rgba(107,63,40,0.7), rgba(74,44,28,0.7));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform var(--duration-fast) var(--ease-spring),
+              box-shadow var(--duration-normal) ease,
+              background var(--duration-normal) ease,
+              border-color var(--duration-normal) ease;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.gt-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(140,80,50,0.8), rgba(100,60,38,0.8));
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-sm), 0 0 20px rgba(240,192,96,0.15);
+}
+.gt-btn:active {
+  transform: scale(0.96);
+  transition: transform 0.08s ease;
+}
+
+.gt-btn-primary {
+  background: linear-gradient(135deg, #c49440, #a07030);
+  border-color: var(--gold-warm);
+  color: #1a0f08;
+  font-weight: 700;
+}
+.gt-btn-primary:hover {
+  background: linear-gradient(135deg, #d4a450, #b08040);
+  box-shadow: var(--shadow-sm), 0 0 28px rgba(240,192,96,0.3);
+}
+
+.gt-btn-success {
+  background: linear-gradient(135deg, rgba(92,184,112,0.3), rgba(70,150,90,0.3));
+  border-color: rgba(92,184,112,0.45);
+}
+.gt-btn-success:hover {
+  background: linear-gradient(135deg, rgba(92,184,112,0.5), rgba(70,150,90,0.5));
+  box-shadow: var(--shadow-sm), 0 0 20px rgba(92,184,112,0.2);
+}
+
+/* ---- 木纹背景纹理（用于 body 或大容器） ---- */
+.gt-wood-bg {
+  position: relative;
+  background-color: var(--wood-deeper);
+}
+.gt-wood-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 15%, rgba(180,120,50,0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 60%, rgba(80,40,20,0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 85%, rgba(200,150,60,0.06) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+.gt-wood-bg::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    repeating-linear-gradient(2deg, transparent, transparent 4px, rgba(100,55,25,0.025) 4px, rgba(100,55,25,0.025) 5px),
+    repeating-linear-gradient(92deg, transparent, transparent 14px, rgba(0,0,0,0.02) 14px, rgba(0,0,0,0.02) 15px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---- 渐变金色文字 ---- */
+.gt-text-gold {
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-warm));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---- 分区标题 ---- */
+.gt-section-title {
+  color: var(--gold-primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  position: relative;
+  display: inline-block;
+}
+.gt-section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 40px;
+  height: 2.5px;
+  background: linear-gradient(90deg, var(--gold-primary), transparent);
+  border-radius: 2px;
+}
+
+/* ---- 输入框统一风格 ---- */
+.gt-input {
+  width: 100%;
+  padding: 12px 18px;
+  background: rgba(20,12,6,0.7);
+  border: 1.5px solid rgba(180,130,70,0.25);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out),
+              background var(--duration-normal) ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2) inset;
+}
+.gt-input::placeholder {
+  color: rgba(180,150,120,0.35);
+}
+.gt-input:focus {
+  border-color: var(--gold-warm);
+  box-shadow:
+    0 0 0 4px rgba(212,160,48,0.08),
+    0 0 20px rgba(212,160,48,0.1),
+    0 2px 8px rgba(0,0,0,0.2) inset;
+  background: rgba(28,18,10,0.85);
+}
+
+/* ---- 下拉选择框统一风格 ---- */
+.gt-select {
+  background-color: var(--wood-medium);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-pill);
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--duration-normal) ease,
+              box-shadow var(--duration-normal) ease;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.gt-select:focus {
+  border-color: var(--gold-warm);
+  box-shadow: 0 0 0 3px rgba(212,160,48,0.1);
+}
+.gt-select option {
+  background: var(--wood-dark);
+  color: var(--text-primary);
+}

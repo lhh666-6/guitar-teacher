@@ -26,7 +26,11 @@
       "Read(//c/Users/lenovo/.claude/skills//**)",
       "Read(//c/Users/lenovo/.agents/**)",
       "Bash(claude plugin *)",
-      "Bash(git clone *)"
+      "Bash(git clone *)",
+      "Read(//c/Users/lenovo/.claude/skills/**)",
+      "Bash(pip show *)",
+      "Bash(pip install *)",
+      "Bash(fastmcp install *)"
     ]
   }
 }

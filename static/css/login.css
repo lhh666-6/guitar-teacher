@@ -1,11 +1,9 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
 body {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    font-family: var(--font-body);
     background: #0d0906;
     overflow: hidden;
     position: relative;
