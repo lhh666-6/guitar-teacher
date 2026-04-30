@@ -11,7 +11,7 @@
 function drawLocalHandLandmarks(ctx, canvasWidth, canvasHeight, landmarks) {
     if (!landmarks) return;
     landmarks.forEach(lm => {
-        const x = canvasWidth - lm.x * canvasWidth; // 翻转 x 以匹配镜像视频
+        const x = lm.x * canvasWidth;
         const y = lm.y * canvasHeight;
         ctx.beginPath();
         ctx.arc(x, y, 3, 0, 2 * Math.PI);
@@ -38,12 +38,12 @@ function drawOverlay(ctx, canvasWidth, canvasHeight, drawingData) {
     const scaleX = canvasWidth / origWidth;
     const scaleY = canvasHeight / origHeight;
 
-    // 绘制琴弦（翻转 x 坐标）
+    // 绘制琴弦
     if (drawingData.strings) {
         drawingData.strings.forEach(s => {
-            const x1 = canvasWidth - s.start[0] * scaleX;
+            const x1 = s.start[0] * scaleX;
             const y1 = s.start[1] * scaleY;
-            const x2 = canvasWidth - s.end[0] * scaleX;
+            const x2 = s.end[0] * scaleX;
             const y2 = s.end[1] * scaleY;
             ctx.beginPath();
             ctx.moveTo(x1, y1);
@@ -54,12 +54,12 @@ function drawOverlay(ctx, canvasWidth, canvasHeight, drawingData) {
         });
     }
 
-    // 绘制品丝（翻转 x 坐标）
+    // 绘制品丝
     if (drawingData.frets) {
         drawingData.frets.forEach(f => {
-            const x1 = canvasWidth - f.start[0] * scaleX;
+            const x1 = f.start[0] * scaleX;
             const y1 = f.start[1] * scaleY;
-            const x2 = canvasWidth - f.end[0] * scaleX;
+            const x2 = f.end[0] * scaleX;
             const y2 = f.end[1] * scaleY;
             ctx.beginPath();
             ctx.moveTo(x1, y1);
@@ -70,18 +70,18 @@ function drawOverlay(ctx, canvasWidth, canvasHeight, drawingData) {
         });
     }
 
-    // 绘制按弦点（翻转 x 坐标）
+    // 绘制按弦点
     if (drawingData.press_points) {
         drawingData.press_points.forEach(p => {
             if (p.is_barre && p.index_points) {
                 if (p.index_points.length >= 2) {
                     ctx.beginPath();
                     const first = p.index_points[0];
-                    const x1 = canvasWidth - first[0] * scaleX;
+                    const x1 = first[0] * scaleX;
                     const y1 = first[1] * scaleY;
                     ctx.moveTo(x1, y1);
                     for (let i = 1; i < p.index_points.length; i++) {
-                        const xi = canvasWidth - p.index_points[i][0] * scaleX;
+                        const xi = p.index_points[i][0] * scaleX;
                         const yi = p.index_points[i][1] * scaleY;
                         ctx.lineTo(xi, yi);
                     }
@@ -93,7 +93,7 @@ function drawOverlay(ctx, canvasWidth, canvasHeight, drawingData) {
                     ctx.stroke();
                 }
             } else if (p.tip_x !== undefined && p.tip_y !== undefined) {
-                const x = canvasWidth - p.tip_x * scaleX;
+                const x = p.tip_x * scaleX;
                 const y = p.tip_y * scaleY;
                 ctx.beginPath();
                 ctx.arc(x, y, 11, 0, 2 * Math.PI);

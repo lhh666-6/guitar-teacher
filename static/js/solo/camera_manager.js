@@ -56,7 +56,6 @@ class CameraManager {
 
         const video = this.videoElement;
         video.srcObject = this.stream;
-        video.style.transform = 'scaleX(-1)';
 
         this.stream.getTracks().forEach(track => {
             track.addEventListener('ended', () => {
