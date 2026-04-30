@@ -48,8 +48,8 @@ function drawOverlay(ctx, canvasWidth, canvasHeight, drawingData) {
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
-            ctx.strokeStyle = '#ffaa00';
-            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#e0bc6e';
+            ctx.lineWidth = 2.0;
             ctx.stroke();
         });
     }
@@ -86,9 +86,9 @@ function drawOverlay(ctx, canvasWidth, canvasHeight, drawingData) {
                         ctx.lineTo(xi, yi);
                     }
                     ctx.closePath();
-                    ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+                    ctx.fillStyle = 'rgba(34, 197, 94, 0.35)';
                     ctx.fill();
-                    ctx.strokeStyle = '#ffff00';
+                    ctx.strokeStyle = '#22c55e';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                 }

@@ -1131,7 +1131,7 @@
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const screenMidX = 0.5;
                 let candidateIndex = -1;
-                let candidateAvgX = -Infinity;
+                let candidateAvgX = Infinity;
                 for (let i = 0; i < results.multiHandLandmarks.length; i++) {
                     const landmarks = results.multiHandLandmarks[i];
                     if (!landmarks) continue;
@@ -1140,7 +1140,8 @@
                         sumX += landmarks[j].x;
                     }
                     const avgX = sumX / landmarks.length;
-                    if (avgX < screenMidX && avgX > candidateAvgX) {
+                    // 未镜像画面中，左手（按弦手）在画面右边 (avgX > 0.5)，选右边最靠中的手
+                    if (avgX > screenMidX && avgX < candidateAvgX) {
                         candidateAvgX = avgX;
                         candidateIndex = i;
                     }
@@ -1439,7 +1440,7 @@
             const video = this.elements.cameraFeed;
             const videoW = video.videoWidth || 1920;
             const videoH = video.videoHeight || 1080;
-            const thumbW = 960;
+            const thumbW = THUMBNAIL_WIDTH;
             const scale = videoW / thumbW;
             const scaleY = scale;
             const strings = params.strings.map(s => ({

@@ -85,7 +85,7 @@ class FingeringDetector {
                 return { positions: [], barre: null };
             }
 
-            const thumbW = 960;
+            const thumbW = THUMBNAIL_WIDTH;
             const scale = imgWidth / thumbW;
             // 如果画面比例与缩略图不一致，可对 Y 轴单独缩放（通常等比例即可）
             const scaleY = scale;
