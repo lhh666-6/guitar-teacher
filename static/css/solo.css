@@ -917,26 +917,24 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 }
 /* 指板日间色 */
 [data-theme="light"] .fretboard-mini {
-    background:
-        repeating-linear-gradient(90deg,
-            transparent, transparent 6px, rgba(0,0,0,0.015) 6px,
-            rgba(0,0,0,0.015) 7px, transparent 7px, transparent 12px,
-            rgba(0,0,0,0.008) 12px, rgba(0,0,0,0.008) 13px),
-        repeating-linear-gradient(0deg,
-            transparent, transparent 3px,
-            rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px),
-        linear-gradient(180deg,
-            #e8d5b0 0%, #dcc898 8%, #d0bc88 18%,
-            #c4b078 35%, #bca870 55%, #b4a068 75%, #ac9860 100%);
-    border-bottom: 3px solid #b89850;
+    background: #c8b088;
+    border-bottom: 3px solid #a08050;
     box-shadow:
         0 6px 20px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.1),
         inset 0 4px 10px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.1);
 }
 [data-theme="light"] .fretboard-mini::before {
     background:
-        radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.12) 0%, transparent 55%),
-        linear-gradient(180deg, #e8d5b0 0%, #d0bc88 25%, #c4b078 50%, #bca870 100%);
+        radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.1) 0%, transparent 55%),
+        #c8b088;
+}
+[data-theme="light"] .fret-mini {
+    background: #333;
+    box-shadow: 0 0 2px rgba(0,0,0,0.2), 1px 0 1px rgba(255,255,255,0.1);
+}
+[data-theme="light"] .string-mini {
+    background: #555;
+    box-shadow: 0 0 1px rgba(0,0,0,0.15), 0 1px 1px rgba(0,0,0,0.1);
 }
 [data-theme="light"] .fretboard-mini::after {
     background:
