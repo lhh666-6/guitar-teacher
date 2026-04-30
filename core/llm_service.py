@@ -150,22 +150,38 @@ class LLMService:
         if self.is_volcengine:
             payload["thinking"] = {"type": "disabled"}
         try:
-            resp = self.session.post(self.endpoint, json=payload, timeout=(10, 120), stream=True)
+            # 流式请求不走 Session 连接池，避免连接复用导致 iter_lines 卡住
+            resp = requests.post(
+                self.endpoint,
+                json=payload,
+                headers=self.session.headers,
+                timeout=(10, 180),
+                stream=True
+            )
             resp.raise_for_status()
-            for line in resp.iter_lines(decode_unicode=True):
-                if not line or not line.startswith('data:'):
+            # 用 iter_content 手动拆行，比 iter_lines 更可靠
+            buffer = ""
+            for chunk in resp.iter_content(chunk_size=1024, decode_unicode=True):
+                if not chunk:
                     continue
-                data_str = line[5:].strip()
-                if data_str == '[DONE]':
-                    break
-                try:
-                    chunk = json.loads(data_str)
-                    delta = chunk.get('choices', [{}])[0].get('delta', {})
-                    content = delta.get('content', '')
-                    if content:
-                        yield content
-                except json.JSONDecodeError:
-                    continue
+                buffer += chunk
+                while '\n' in buffer:
+                    line, buffer = buffer.split('\n', 1)
+                    line = line.strip()
+                    if not line or not line.startswith('data:'):
+                        continue
+                    data_str = line[5:].strip()
+                    if data_str == '[DONE]':
+                        buffer = ""
+                        return
+                    try:
+                        data = json.loads(data_str)
+                        delta = data.get('choices', [{}])[0].get('delta', {})
+                        content = delta.get('content', '')
+                        if content:
+                            yield content
+                    except json.JSONDecodeError:
+                        continue
         except requests.exceptions.Timeout:
             logger.error("LLM 流式请求超时")
             yield None
