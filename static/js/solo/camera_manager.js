@@ -37,8 +37,8 @@ class CameraManager {
                 this.hands.setOptions({
                     maxNumHands: 1,
                     modelComplexity: 1,
-                    minDetectionConfidence: 0.2,
-                    minTrackingConfidence: 0.2
+                    minDetectionConfidence: 0.15,
+                    minTrackingConfidence: 0.15
                 });
                 if (this.onResults) {
                     this.hands.onResults(this.onResults);

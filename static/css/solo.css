@@ -440,6 +440,7 @@ body {
 .test-item-time, .test-list-item-time { color: #a5d6a5; font-family: monospace; }
 .test-badge-correct { background: #28a745; color: white; border-radius: 12px; padding: 2px 8px; font-size: 12px; }
 .test-badge-wrong { background: #dc3545; color: white; border-radius: 12px; padding: 2px 8px; font-size: 12px; }
+.test-badge-unstable { background: #e6a817; color: #1a120b; border-radius: 12px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
 .test-badge-pending { background: #6c757d; color: white; border-radius: 12px; padding: 2px 8px; font-size: 12px; }
 
 /* 测试项顺序号 */

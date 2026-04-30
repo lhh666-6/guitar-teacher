@@ -493,7 +493,9 @@
                     item.classList.add('just-changed');
                 }
                 if (res !== undefined && res !== null) {
-                    if (res.correct) {
+                    if (res.unstable) {
+                        statusSpan.innerHTML = '<span class="test-badge-unstable">不稳</span> <span class="test-item-time">' + res.time.toFixed(1) + 's</span>';
+                    } else if (res.correct) {
                         statusSpan.innerHTML = '<span class="test-badge-correct">✓</span> <span class="test-item-time">' + res.time.toFixed(1) + 's</span>';
                     } else {
                         statusSpan.innerHTML = '<span class="test-badge-wrong">✗</span> <span class="test-item-time">--</span>';
