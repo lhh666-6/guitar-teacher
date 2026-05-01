@@ -6,11 +6,11 @@
     <title>和弦测试 · 木色主题</title>
     <!-- DNS 预解析 + 预连接，加速 CDN 资源加载 -->
     <link rel="dns-prefetch" href="https://cdn.staticfile.org">
-    <link rel="dns-prefetch" href="https://cdn.bootcdn.net">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://cdn.socket.io">
     <link rel="preconnect" href="https://cdn.staticfile.org" crossorigin>
-    <link rel="preconnect" href="https://cdn.bootcdn.net" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.socket.io" crossorigin>
 <script>(function(){var t=localStorage.getItem('theme');if(!t||t!=='dark')document.documentElement.setAttribute('data-theme','light');})();</script>
     <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="/static/css/base.css?v={{ APP_VERSION }}">
@@ -32,7 +32,6 @@
         <div class="left-panel">
             <div class="camera-container" id="cameraContainer">
                 <video id="cameraFeed" autoplay playsinline></video>
-                <div class="camera-hint" id="cameraHint"><i class="fas fa-video"></i> 点击「开启摄像头」开始</div>
                 <div class="camera-status">
                     <span id="cameraStatus"><i class="fas fa-camera" aria-hidden="true"></i> 摄像头已关闭</span>
                     <span id="perfIndicator" style="display:none;font-size:0.78rem;color:#a5d6a5;font-family:monospace;margin-left:8px;"></span>
@@ -68,11 +67,11 @@
                 <div class="fret-mini" data-fret="3"></div>
                 <div class="fret-mini" data-fret="4"></div>
                 <div class="fret-mini" data-fret="5"></div>
-                <div class="fret-label" data-fret="1">1</div>
-                <div class="fret-label" data-fret="2">2</div>
-                <div class="fret-label" data-fret="3">3</div>
-                <div class="fret-label" data-fret="4">4</div>
-                <div class="fret-label" data-fret="5">5</div>
+                <div class="fret-label" style="left: calc(20% - 15px);">1</div>
+                <div class="fret-label" style="left: calc(40% - 15px);">2</div>
+                <div class="fret-label" style="left: calc(60% - 15px);">3</div>
+                <div class="fret-label" style="left: calc(80% - 15px);">4</div>
+                <div class="fret-label" style="left: calc(100% - 15px);">5</div>
 
                 <!-- 琴弦线条 (6弦~1弦) -->
                 <div class="string-mini" data-string="6"></div>
@@ -91,7 +90,6 @@
 
                 <div class="dot-container" id="dotContainer"></div>
             </div>
-            <div class="fretboard-hint">👆 指板显示标准按法，绿色圆点 = 你按的位置</div>
             <div class="chord-select">
                 <label for="chordSelect" class="panel-label"><i class="fas fa-book-open" aria-hidden="true"></i> 选择和弦</label>
             <button class="btn-custom" id="chordPopupBtn" type="button" style="width:100%">
@@ -170,7 +168,7 @@
     <!-- 底部详细介绍区域 -->
     <div class="chord-detail-footer" id="chordDetailFooter">
         <div class="detail-title"> 当前和弦详细介绍</div>
-        <div class="detail-content" id="chordDetailContent">选一个和弦，这里会显示指法要点和练习建议</div>
+        <div class="detail-content" id="chordDetailContent">请选择一个和弦查看详细介绍。</div>
     </div>
 
     <div class="result-modal" id="resultModal">
@@ -184,13 +182,12 @@
     </div>
   
     <!-- MediaPipe（必须阻塞加载，后续 JS 依赖它；camera_utils 未被使用已移除） -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"
-        onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';document.head.appendChild(s);"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <!-- 本地模块 JS -->
     <script src="/static/js/solo/constants.js?v={{ APP_VERSION }}"></script>
     <script src="/static/js/solo/filters.js?v={{ APP_VERSION }}"></script>
     <script src="/static/js/solo/ui_helpers.js?v={{ APP_VERSION }}"></script>
-    <script src="/static/js/lib/meyda.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/meyda@5.5.1/dist/web/meyda.min.js"></script>
     <script src="/static/js/solo/chord_verifier.js?v={{ APP_VERSION }}"></script>
     <script src="/static/js/solo/chord_validator.js?v={{ APP_VERSION }}"></script>
     <script src="/static/js/solo/fingering_detector.js?v={{ APP_VERSION }}"></script>
@@ -389,7 +386,7 @@
             })();
 
     </script>
-    <script defer src="https://cdn.bootcdn.net/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script defer src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <!-- 3D 视差倾斜：指板随鼠标微动 -->
 </body>
 </html>

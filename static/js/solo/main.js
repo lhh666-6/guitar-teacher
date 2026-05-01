@@ -585,7 +585,6 @@
             this.cameraManager.close();
             this.elements.toggleCamera.textContent = '开启';
             this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
-            if (this.elements.videoContainer) this.elements.videoContainer.classList.remove('streaming');
             this._perfFrameTimes = [];
             this._lastThumbnailRtt = 0;
             if (this.elements.perfIndicator) this.elements.perfIndicator.style.display = 'none';
@@ -774,17 +773,12 @@
             document.querySelectorAll('.string-label').forEach((el, idx) => {
                 el.style.top = (baseY + stringOffset + idx * stringSpacing - 8) + 'px';
             });
-            // 品丝按 12-TET 公式排列：ratio = 1 - 2^(-n/12)，12品总跨度为 totalFretSpan
-            const MAX_FRET = 12;
-            const totalFretSpan = 1 - Math.pow(2, -MAX_FRET / 12);
-            for (let n = 1; n <= 5; n++) {
-                const ratio = (1 - Math.pow(2, -n / 12)) / totalFretSpan;
-                const x = baseX + ratio * innerWidth;
-                const fretEl = fretboard.querySelector(`.fret-mini[data-fret="${n}"]`);
-                const labelEl = fretboard.querySelector(`.fret-label[data-fret="${n}"]`);
-                if (fretEl) fretEl.style.left = (x - 1) + 'px';
-                if (labelEl) labelEl.style.left = (x - 15) + 'px';
-            }
+            document.querySelectorAll('.fret-mini').forEach((el, idx) => {
+                el.style.left = (baseX + idx * fretSpacing - 1) + 'px';
+            });
+            document.querySelectorAll('.fret-label').forEach((el, idx) => {
+                el.style.left = (baseX + idx * fretSpacing - 15) + 'px';
+            });
         }
 
         renderStandardDots(chord, userPositions = [], userBarre = null) {
@@ -804,6 +798,8 @@
             const innerHeight = containerHeight - topPadding - bottomPadding;
 
             const stringSpacing = innerHeight / (STRING_COUNT - 1);
+            const fretSpacing = innerWidth / (FRET_COUNT - 1);
+
             const baseY = topPadding;
             const baseX = leftPadding;
 
@@ -819,19 +815,15 @@
                 el.style.top = (y - 8) + 'px';
             });
 
-            // 12-TET 品丝位置
-            const MAX_FRET = 12, totalFretSpan = 1 - Math.pow(2, -MAX_FRET / 12);
-            const getFretX = (fret) => baseX + ((1 - Math.pow(2, -fret / 12)) / totalFretSpan) * innerWidth;
-
             const fretLines = document.querySelectorAll('.fret-mini');
-            fretLines.forEach((el) => {
-                const n = parseInt(el.dataset.fret);
-                if (n) el.style.left = (getFretX(n) - 1) + 'px';
+            fretLines.forEach((el, idx) => {
+                const x = baseX + idx * fretSpacing;
+                el.style.left = (x - 1) + 'px';
             });
             const fretLabels = document.querySelectorAll('.fret-label');
-            fretLabels.forEach((el) => {
-                const n = parseInt(el.dataset.fret);
-                if (n) el.style.left = (getFretX(n) - 15) + 'px';
+            fretLabels.forEach((el, idx) => {
+                const x = baseX + idx * fretSpacing;
+                el.style.left = (x - 15) + 'px';
             });
 
             const allPositions = [];
@@ -858,10 +850,19 @@
                 });
             }
 
+            const allFrets = new Set();
+            allPositions.forEach(p => allFrets.add(p.fret));
+            allBarres.forEach(b => allFrets.add(b.fret));
+            const uniqueFrets = Array.from(allFrets).sort((a, b) => a - b);
+            const validFrets = uniqueFrets.slice(0, FRET_COUNT);
+            const fretToCol = {};
+            validFrets.forEach((fret, idx) => { fretToCol[fret] = idx; });
+
             allPositions.forEach(p => {
-                if (p.fret < 1 || p.fret > MAX_FRET) return;
+                if (!(p.fret in fretToCol)) return;
+                const colIndex = fretToCol[p.fret];
                 const idx = this.backendToDisplayIndex(p.string);
-                const x = getFretX(p.fret);
+                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
                 const y = baseY + stringOffset + idx * stringSpacing;
 
                 const dot = document.createElement('div');
@@ -873,7 +874,8 @@
             });
 
             allBarres.forEach(b => {
-                if (b.fret < 1 || b.fret > MAX_FRET) return;
+                if (!(b.fret in fretToCol)) return;
+                const colIndex = fretToCol[b.fret];
                 const startIdx = this.backendToDisplayIndex(b.startString);
                 const endIdx = this.backendToDisplayIndex(b.endString);
                 const idxMin = Math.min(startIdx, endIdx);
@@ -883,7 +885,7 @@
                 const topY = Math.min(yStart, yEnd) - DOT_RADIUS;
                 const bottomY = Math.max(yStart, yEnd) + DOT_RADIUS;
                 const height = bottomY - topY;
-                const x = getFretX(b.fret);
+                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
 
                 const barreDiv = document.createElement('div');
                 barreDiv.className = `barre ${b.type === 'standard' ? 'standard' : (b.correct ? 'user-correct' : 'user-wrong')}`;
@@ -902,24 +904,32 @@
         drawAll() {
             if (!this.overlayCanvas) return;
             const ctx = this.overlayCtx;
+            // 直接使用画布的固有像素尺寸（在 loadedmetadata 中已设为视频原始分辨率）
             const w = this.overlayCanvas.width;
             const h = this.overlayCanvas.height;
 
-            // 有数据时才清空重绘，无数据时保留上一帧画面（丝滑过渡）
-            if (this.cachedDrawingData || this.latestLocalLandmarks) {
-                ctx.clearRect(0, 0, w, h);
+            ctx.clearRect(0, 0, w, h);
 
-                if (this.cachedDrawingData) {
-                    if (!this._drawStartedLogged) {
-                        console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
-                        this._drawStartedLogged = true;
-                    }
-                    drawOverlay(ctx, w, h, this.cachedDrawingData);
-                }
+            // 诊断红框，用于验证对齐（正式发布可注释）
+            // ctx.strokeStyle = 'red';
+            // ctx.lineWidth = 4;
+            // ctx.strokeRect(0, 0, w, h);
 
-                if (this.latestLocalLandmarks) {
-                    drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
+            if (this.cachedDrawingData) {
+                if (!this._drawStartedLogged) {
+                    console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
+                    this._drawStartedLogged = true;
                 }
+                drawOverlay(ctx, w, h, this.cachedDrawingData);
+            } else {
+                if (this._drawStartedLogged) {
+                    console.warn('⚠️ cachedDrawingData 丢失，停止绘制指板');
+                    this._drawStartedLogged = false;
+                }
+            }
+
+            if (this.latestLocalLandmarks) {
+                drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
             }
         }
 
@@ -1380,7 +1390,6 @@
                     await this.cameraManager.open();
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
-                    this.elements.videoContainer.classList.add('streaming');
 
                     this.socketManager.connect();
                     this._startRttLogging();
@@ -1470,13 +1479,10 @@
             if (this.audioVerifier) {
                 this.audioVerifier.setHoldDuration(QUICK_MODE ? 0.6 : 1.0);
                 this.audioVerifier.setTargetChord(this.currentChord.name);
-                this.audioVerifier.start((isMatch, similarity, detectedChord, topCandidates) => {
+                this.audioVerifier.start((isMatch, similarity) => {
                     this.audioResultCache = {
-                        chord: detectedChord || null,
-                        targetChord: this.currentChord.name,
-                        confidence: similarity,
-                        isMatch: isMatch,
-                        topCandidates: topCandidates || []
+                        chord: isMatch ? this.currentChord.name : null,
+                        confidence: similarity
                     };
                     if (this.audioWaiting) {
                         this._handleAudioReady();
