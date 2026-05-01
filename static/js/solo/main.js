@@ -774,12 +774,17 @@
             document.querySelectorAll('.string-label').forEach((el, idx) => {
                 el.style.top = (baseY + stringOffset + idx * stringSpacing - 8) + 'px';
             });
-            document.querySelectorAll('.fret-mini').forEach((el, idx) => {
-                el.style.left = (baseX + idx * fretSpacing - 1) + 'px';
-            });
-            document.querySelectorAll('.fret-label').forEach((el, idx) => {
-                el.style.left = (baseX + idx * fretSpacing - 15) + 'px';
-            });
+            // 品丝按 12-TET 公式排列：ratio = 1 - 2^(-n/12)，12品总跨度为 totalFretSpan
+            const MAX_FRET = 12;
+            const totalFretSpan = 1 - Math.pow(2, -MAX_FRET / 12);
+            for (let n = 1; n <= 5; n++) {
+                const ratio = (1 - Math.pow(2, -n / 12)) / totalFretSpan;
+                const x = baseX + ratio * innerWidth;
+                const fretEl = fretboard.querySelector(`.fret-mini[data-fret="${n}"]`);
+                const labelEl = fretboard.querySelector(`.fret-label[data-fret="${n}"]`);
+                if (fretEl) fretEl.style.left = (x - 1) + 'px';
+                if (labelEl) labelEl.style.left = (x - 15) + 'px';
+            }
         }
 
         renderStandardDots(chord, userPositions = [], userBarre = null) {
@@ -799,8 +804,6 @@
             const innerHeight = containerHeight - topPadding - bottomPadding;
 
             const stringSpacing = innerHeight / (STRING_COUNT - 1);
-            const fretSpacing = innerWidth / (FRET_COUNT - 1);
-
             const baseY = topPadding;
             const baseX = leftPadding;
 
@@ -816,15 +819,19 @@
                 el.style.top = (y - 8) + 'px';
             });
 
+            // 12-TET 品丝位置
+            const MAX_FRET = 12, totalFretSpan = 1 - Math.pow(2, -MAX_FRET / 12);
+            const getFretX = (fret) => baseX + ((1 - Math.pow(2, -fret / 12)) / totalFretSpan) * innerWidth;
+
             const fretLines = document.querySelectorAll('.fret-mini');
-            fretLines.forEach((el, idx) => {
-                const x = baseX + idx * fretSpacing;
-                el.style.left = (x - 1) + 'px';
+            fretLines.forEach((el) => {
+                const n = parseInt(el.dataset.fret);
+                if (n) el.style.left = (getFretX(n) - 1) + 'px';
             });
             const fretLabels = document.querySelectorAll('.fret-label');
-            fretLabels.forEach((el, idx) => {
-                const x = baseX + idx * fretSpacing;
-                el.style.left = (x - 15) + 'px';
+            fretLabels.forEach((el) => {
+                const n = parseInt(el.dataset.fret);
+                if (n) el.style.left = (getFretX(n) - 15) + 'px';
             });
 
             const allPositions = [];
@@ -851,19 +858,10 @@
                 });
             }
 
-            const allFrets = new Set();
-            allPositions.forEach(p => allFrets.add(p.fret));
-            allBarres.forEach(b => allFrets.add(b.fret));
-            const uniqueFrets = Array.from(allFrets).sort((a, b) => a - b);
-            const validFrets = uniqueFrets.slice(0, FRET_COUNT);
-            const fretToCol = {};
-            validFrets.forEach((fret, idx) => { fretToCol[fret] = idx; });
-
             allPositions.forEach(p => {
-                if (!(p.fret in fretToCol)) return;
-                const colIndex = fretToCol[p.fret];
+                if (p.fret < 1 || p.fret > MAX_FRET) return;
                 const idx = this.backendToDisplayIndex(p.string);
-                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
+                const x = getFretX(p.fret);
                 const y = baseY + stringOffset + idx * stringSpacing;
 
                 const dot = document.createElement('div');
@@ -875,8 +873,7 @@
             });
 
             allBarres.forEach(b => {
-                if (!(b.fret in fretToCol)) return;
-                const colIndex = fretToCol[b.fret];
+                if (b.fret < 1 || b.fret > MAX_FRET) return;
                 const startIdx = this.backendToDisplayIndex(b.startString);
                 const endIdx = this.backendToDisplayIndex(b.endString);
                 const idxMin = Math.min(startIdx, endIdx);
@@ -886,7 +883,7 @@
                 const topY = Math.min(yStart, yEnd) - DOT_RADIUS;
                 const bottomY = Math.max(yStart, yEnd) + DOT_RADIUS;
                 const height = bottomY - topY;
-                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
+                const x = getFretX(b.fret);
 
                 const barreDiv = document.createElement('div');
                 barreDiv.className = `barre ${b.type === 'standard' ? 'standard' : (b.correct ? 'user-correct' : 'user-wrong')}`;

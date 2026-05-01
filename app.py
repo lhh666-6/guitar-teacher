@@ -335,6 +335,13 @@ def history_stats():
     })
 
 
+@app.route('/api/history/clear', methods=['POST'])
+@login_required
+def clear_history():
+    TrainingRecord.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    return jsonify({'status': 'ok', 'message': '记录已清空'})
+
 # ---------- 练习统计 API ----------
 llm_service = LLMService()
 

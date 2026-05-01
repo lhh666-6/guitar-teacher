@@ -22,7 +22,12 @@
 <div class="container">
     <div class="header">
         <h1><i class="fas fa-chart-line"></i> 训练历史</h1>
-        <a href="/" class="back-link"><i class="fas fa-home"></i> 返回首页</a>
+        <div style="display:flex;gap:12px;align-items:center;">
+            <button id="clearHistoryBtn" class="back-link" style="background:rgba(220,53,69,0.2);border-color:rgba(220,53,69,0.4);color:#ff6b7a;cursor:pointer;">
+                <i class="fas fa-trash-alt"></i> 清空记录
+            </button>
+            <a href="/" class="back-link"><i class="fas fa-home"></i> 返回首页</a>
+        </div>
     </div>
 
     <!-- 第一行统计卡片 -->
@@ -325,6 +330,18 @@
             update();
         });
     }
+
+    // ========== 清空记录 ==========
+    document.getElementById('clearHistoryBtn').addEventListener('click', function() {
+        if (!confirm('确定要清空所有练习记录吗？此操作不可撤销。')) return;
+        fetch('/api/history/clear', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                alert(data.message || '已清空');
+                loadStats().then(function() { loadTable(1); });
+            })
+            .catch(function(err) { alert('清空失败: ' + err.message); });
+    });
 
     // ========== 启动 ==========
     loadStats().then(function() {

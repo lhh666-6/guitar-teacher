@@ -767,6 +767,7 @@ body.video-overlay-active .train-layout.test-mode .chord-select {
 body.video-overlay-active .train-layout.test-mode .chord-select .panel-label,
 body.video-overlay-active .train-layout.test-mode .chord-select .chord-info { display: none; }
 body.video-overlay-active .train-layout.test-mode .chord-select #chordSelect { flex: 1 1 auto; min-width: 0; margin: 0; }
+body.video-overlay-active .train-layout.test-mode .fretboard-hint { display: none; }
 body.video-overlay-active .train-layout.test-mode .right-panel { top: 390px; }
 body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(100vh - 614px); }
 
@@ -781,6 +782,7 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 .train-layout.test-mode #cameraFeed {
     width: 100%; flex: 1; min-height: 0; object-fit: cover; background: #000;
 }
+.train-layout.test-mode .fretboard-hint { display: none; }
 .train-layout.test-mode .fretboard-mini {
     height: 330px; padding: 28px 12px 30px;
     transform: perspective(800px) rotateY(-2deg);
@@ -804,6 +806,7 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 
 /* ---- 响应式 ---- */
 @media (max-width: 1200px) {
+    body.video-overlay-active .train-layout.test-mode .fretboard-hint { display: none; }
     body.video-overlay-active .train-layout.test-mode .center-panel { width: min(390px, 36vw); min-width: 320px; }
     body.video-overlay-active .train-layout.test-mode .chord-select { gap: 8px; padding: 9px 10px; }
     body.video-overlay-active .train-layout.test-mode .right-panel { top: 378px; }
