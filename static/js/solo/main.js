@@ -54,8 +54,6 @@
 
             this.cooldownTimer = null;
             this.quickTimer = null;
-            this._quickCountdownInterval = null;
-            this._quickCountdownRemaining = 0;
             this._quickAdvanceTimer = null;
 
             // 滤波器
@@ -165,8 +163,7 @@
                 trainLayout: document.querySelector('.train-layout'),
                 videoContainer: document.querySelector('.camera-container'),
                 difficultyBadge: document.getElementById('difficultyBadge'),
-                perfIndicator: document.getElementById('perfIndicator'),
-                quickCountdown: document.getElementById('quickCountdown')
+                perfIndicator: document.getElementById('perfIndicator')
             };
 
             // 叠加画布（若不存在则创建）
@@ -415,7 +412,7 @@
                     this.testResults = new Array(this.testList.length).fill(null);
                     this.renderTestList();
                     this.updateProgress();
-                    console.log(`[Solo] 从统计页加载 ${newIds.length} 个和弦到练习列表`);
+                    console.log(`[Solo] 已从驾驶舱加载 ${newIds.length} 个和弦到测试列表`);
                 }
             } catch(e) {
                 console.warn('解析待训练和弦失败', e);
@@ -588,6 +585,7 @@
             this.cameraManager.close();
             this.elements.toggleCamera.textContent = '开启';
             this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
+            if (this.elements.videoContainer) this.elements.videoContainer.classList.remove('streaming');
             this._perfFrameTimes = [];
             this._lastThumbnailRtt = 0;
             if (this.elements.perfIndicator) this.elements.perfIndicator.style.display = 'none';
@@ -665,8 +663,7 @@
                         if (this.testMode && !this.recordedForCurrentChord) {
                             this._finalizeChord('wrong', { forceSkip: true });
                         }
-                    }, 5000);
-                    this._startQuickCountdown(5);
+                    }, 3000);
                 }
                 this.updateProgress();
                 this.renderTestList();
@@ -978,46 +975,11 @@
             if (this.audioTimeout) clearTimeout(this.audioTimeout);
             if (this.quickTimer) clearTimeout(this.quickTimer);
             if (this._quickAdvanceTimer) clearTimeout(this._quickAdvanceTimer);
-            this._stopQuickCountdown();
             this.cooldownTimer = null;
             this.audioTimeout = null;
             this.quickTimer = null;
             this._quickAdvanceTimer = null;
             this.audioWaiting = false;
-        }
-
-        _startQuickCountdown(seconds = 3) {
-            if (this._quickCountdownInterval) clearInterval(this._quickCountdownInterval);
-            this._quickCountdownRemaining = seconds;
-            const el = this.elements.quickCountdown;
-            if (!el) return;
-            el.style.display = 'inline-block';
-            el.classList.remove('urgent');
-            el.textContent = `${this._quickCountdownRemaining}s`;
-            this._quickCountdownInterval = setInterval(() => {
-                this._quickCountdownRemaining--;
-                if (this._quickCountdownRemaining <= 0) {
-                    this._stopQuickCountdown();
-                    return;
-                }
-                el.textContent = `${this._quickCountdownRemaining}s`;
-                if (this._quickCountdownRemaining <= 1) {
-                    el.classList.add('urgent');
-                }
-            }, 1000);
-        }
-
-        _stopQuickCountdown() {
-            if (this._quickCountdownInterval) {
-                clearInterval(this._quickCountdownInterval);
-                this._quickCountdownInterval = null;
-            }
-            const el = this.elements.quickCountdown;
-            if (el) {
-                el.style.display = 'none';
-                el.classList.remove('urgent');
-            }
-            this._quickCountdownRemaining = 0;
         }
 
         recordWrong() {
@@ -1429,6 +1391,7 @@
                     await this.cameraManager.open();
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
+                    this.elements.videoContainer.classList.add('streaming');
 
                     this.socketManager.connect();
                     this._startRttLogging();
@@ -1642,7 +1605,7 @@
             this.elements.startTestBtn.addEventListener('click', () => this.startTest());
             this.elements.skipBtn.addEventListener('click', () => {
                 if (!this.testMode) {
-                    alert('请先选择练习和弦');
+                    alert('请先开始测试');
                     return;
                 }
                 if (this.recordedForCurrentChord) {

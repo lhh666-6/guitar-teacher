@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>和弦练习</title>
+    <title>和弦测试 · 木色主题</title>
     <!-- DNS 预解析 + 预连接，加速 CDN 资源加载 -->
     <link rel="dns-prefetch" href="https://cdn.staticfile.org">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
@@ -20,9 +20,9 @@
     <div id="particles"></div>
 
     <div class="header">
-        <h2><i class="fas fa-guitar" aria-hidden="true"></i> 和弦练习</h2>
+        <h2><i class="fas fa-guitar" aria-hidden="true"></i> 和弦测试 · 木色典藏版</h2>
         <div class="header-actions">
-            <button class="back-btn" onclick="window.location.href='/teach'"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> 练习统计</button>
+            <button class="back-btn" onclick="window.location.href='/teach'"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> 教学驾驶舱</button>
             <button class="back-btn" onclick="window.location.href='/'"><i class="fas fa-arrow-left" aria-hidden="true"></i> 返回主页</button>
         </div>
     </div>
@@ -32,6 +32,7 @@
         <div class="left-panel">
             <div class="camera-container" id="cameraContainer">
                 <video id="cameraFeed" autoplay playsinline></video>
+                <div class="camera-hint" id="cameraHint"><i class="fas fa-video"></i> 点击「开启摄像头」开始</div>
                 <div class="camera-status">
                     <span id="cameraStatus"><i class="fas fa-camera" aria-hidden="true"></i> 摄像头已关闭</span>
                     <span id="perfIndicator" style="display:none;font-size:0.78rem;color:#a5d6a5;font-family:monospace;margin-left:8px;"></span>
@@ -42,7 +43,7 @@
                 </div>
             </div>
             <div class="stat-panel">
-                <div class="section-title soft"><i class="fas fa-chart-column" aria-hidden="true"></i> 本次练习统计</div>
+                <div class="section-title soft"><i class="fas fa-chart-column" aria-hidden="true"></i> 本次测试统计</div>
                 <div class="stat-row">正确 <span id="statCorrect">0</span></div>
                 <div class="stat-row">错误 <span id="statWrong">0</span></div>
                 <div class="stat-row">正确率 <span id="statRate">0%</span></div>
@@ -57,7 +58,6 @@
                     <div class="chord-title-wrap">
                         <span class="difficulty-badge" id="difficultyBadge"></span>
                         <h4 id="currentChordName" class="chord-title">未选择和弦</h4>
-                        <span id="quickCountdown" class="quick-countdown" style="display:none;"></span>
                     </div>
                 </div>
             </div>
@@ -91,6 +91,7 @@
 
                 <div class="dot-container" id="dotContainer"></div>
             </div>
+            <div class="fretboard-hint">👆 指板显示标准按法，绿色圆点 = 你按的位置</div>
             <div class="chord-select">
                 <label for="chordSelect" class="panel-label"><i class="fas fa-book-open" aria-hidden="true"></i> 选择和弦</label>
             <button class="btn-custom" id="chordPopupBtn" type="button" style="width:100%">
@@ -102,16 +103,16 @@
 
         <!-- 右侧控制区 -->
         <div class="right-panel">
-            <!-- 练习列表区域 -->
+            <!-- 测试列表区域 -->
             <div>
-                <div class="test-section-title"><i class="fas fa-list-check" aria-hidden="true"></i> 练习列表 (<span id="testCount">0</span>)</div>
+                <div class="test-section-title"><i class="fas fa-list-check" aria-hidden="true"></i> 测试列表 (<span id="testCount">0</span>)</div>
                 <div class="test-list" id="testListDiv"></div>
                 <div style="display: flex; gap:5px; margin-top:5px;">
                     <button class="btn-custom btn-sm" id="clearTestBtn" style="flex:1;"><i class="fas fa-broom" aria-hidden="true"></i> 清空</button>
                 </div>
             </div>
             <div class="test-progress-area">
-                <div class="section-title soft"><i class="fas fa-route" aria-hidden="true"></i> 练习进度</div>
+                <div class="section-title soft"><i class="fas fa-route" aria-hidden="true"></i> 当前测试进度</div>
                 <div class="progress-row">
                     <span>进度</span>
                     <span id="progressDisplay">0/0</span>
@@ -126,7 +127,7 @@
                     </button>
                 </div>
                 <div class="progress-actions">
-                    <button class="btn-custom btn-primary" id="startTestBtn"><i class="fas fa-play" aria-hidden="true"></i> 开始练习</button>
+                    <button class="btn-custom btn-primary" id="startTestBtn"><i class="fas fa-play" aria-hidden="true"></i> 开始测试</button>
                     <button class="btn-custom btn-warning" id="skipBtn">
                         <span class="skip-btn-content">
                             <span><i class="fas fa-forward-step" aria-hidden="true"></i> 跳过当前</span>
@@ -169,12 +170,12 @@
     <!-- 底部详细介绍区域 -->
     <div class="chord-detail-footer" id="chordDetailFooter">
         <div class="detail-title"> 当前和弦详细介绍</div>
-        <div class="detail-content" id="chordDetailContent">请选择一个和弦查看详细介绍。</div>
+        <div class="detail-content" id="chordDetailContent">选一个和弦，这里会显示指法要点和练习建议</div>
     </div>
 
     <div class="result-modal" id="resultModal">
         <div class="result-modal-card">
-            <div class="result-modal-title" id="resultModalTitle">提示</div>
+            <div class="result-modal-title" id="resultModalTitle">测试提示</div>
             <div class="result-modal-body" id="resultModalBody"></div>
             <div class="result-modal-actions">
                 <button class="btn-custom btn-primary" id="resultModalConfirmBtn"><i class="fas fa-check" aria-hidden="true"></i> 我知道了</button>
@@ -288,7 +289,7 @@
 
                 function openModal() {
                     chordModal.classList.add('active');
-                    // 预选已在练习列表中的和弦（解决外部添加冲突）
+                    // 预选已在测试列表中的和弦（解决外部添加冲突）
                     selectedChords = [];
                     if (window.guitarApp && window.guitarApp.testList) {
                         var chordIds = window.guitarApp.testList;

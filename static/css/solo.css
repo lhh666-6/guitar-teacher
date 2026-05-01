@@ -71,8 +71,8 @@ body {
 
 /* ---- 三栏布局 ---- */
 .train-layout {
-    display: flex; gap: 16px;
-    height: 82vh; position: relative; z-index: 10;
+    display: flex; gap: 20px;
+    height: 70vh; position: relative; z-index: 10;
     animation: slideUp 1s ease; transition: all 0.3s ease;
 }
 @keyframes slideUp {
@@ -131,27 +131,6 @@ body {
 .chord-title.glow-pop {
     animation: titleGlow 0.6s ease-out;
 }
-.quick-countdown {
-    display: inline-block; font-size: 0.9rem; font-weight: 700;
-    color: #ff9f43; background: rgba(255,159,67,0.12);
-    border: 1px solid rgba(255,159,67,0.3);
-    padding: 2px 10px; border-radius: 12px; margin-left: 8px;
-    font-family: monospace; letter-spacing: 0.04em;
-    animation: countdownPulse 1s infinite;
-}
-@keyframes countdownPulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-.quick-countdown.urgent {
-    color: #ff4757; background: rgba(255,71,87,0.15);
-    border-color: rgba(255,71,87,0.4);
-    animation: countdownUrgent 0.5s infinite;
-}
-@keyframes countdownUrgent {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(1.08); }
-}
 @keyframes titleGlow {
     0% { text-shadow: 0 0 24px rgba(255, 217, 102, 0.9), 0 2px 10px rgba(0,0,0,0.3); }
     100% { text-shadow: 0 2px 10px rgba(0,0,0,0.28); }
@@ -177,6 +156,19 @@ body {
     50%      { box-shadow: 0 5px 15px rgba(0,0,0,0.3), 0 0 0 8px rgba(46, 204, 113, 0.08), 0 0 24px 3px rgba(46, 204, 113, 0.06); }
 }
 #cameraFeed { width: 100%; border-radius: 12px; background: black; display: block; }
+.camera-hint {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    color: rgba(255,215,140,0.45); font-size: 0.85rem; text-align: center;
+    pointer-events: none; padding: 8px 20px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.35);
+}
+[data-theme="light"] .camera-hint {
+    color: rgba(120,80,40,0.7);
+    background: rgba(0,0,0,0.08);
+}
+/* 摄像头开启后隐藏提示（main.js 在 camera 就绪时添加 streaming 类） */
+.camera-container.streaming .camera-hint { display: none; }
 .camera-status {
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 8px; gap: 10px; flex-wrap: wrap;
@@ -371,6 +363,11 @@ body {
     z-index: 25;
 }
 
+.fretboard-hint {
+    text-align: center; color: rgba(255,215,140,0.4); font-size: 0.8rem;
+    padding: 4px 0; letter-spacing: 0.03em;
+}
+[data-theme="light"] .fretboard-hint { color: rgba(100,60,30,0.65); }
 /* ---- 选择和弦 ---- */
 .panel-label {
     display: inline-block; color: var(--gold-primary);
@@ -1010,16 +1007,6 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 [data-theme="light"] .chord-title {
     color: #8b5820;
     filter: none;
-}
-[data-theme="light"] .quick-countdown {
-    background: rgba(200,100,30,0.12);
-    border-color: rgba(200,100,30,0.3);
-    color: #cc6600;
-}
-[data-theme="light"] .quick-countdown.urgent {
-    background: rgba(220,50,50,0.15);
-    border-color: rgba(220,50,50,0.4);
-    color: #cc0000;
 }
 [data-theme="light"] .detail-title {
     color: #8b5820;
