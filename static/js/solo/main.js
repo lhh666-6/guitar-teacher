@@ -767,7 +767,9 @@
             const innerWidth = containerWidth - leftPadding - rightPadding;
             const innerHeight = containerHeight - topPadding - parseFloat(style.paddingBottom);
             const stringSpacing = innerHeight / (STRING_COUNT - 1);
-            const fretSpacing = innerWidth / (FRET_COUNT - 1);
+            const nutOffset = innerWidth * 0.05;
+            const fretSpan = innerWidth - nutOffset;
+            const fretSpacing = fretSpan / (FRET_COUNT - 1);
             const baseY = topPadding;
             const baseX = leftPadding;
 
@@ -779,10 +781,10 @@
                 el.style.top = (baseY + stringOffset + idx * stringSpacing - 8) + 'px';
             });
             document.querySelectorAll('.fret-mini').forEach((el, idx) => {
-                el.style.left = (baseX + idx * fretSpacing - 1) + 'px';
+                el.style.left = (baseX + nutOffset + idx * fretSpacing - 1) + 'px';
             });
             document.querySelectorAll('.fret-label').forEach((el, idx) => {
-                el.style.left = (baseX + idx * fretSpacing - 15) + 'px';
+                el.style.left = (baseX + nutOffset + idx * fretSpacing - 15) + 'px';
             });
         }
 
@@ -803,7 +805,9 @@
             const innerHeight = containerHeight - topPadding - bottomPadding;
 
             const stringSpacing = innerHeight / (STRING_COUNT - 1);
-            const fretSpacing = innerWidth / (FRET_COUNT - 1);
+            const nutOffset = innerWidth * 0.05;
+            const fretSpan = innerWidth - nutOffset;
+            const fretSpacing = fretSpan / (FRET_COUNT - 1);
 
             const baseY = topPadding;
             const baseX = leftPadding;
@@ -822,12 +826,12 @@
 
             const fretLines = document.querySelectorAll('.fret-mini');
             fretLines.forEach((el, idx) => {
-                const x = baseX + idx * fretSpacing;
+                const x = baseX + nutOffset + idx * fretSpacing;
                 el.style.left = (x - 1) + 'px';
             });
             const fretLabels = document.querySelectorAll('.fret-label');
             fretLabels.forEach((el, idx) => {
-                const x = baseX + idx * fretSpacing;
+                const x = baseX + nutOffset + idx * fretSpacing;
                 el.style.left = (x - 15) + 'px';
             });
 
@@ -867,7 +871,7 @@
                 if (!(p.fret in fretToCol)) return;
                 const colIndex = fretToCol[p.fret];
                 const idx = this.backendToDisplayIndex(p.string);
-                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
+                const x = baseX + nutOffset + colIndex * fretSpacing + fretSpacing / 2;
                 const y = baseY + stringOffset + idx * stringSpacing;
 
                 const dot = document.createElement('div');
@@ -890,7 +894,7 @@
                 const topY = Math.min(yStart, yEnd) - DOT_RADIUS;
                 const bottomY = Math.max(yStart, yEnd) + DOT_RADIUS;
                 const height = bottomY - topY;
-                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
+                const x = baseX + nutOffset + colIndex * fretSpacing + fretSpacing / 2;
 
                 const barreDiv = document.createElement('div');
                 barreDiv.className = `barre ${b.type === 'standard' ? 'standard' : (b.correct ? 'user-correct' : 'user-wrong')}`;

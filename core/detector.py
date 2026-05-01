@@ -499,10 +499,6 @@ class GuitarFingeringRecognizer:
                     min_idx = np.argmin(dists_to_strings)
                     min_string_dist = dists_to_strings[min_idx]
                     closest_string_no = min_idx + 1
-                    if self.string_no_map:
-                        new_string_no = self.string_no_map.get(closest_string_no, closest_string_no)
-                    else:
-                        new_string_no = closest_string_no
                 else:
                     continue
 
@@ -515,8 +511,8 @@ class GuitarFingeringRecognizer:
 
                 detail = {
                     'finger': finger_name,
-                    'string_start': int(new_string_no),
-                    'string_end': int(new_string_no),
+                    'string_start': int(closest_string_no),
+                    'string_end': int(closest_string_no),
                     'fret': int(final_fret),
                     'tip_x': int(tip_px[0]),
                     'tip_y': int(tip_px[1]),
@@ -526,9 +522,6 @@ class GuitarFingeringRecognizer:
                 finger_details.append(detail)
 
             if barre_chord:
-                if self.string_no_map:
-                    barre_start = self.string_no_map.get(barre_start, barre_start)
-                    barre_end = self.string_no_map.get(barre_end, barre_end)
                 finger_details.append({
                     'finger': '食指',
                     'string_start': int(barre_start),

@@ -58,8 +58,8 @@ MOTION_FRAMES = 4                                       # 连续超过阈值帧�
 FRET_HISTORY_LEN = 5
 
 # ---------- 横按检测参数 ----------
-BARRE_ANGLE_THRESH = 25                                 # 食指直线与指板垂直方向的最大夹角（度）
-BARRE_MIN_COVERED = 4                                   # 最少覆盖琴弦数才判定为横按
+BARRE_ANGLE_THRESH = 20                                 # 食指直线与指板垂直方向的最大夹角（度）
+BARRE_MIN_COVERED = 4                                   # 最少覆盖琴弦数才判定为横按（仅计4弦及以上）
 USE_FIXED_DIST_THRESH = False                           # 是否使用固定距离阈值
 FIXED_DIST_THRESH = 40                                  # 固定距离阈值（像素）
 DYNAMIC_THRESH_RATIO = 1.5                              # 动态阈值比例

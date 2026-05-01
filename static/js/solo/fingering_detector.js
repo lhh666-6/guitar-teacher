@@ -14,7 +14,7 @@ class FingeringDetector {
         this.STRING_DIST_THRESH = 30;
         this.PINKY_PRESS_THRESHOLD_PX = 20;
         this.PINKY_STRING_DIST_THRESH = 25;
-        this.BARRE_ANGLE_THRESH = 25;
+        this.BARRE_ANGLE_THRESH = 20;
         this.BARRE_MIN_COVERED = 2;
         this.FRET_HISTORY_LEN = 3;
         this.PINKY_FRET_HISTORY_LEN = 5;
@@ -202,13 +202,10 @@ class FingeringDetector {
         const fret = this._getFretFromPoint(tipPt);
 
         // 应用弦号映射
-        const startMapped = this.stringNoMap[longestStart] || longestStart;
-        const endMapped = this.stringNoMap[longestEnd] || longestEnd;
-
         return {
             fret: fret,
-            startString: Math.min(startMapped, endMapped),
-            endString: Math.max(startMapped, endMapped)
+            startString: Math.min(longestStart, longestEnd),
+            endString: Math.max(longestStart, longestEnd)
         };
     }
 
@@ -274,10 +271,8 @@ class FingeringDetector {
         }
         const finalFret = this._mostFrequent(this.fretHistory[finger.name]);
 
-        const mappedString = this.stringNoMap[closestString] || closestString;
-
         return {
-            string: mappedString,
+            string: closestString,
             fret: finalFret
         };
     }
