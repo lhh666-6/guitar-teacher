@@ -902,32 +902,24 @@
         drawAll() {
             if (!this.overlayCanvas) return;
             const ctx = this.overlayCtx;
-            // 直接使用画布的固有像素尺寸（在 loadedmetadata 中已设为视频原始分辨率）
             const w = this.overlayCanvas.width;
             const h = this.overlayCanvas.height;
 
-            ctx.clearRect(0, 0, w, h);
+            // 有数据时才清空重绘，无数据时保留上一帧画面（丝滑过渡）
+            if (this.cachedDrawingData || this.latestLocalLandmarks) {
+                ctx.clearRect(0, 0, w, h);
 
-            // 诊断红框，用于验证对齐（正式发布可注释）
-            // ctx.strokeStyle = 'red';
-            // ctx.lineWidth = 4;
-            // ctx.strokeRect(0, 0, w, h);
-
-            if (this.cachedDrawingData) {
-                if (!this._drawStartedLogged) {
-                    console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
-                    this._drawStartedLogged = true;
+                if (this.cachedDrawingData) {
+                    if (!this._drawStartedLogged) {
+                        console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
+                        this._drawStartedLogged = true;
+                    }
+                    drawOverlay(ctx, w, h, this.cachedDrawingData);
                 }
-                drawOverlay(ctx, w, h, this.cachedDrawingData);
-            } else {
-                if (this._drawStartedLogged) {
-                    console.warn('⚠️ cachedDrawingData 丢失，停止绘制指板');
-                    this._drawStartedLogged = false;
-                }
-            }
 
-            if (this.latestLocalLandmarks) {
-                drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
+                if (this.latestLocalLandmarks) {
+                    drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
+                }
             }
         }
 

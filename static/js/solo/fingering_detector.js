@@ -153,7 +153,7 @@ class FingeringDetector {
         // 计算与垂直方向的夹角
         const dot = Math.abs(line.dir[0] * this.perpUnit[0] + line.dir[1] * this.perpUnit[1]);
         const angleDeg = Math.acos(Math.min(dot, 1)) * 180 / Math.PI;
-        if (angleDeg > this.BARRE_ANGLE_THRESH) return null;
+        if (angleDeg > this.BARRE_ANGLE_THRESH * 0.7) return null;
 
         // 计算覆盖的弦
         const proj = indexPoints.map(p => this._dot(p, this.perpUnit));
@@ -197,9 +197,13 @@ class FingeringDetector {
         if (longestEnd - longestStart + 1 < this.BARRE_MIN_COVERED) return null;
 
         // 计算品柱
-        const tipIdx = 8;
-        const tipPt = landmarks[tipIdx];
+        const tipPt = landmarks[8];
         const fret = this._getFretFromPoint(tipPt);
+
+        // 横按严格：食指各关节应与指尖在同一品附近
+        for (const j of [5, 6, 7]) {
+            if (Math.abs(this._getFretFromPoint(landmarks[j]) - fret) > 1) return null;
+        }
 
         // 应用弦号映射
         const startMapped = this.stringNoMap[longestStart] || longestStart;
@@ -214,7 +218,9 @@ class FingeringDetector {
 
     _detectFingerPress(landmarks, finger) {
         const tipIdx = finger.indices[2];
+        const dipIdx = finger.indices[1];  // 指尖前一关节
         const tipPt = landmarks[tipIdx];
+        const dipPt = landmarks[dipIdx];
 
         const isPinky = finger.name === '小指';
         const pressThresh = isPinky ? this.PINKY_PRESS_THRESHOLD_PX : this.PRESS_THRESHOLD_PX;
@@ -247,6 +253,14 @@ class FingeringDetector {
             if (dist < minFretDist) minFretDist = dist;
         }
         if (minFretDist > pressThresh) return null;
+
+        // 指尖检测：DIP关节距品丝不应比指尖更近
+        let minFretDistDip = Infinity;
+        for (const seg of this.fretSegments) {
+            const dist = this._pointToSegmentDistance(dipPt, seg.p1, seg.p2);
+            if (dist < minFretDistDip) minFretDistDip = dist;
+        }
+        if (minFretDistDip < minFretDist * 0.85) return null;
 
         // 找最近的弦
         let minStringDist = Infinity;

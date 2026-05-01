@@ -417,7 +417,8 @@ class GuitarFingeringRecognizer:
 
                 cos_angle = abs(np.dot(line_dir, self.global_perp_unit))
                 angle_deg = np.degrees(np.arccos(np.clip(cos_angle, 0, 1)))
-                if angle_deg <= self.BARRE_ANGLE_THRESH:
+                # 更严格的角度要求（用 config 的 70%）
+                if angle_deg <= self.BARRE_ANGLE_THRESH * 0.7:
                     proj = np.dot(pts - line_pt, self.global_perp_unit)
                     proj_min, proj_max = np.min(proj), np.max(proj)
 
@@ -450,8 +451,16 @@ class GuitarFingeringRecognizer:
                             tip_idx = 8
                             tip_pt_thumb = landmarks_thumb_np[tip_idx]
                             barre_fret = self._get_fret_from_point(tip_pt_thumb)
-                            barre_chord = True
-                            logger.info(f"横按: 弦{barre_start}-{barre_end} 品{barre_fret}")
+                            # 横按严格度：食指各关节（5,6,7）应与指尖(8)在同一品附近
+                            barre_fret_ok = True
+                            for j in [5, 6, 7]:
+                                j_fret = self._get_fret_from_point(landmarks_thumb_np[j])
+                                if abs(j_fret - barre_fret) > 1:
+                                    barre_fret_ok = False
+                                    break
+                            if barre_fret_ok:
+                                barre_chord = True
+                                logger.info(f"横按: 弦{barre_start}-{barre_end} 品{barre_fret}")
 
             # 手指按弦判定
             finger_details = []
@@ -460,7 +469,9 @@ class GuitarFingeringRecognizer:
                     continue
 
                 tip_idx = indices[-1]
+                dip_idx = indices[-2]  # 指尖前一关节，用于检测是否指尖按弦
                 tip_pt_thumb = landmarks_thumb_np[tip_idx]
+                dip_pt_thumb = landmarks_thumb_np[dip_idx]
                 tip_px = landmarks_px[tip_idx]
 
                 is_pinky = (finger_name == "小指")
@@ -487,11 +498,19 @@ class GuitarFingeringRecognizer:
                 history_len = self.pinky_fret_history_len if is_pinky else self.FRET_HISTORY_LEN
 
                 if len(self.fret_p1s) > 0:
-                    dists_to_frets = self._point_to_line_distance_vectorized(tip_pt_thumb, self.fret_p1s, self.fret_p2s)
-                    min_fret_dist = np.min(dists_to_frets)
+                    dists_to_frets_tip = self._point_to_line_distance_vectorized(tip_pt_thumb, self.fret_p1s, self.fret_p2s)
+                    dists_to_frets_dip = self._point_to_line_distance_vectorized(dip_pt_thumb, self.fret_p1s, self.fret_p2s)
+                    min_fret_dist = np.min(dists_to_frets_tip)
+                    min_fret_dist_dip = np.min(dists_to_frets_dip)
                 else:
                     min_fret_dist = float('inf')
+                    min_fret_dist_dip = float('inf')
+
                 if min_fret_dist > press_thresh:
+                    continue
+
+                # 指尖检测：DIP关节距品丝不应比指尖更近（防止指腹按弦被当成指尖）
+                if min_fret_dist_dip < min_fret_dist * 0.85:
                     continue
 
                 if len(self.string_nut_pts) > 0:

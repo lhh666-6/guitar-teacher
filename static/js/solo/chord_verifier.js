@@ -245,7 +245,7 @@ class ChordVerifier {
 
     async _fetchMeydaCode() {
         if (this._meydaCodeCache) return this._meydaCodeCache;
-        const resp = await fetch('https://cdn.jsdelivr.net/npm/meyda@5.0.0/dist/web/meyda.min.js');
+        const resp = await fetch('/static/js/lib/meyda-5.0.0.min.js');
         this._meydaCodeCache = await resp.text();
         return this._meydaCodeCache;
     }

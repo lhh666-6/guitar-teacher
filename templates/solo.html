@@ -6,11 +6,11 @@
     <title>和弦测试 · 木色主题</title>
     <!-- DNS 预解析 + 预连接，加速 CDN 资源加载 -->
     <link rel="dns-prefetch" href="https://cdn.staticfile.org">
+    <link rel="dns-prefetch" href="https://cdn.bootcdn.net">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-    <link rel="dns-prefetch" href="https://cdn.socket.io">
     <link rel="preconnect" href="https://cdn.staticfile.org" crossorigin>
+    <link rel="preconnect" href="https://cdn.bootcdn.net" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://cdn.socket.io" crossorigin>
 <script>(function(){var t=localStorage.getItem('theme');if(!t||t!=='dark')document.documentElement.setAttribute('data-theme','light');})();</script>
     <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="/static/css/base.css?v={{ APP_VERSION }}">
@@ -184,12 +184,13 @@
     </div>
   
     <!-- MediaPipe（必须阻塞加载，后续 JS 依赖它；camera_utils 未被使用已移除） -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"
+        onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';document.head.appendChild(s);"></script>
     <!-- 本地模块 JS -->
     <script src="/static/js/solo/constants.js?v={{ APP_VERSION }}"></script>
     <script src="/static/js/solo/filters.js?v={{ APP_VERSION }}"></script>
     <script src="/static/js/solo/ui_helpers.js?v={{ APP_VERSION }}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/meyda@5.5.1/dist/web/meyda.min.js"></script>
+    <script src="/static/js/lib/meyda.min.js"></script>
     <script src="/static/js/solo/chord_verifier.js?v={{ APP_VERSION }}"></script>
     <script src="/static/js/solo/chord_validator.js?v={{ APP_VERSION }}"></script>
     <script src="/static/js/solo/fingering_detector.js?v={{ APP_VERSION }}"></script>
@@ -388,7 +389,7 @@
             })();
 
     </script>
-    <script defer src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script defer src="https://cdn.bootcdn.net/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
     <!-- 3D 视差倾斜：指板随鼠标微动 -->
 </body>
 </html>

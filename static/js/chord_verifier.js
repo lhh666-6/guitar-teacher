@@ -125,7 +125,11 @@ class ChordVerifier {
         const code = `
             // 导入 Meyda 库（在 Worklet 上下文中通过 importScripts 加载）
             try {
-                importScripts('https://cdn.jsdelivr.net/npm/meyda@5.0.0/dist/web/meyda.min.js');
+                try {
+                    importScripts('/static/js/lib/meyda-5.0.0.min.js');
+                } catch(e) {
+                    console.error('Meyda 加载失败:', e);
+                }
             } catch(e) {
                 console.error('Meyda 加载失败:', e);
             }

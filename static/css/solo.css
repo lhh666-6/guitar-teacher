@@ -524,6 +524,7 @@ body {
     font-size: 5rem; font-weight: 900; opacity: 0;
 }
 .result-flash.show { animation: flashPop 0.9s ease-out forwards; }
+body.video-overlay-active .result-flash { z-index: 100000; }
 @keyframes flashPop {
     0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
     15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
