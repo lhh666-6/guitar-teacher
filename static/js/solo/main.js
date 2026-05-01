@@ -55,8 +55,6 @@
             this.cooldownTimer = null;
             this.quickTimer = null;
             this._quickAdvanceTimer = null;
-            this._quickCountdownInterval = null;
-            this._quickCountdownRemaining = 0;
 
             // 滤波器
             this.filters = [];
@@ -165,8 +163,7 @@
                 trainLayout: document.querySelector('.train-layout'),
                 videoContainer: document.querySelector('.camera-container'),
                 difficultyBadge: document.getElementById('difficultyBadge'),
-                perfIndicator: document.getElementById('perfIndicator'),
-                quickCountdown: document.getElementById('quickCountdown')
+                perfIndicator: document.getElementById('perfIndicator')
             };
 
             // 叠加画布（若不存在则创建）
@@ -588,7 +585,6 @@
             this.cameraManager.close();
             this.elements.toggleCamera.textContent = '开启';
             this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
-            if (this.elements.videoContainer) this.elements.videoContainer.classList.remove('streaming');
             this._perfFrameTimes = [];
             this._lastThumbnailRtt = 0;
             if (this.elements.perfIndicator) this.elements.perfIndicator.style.display = 'none';
@@ -666,8 +662,7 @@
                         if (this.testMode && !this.recordedForCurrentChord) {
                             this._finalizeChord('wrong', { forceSkip: true });
                         }
-                    }, 5000);
-                    this._startQuickCountdown(5);
+                    }, 3000);
                 }
                 this.updateProgress();
                 this.renderTestList();
@@ -767,9 +762,7 @@
             const innerWidth = containerWidth - leftPadding - rightPadding;
             const innerHeight = containerHeight - topPadding - parseFloat(style.paddingBottom);
             const stringSpacing = innerHeight / (STRING_COUNT - 1);
-            const nutOffset = innerWidth * 0.05;
-            const fretSpan = innerWidth - nutOffset;
-            const fretSpacing = fretSpan / (FRET_COUNT - 1);
+            const fretSpacing = innerWidth / (FRET_COUNT - 1);
             const baseY = topPadding;
             const baseX = leftPadding;
 
@@ -781,10 +774,10 @@
                 el.style.top = (baseY + stringOffset + idx * stringSpacing - 8) + 'px';
             });
             document.querySelectorAll('.fret-mini').forEach((el, idx) => {
-                el.style.left = (baseX + nutOffset + idx * fretSpacing - 1) + 'px';
+                el.style.left = (baseX + idx * fretSpacing - 1) + 'px';
             });
             document.querySelectorAll('.fret-label').forEach((el, idx) => {
-                el.style.left = (baseX + nutOffset + idx * fretSpacing - 15) + 'px';
+                el.style.left = (baseX + idx * fretSpacing - 15) + 'px';
             });
         }
 
@@ -805,9 +798,7 @@
             const innerHeight = containerHeight - topPadding - bottomPadding;
 
             const stringSpacing = innerHeight / (STRING_COUNT - 1);
-            const nutOffset = innerWidth * 0.05;
-            const fretSpan = innerWidth - nutOffset;
-            const fretSpacing = fretSpan / (FRET_COUNT - 1);
+            const fretSpacing = innerWidth / (FRET_COUNT - 1);
 
             const baseY = topPadding;
             const baseX = leftPadding;
@@ -826,12 +817,12 @@
 
             const fretLines = document.querySelectorAll('.fret-mini');
             fretLines.forEach((el, idx) => {
-                const x = baseX + nutOffset + idx * fretSpacing;
+                const x = baseX + idx * fretSpacing;
                 el.style.left = (x - 1) + 'px';
             });
             const fretLabels = document.querySelectorAll('.fret-label');
             fretLabels.forEach((el, idx) => {
-                const x = baseX + nutOffset + idx * fretSpacing;
+                const x = baseX + idx * fretSpacing;
                 el.style.left = (x - 15) + 'px';
             });
 
@@ -871,7 +862,7 @@
                 if (!(p.fret in fretToCol)) return;
                 const colIndex = fretToCol[p.fret];
                 const idx = this.backendToDisplayIndex(p.string);
-                const x = baseX + nutOffset + colIndex * fretSpacing + fretSpacing / 2;
+                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
                 const y = baseY + stringOffset + idx * stringSpacing;
 
                 const dot = document.createElement('div');
@@ -894,7 +885,7 @@
                 const topY = Math.min(yStart, yEnd) - DOT_RADIUS;
                 const bottomY = Math.max(yStart, yEnd) + DOT_RADIUS;
                 const height = bottomY - topY;
-                const x = baseX + nutOffset + colIndex * fretSpacing + fretSpacing / 2;
+                const x = baseX + colIndex * fretSpacing + fretSpacing / 2;
 
                 const barreDiv = document.createElement('div');
                 barreDiv.className = `barre ${b.type === 'standard' ? 'standard' : (b.correct ? 'user-correct' : 'user-wrong')}`;
@@ -913,23 +904,32 @@
         drawAll() {
             if (!this.overlayCanvas) return;
             const ctx = this.overlayCtx;
+            // 直接使用画布的固有像素尺寸（在 loadedmetadata 中已设为视频原始分辨率）
             const w = this.overlayCanvas.width;
             const h = this.overlayCanvas.height;
 
-            if (this.cachedDrawingData || this.latestLocalLandmarks) {
-                ctx.clearRect(0, 0, w, h);
+            ctx.clearRect(0, 0, w, h);
 
-                if (this.cachedDrawingData) {
-                    if (!this._drawStartedLogged) {
-                        console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
-                        this._drawStartedLogged = true;
-                    }
-                    drawOverlay(ctx, w, h, this.cachedDrawingData);
-                }
+            // 诊断红框，用于验证对齐（正式发布可注释）
+            // ctx.strokeStyle = 'red';
+            // ctx.lineWidth = 4;
+            // ctx.strokeRect(0, 0, w, h);
 
-                if (this.latestLocalLandmarks) {
-                    drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
+            if (this.cachedDrawingData) {
+                if (!this._drawStartedLogged) {
+                    console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
+                    this._drawStartedLogged = true;
                 }
+                drawOverlay(ctx, w, h, this.cachedDrawingData);
+            } else {
+                if (this._drawStartedLogged) {
+                    console.warn('⚠️ cachedDrawingData 丢失，停止绘制指板');
+                    this._drawStartedLogged = false;
+                }
+            }
+
+            if (this.latestLocalLandmarks) {
+                drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
             }
         }
 
@@ -974,35 +974,11 @@
             if (this.audioTimeout) clearTimeout(this.audioTimeout);
             if (this.quickTimer) clearTimeout(this.quickTimer);
             if (this._quickAdvanceTimer) clearTimeout(this._quickAdvanceTimer);
-            this._stopQuickCountdown();
             this.cooldownTimer = null;
             this.audioTimeout = null;
             this.quickTimer = null;
             this._quickAdvanceTimer = null;
             this.audioWaiting = false;
-        }
-
-        _startQuickCountdown(seconds) {
-            if (this._quickCountdownInterval) clearInterval(this._quickCountdownInterval);
-            this._quickCountdownRemaining = seconds;
-            const el = this.elements.quickCountdown;
-            if (!el) return;
-            el.style.display = 'inline-block';
-            el.classList.remove('urgent');
-            el.textContent = this._quickCountdownRemaining + 's';
-            this._quickCountdownInterval = setInterval(() => {
-                this._quickCountdownRemaining--;
-                if (this._quickCountdownRemaining <= 0) { this._stopQuickCountdown(); return; }
-                el.textContent = this._quickCountdownRemaining + 's';
-                if (this._quickCountdownRemaining <= 1) el.classList.add('urgent');
-            }, 1000);
-        }
-
-        _stopQuickCountdown() {
-            if (this._quickCountdownInterval) { clearInterval(this._quickCountdownInterval); this._quickCountdownInterval = null; }
-            const el = this.elements.quickCountdown;
-            if (el) { el.style.display = 'none'; el.classList.remove('urgent'); }
-            this._quickCountdownRemaining = 0;
         }
 
         recordWrong() {
@@ -1414,7 +1390,6 @@
                     await this.cameraManager.open();
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
-                    this.elements.videoContainer.classList.add('streaming');
 
                     this.socketManager.connect();
                     this._startRttLogging();

@@ -310,16 +310,19 @@ class GuitarFingeringRecognizer:
             bridge_top = bridge_center + perp_unit * (bridge_h / 2)
             bridge_bottom = bridge_center - perp_unit * (bridge_h / 2)
 
-            # 生成品丝线
+            # 生成品丝线（长度从琴枕到琴桥线性递增）
             self.fret_lines = []
             fret_ratios = [0.0] * (self.NUM_FRETS + 1)
+            half_h_nut = nut_h * 0.85 / 2
+            half_h_bridge = bridge_h * 0.85 / 2
             for n in range(1, self.NUM_FRETS + 1):
                 fret_ratio = self._get_fret_position_ratio(n)
                 fret_ratios[n] = fret_ratio
                 if 0 <= fret_ratio <= 1:
                     fret_center = self._get_point_on_line(nut_center, bridge_center, fret_ratio)
-                    fret_p1 = fret_center + perp_unit * (max(nut_h, bridge_h) * 0.85 / 2)
-                    fret_p2 = fret_center - perp_unit * (max(nut_h, bridge_h) * 0.85 / 2)
+                    half_h = half_h_nut + (half_h_bridge - half_h_nut) * fret_ratio
+                    fret_p1 = fret_center + perp_unit * half_h
+                    fret_p2 = fret_center - perp_unit * half_h
                     self.fret_lines.append((n, fret_p1, fret_p2, fret_center))
 
             self.fret_p1s = np.array([p1 for _, p1, _, _ in self.fret_lines], dtype=np.float32)
@@ -499,6 +502,8 @@ class GuitarFingeringRecognizer:
                     min_idx = np.argmin(dists_to_strings)
                     min_string_dist = dists_to_strings[min_idx]
                     closest_string_no = min_idx + 1
+                    if self.string_no_map:
+                        closest_string_no = self.string_no_map.get(closest_string_no, closest_string_no)
                 else:
                     continue
 

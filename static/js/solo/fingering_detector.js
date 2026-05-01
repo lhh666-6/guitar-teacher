@@ -202,10 +202,13 @@ class FingeringDetector {
         const fret = this._getFretFromPoint(tipPt);
 
         // 应用弦号映射
+        const startMapped = this.stringNoMap[longestStart] || longestStart;
+        const endMapped = this.stringNoMap[longestEnd] || longestEnd;
+
         return {
             fret: fret,
-            startString: Math.min(longestStart, longestEnd),
-            endString: Math.max(longestStart, longestEnd)
+            startString: Math.min(startMapped, endMapped),
+            endString: Math.max(startMapped, endMapped)
         };
     }
 
@@ -271,8 +274,10 @@ class FingeringDetector {
         }
         const finalFret = this._mostFrequent(this.fretHistory[finger.name]);
 
+        const mappedString = this.stringNoMap[closestString] || closestString;
+
         return {
-            string: closestString,
+            string: mappedString,
             fret: finalFret
         };
     }
