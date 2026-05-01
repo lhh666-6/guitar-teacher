@@ -177,6 +177,24 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# Project documentation (local only, not shipped)
+CLAUDE.md
+DEVELOPMENT.md
+TECHNICAL.md
+USER_GUIDE.md
+
+# Backup files
+*.bak
+*.bak2
+*_backup
+
+# Runtime artifacts
+nohup.out
+tts_cache/
+
+# Claude Code local config
+.claude/
+
 # Abstra
 # Abstra is an AI-powered process automation framework.
 # Ignore directories containing user credentials, local state, and settings.
