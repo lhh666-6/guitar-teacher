@@ -1479,10 +1479,13 @@
             if (this.audioVerifier) {
                 this.audioVerifier.setHoldDuration(QUICK_MODE ? 0.6 : 1.0);
                 this.audioVerifier.setTargetChord(this.currentChord.name);
-                this.audioVerifier.start((isMatch, similarity) => {
+                this.audioVerifier.start((isMatch, similarity, detectedChord, topCandidates) => {
                     this.audioResultCache = {
-                        chord: isMatch ? this.currentChord.name : null,
-                        confidence: similarity
+                        chord: detectedChord || null,
+                        targetChord: this.currentChord.name,
+                        confidence: similarity,
+                        isMatch: isMatch,
+                        topCandidates: topCandidates || []
                     };
                     if (this.audioWaiting) {
                         this._handleAudioReady();

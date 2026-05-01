@@ -234,15 +234,15 @@ class ChordVerifier {
         if (!this.isRecording) return;
         this.isRecording = false;
         if (this.triggerTimer) clearTimeout(this.triggerTimer);
-        
+
         const frames = this.recordingChunks.length;
         console.log(`[ChordVerifier] 录音结束，共 ${frames} 帧`);
         if (frames === 0) {
             this.isWaitingForTrigger = true;
-            if (this.onResult) this.onResult(false, 0, null);
+            if (this.onResult) this.onResult(false, 0, null, []);
             return;
         }
-        
+
         // 能量加权平均 chroma
         let totalWeight = 0;
         const weightedChroma = new Array(12).fill(0);
@@ -254,19 +254,41 @@ class ChordVerifier {
             }
         }
         const avgChroma = weightedChroma.map(v => v / totalWeight);
-        
+
         const energy = this._chromaEnergy(avgChroma);
         if (energy < this.energyThreshold) {
             this.isWaitingForTrigger = true;
-            if (this.onResult) this.onResult(false, 0, avgChroma);
+            if (this.onResult) this.onResult(false, 0, null, []);
             return;
         }
-        
-        const similarity = this._cosineSimilarity(avgChroma, this.targetTemplate);
-        const isMatch = similarity >= this.similarityThreshold;
-        console.log(`[ChordVerifier] 相似度: ${similarity.toFixed(4)} → ${isMatch ? "正确" : "错误"}`);
-        if (this.onResult) this.onResult(isMatch, similarity, avgChroma);
-        
+
+        // === 全模板排名匹配 ===
+        const scored = [];
+        for (const [name, template] of Object.entries(this.templates)) {
+            const sim = this._cosineSimilarity(avgChroma, template);
+            scored.push({ name, similarity: sim });
+        }
+        scored.sort((a, b) => b.similarity - a.similarity);
+        const top5 = scored.slice(0, 5);
+
+        const detected = top5[0];
+        const targetRank = top5.findIndex(c => c.name === this.targetChord);
+        const targetSim = targetRank >= 0 ? top5[targetRank].similarity : (scored.find(c => c.name === this.targetChord)?.similarity || 0);
+
+        // 判定逻辑：target 在 top-1 或 top-2 → correct；top-5 内 → unstable；否则 → wrong
+        let isMatch = false;
+        if (targetRank >= 0 && targetRank <= 1 && targetSim >= this.similarityThreshold) {
+            isMatch = true;
+        }
+
+        const label = targetRank >= 0 && targetRank <= 1 ? '正确' : (targetRank >= 0 ? '不稳定' : '错误');
+        console.log(`[ChordVerifier] top-5: ${top5.map(c => `${c.name}(${c.similarity.toFixed(3)})`).join(', ')}`);
+        console.log(`[ChordVerifier] 目标=${this.targetChord} 排名=#${targetRank + 1} 相似度=${targetSim.toFixed(4)} → ${label}`);
+
+        if (this.onResult) {
+            this.onResult(isMatch, targetSim, detected.name, top5);
+        }
+
         this.isWaitingForTrigger = true;
         this.recordingChunks = [];
     }

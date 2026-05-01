@@ -69,7 +69,15 @@ function evaluateChord(visualOk, audioResult, options = { threshold: 0.55 }) {
     if (!visualOk) return 'wrong';
     // 视觉正确，但无音频（超时） → 不稳
     if (!audioResult) return 'unstable';
-    // 视觉正确，有音频
+    // 全模板排名结果优先：isMatch 表示 target 在 top-1 或 top-2
+    if (audioResult.isMatch === true) return 'correct';
+    if (audioResult.isMatch === false) {
+        // target 在 top-5 但不在 top-2 → 不稳定；完全不在 top-5 → 错误
+        const inTop5 = audioResult.topCandidates &&
+            audioResult.topCandidates.some(c => c.name === audioResult.targetChord);
+        return inTop5 ? 'unstable' : 'wrong';
+    }
+    // 兜底：旧版兼容（无 isMatch 字段时用阈值）
     if (audioResult.confidence >= options.threshold) return 'correct';
     return 'unstable';
 }
