@@ -335,7 +335,7 @@ def history_stats():
     })
 
 
-# ---------- 教学驾驶舱 API ----------
+# ---------- 练习统计 API ----------
 llm_service = LLMService()
 
 

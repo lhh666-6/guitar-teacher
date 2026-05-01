@@ -71,8 +71,8 @@ body {
 
 /* ---- 三栏布局 ---- */
 .train-layout {
-    display: flex; gap: 20px;
-    height: 70vh; position: relative; z-index: 10;
+    display: flex; gap: 16px;
+    height: 82vh; position: relative; z-index: 10;
     animation: slideUp 1s ease; transition: all 0.3s ease;
 }
 @keyframes slideUp {
@@ -130,6 +130,27 @@ body {
 }
 .chord-title.glow-pop {
     animation: titleGlow 0.6s ease-out;
+}
+.quick-countdown {
+    display: inline-block; font-size: 0.9rem; font-weight: 700;
+    color: #ff9f43; background: rgba(255,159,67,0.12);
+    border: 1px solid rgba(255,159,67,0.3);
+    padding: 2px 10px; border-radius: 12px; margin-left: 8px;
+    font-family: monospace; letter-spacing: 0.04em;
+    animation: countdownPulse 1s infinite;
+}
+@keyframes countdownPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+.quick-countdown.urgent {
+    color: #ff4757; background: rgba(255,71,87,0.15);
+    border-color: rgba(255,71,87,0.4);
+    animation: countdownUrgent 0.5s infinite;
+}
+@keyframes countdownUrgent {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.08); }
 }
 @keyframes titleGlow {
     0% { text-shadow: 0 0 24px rgba(255, 217, 102, 0.9), 0 2px 10px rgba(0,0,0,0.3); }
@@ -989,6 +1010,16 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 [data-theme="light"] .chord-title {
     color: #8b5820;
     filter: none;
+}
+[data-theme="light"] .quick-countdown {
+    background: rgba(200,100,30,0.12);
+    border-color: rgba(200,100,30,0.3);
+    color: #cc6600;
+}
+[data-theme="light"] .quick-countdown.urgent {
+    background: rgba(220,50,50,0.15);
+    border-color: rgba(220,50,50,0.4);
+    color: #cc0000;
 }
 [data-theme="light"] .detail-title {
     color: #8b5820;

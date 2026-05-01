@@ -66,7 +66,7 @@ def send_verify_code():
     }
 
     # 发送邮件
-    subject = '吉他教学系统 - 邮箱验证码'
+    subject = '吉他练习助手 - 验证码'
     body = f'您的验证码是：{code}\n有效期 5 分钟，请勿泄露。'
     success, error = send_email(email, subject, body)
 

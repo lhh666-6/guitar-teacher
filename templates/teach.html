@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>吉他教学 · 智能驾驶舱</title>
+    <title>练习统计</title>
     <link rel="dns-prefetch" href="https://cdn.staticfile.org">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="dns-prefetch" href="https://cdn.socket.io">
@@ -26,7 +26,7 @@
         <a href="/tuning">调音器</a>
         <a href="/solo">SOLO模式</a>
         <a href="/history">历史</a>
-        <a href="/teach" class="active">教学驾驶舱</a>
+        <a href="/teach" class="active">练习统计</a>
     </nav>
 
     <div class="teach-container">
@@ -107,31 +107,31 @@
             </div>
         </div>
 
-        <!-- 第四行：AI 推荐练习和弦 -->
+        <!-- 第四行：推荐练习 -->
         <div class="recommend-section">
             <div class="section-header">
-                <h3>AI 推荐练习和弦</h3>
+                <h3>推荐练习</h3>
                 <button class="refresh-btn" id="refreshRecommendBtn">换一批</button>
             </div>
             <div class="recommend-list" id="recommendList"></div>
         </div>
 
-        <!-- 第五行：智能指导 + 最近记录（双栏） -->
+        <!-- 第五行：练习建议 + 最近记录（双栏） -->
         <div class="bottom-row">
             <div class="advice-section">
                 <div class="section-header">
-                    <h3>智能指导</h3>
+                    <h3>练习建议</h3>
                     <div class="section-header-actions">
                         <button id="speak-advice-btn" class="mini-btn">朗读</button>
-                        <button id="generate-advice-btn" class="mini-btn primary">生成指导</button>
+                        <button id="generate-advice-btn" class="mini-btn primary">生成建议</button>
                     </div>
                 </div>
                 <div class="advice-content">
                     <div id="adviceLoadingContainer" class="loading-container hidden">
                         <div class="loading-spinner"></div>
-                        <span id="bubbleMessage" class="loading-text">正在分析数据...</span>
+                        <span id="bubbleMessage" class="loading-text">分析数据中...</span>
                     </div>
-                    <p id="adviceTextDisplay" class="advice-text">点击「生成指导」获取全面学习评估报告</p>
+                    <p id="adviceTextDisplay" class="advice-text">点击「生成建议」根据练习数据获取针对性指导</p>
                 </div>
             </div>
             <div class="records-section">

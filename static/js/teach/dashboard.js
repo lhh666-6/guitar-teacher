@@ -60,7 +60,7 @@ function hideLoading() {
     loadingContainer.classList.add('hidden');
     adviceTextEl.classList.remove('hidden');
     generateBtn.disabled = false;
-    generateBtn.textContent = '生成指导';
+    generateBtn.textContent = '生成建议';
     isLoading = false;
 }
 
@@ -550,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('speak-advice-btn').addEventListener('click', function () {
         var text = adviceTextEl.innerText || adviceTextEl.textContent || '';
-        if (!text || text.indexOf('点击') === 0 || text.indexOf('生成指导') === 0) return;
+        if (!text || text.indexOf('点击') === 0 || text.indexOf('生成建议') === 0) return;
         var btn = document.getElementById('speak-advice-btn');
         btn.disabled = true;
         btn.textContent = '朗读中...';
