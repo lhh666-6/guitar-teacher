@@ -343,10 +343,11 @@ body {
     text-align: center; font-size: 12px; color: #ddd; z-index: 5;
 }
 .string-label {
-    position: absolute; left: -18px; font-size: 14px;
-    color: #fff0b8; font-weight: 800;
-    text-shadow: 0 0 8px rgba(255, 217, 102, 0.65), 0 1px 2px rgba(0,0,0,0.7);
-    letter-spacing: 0.02em;
+    position: absolute; left: 6px; font-size: 15px;
+    color: #ffd970; font-weight: 900;
+    text-shadow: 0 0 10px rgba(255, 217, 102, 0.75), 0 1px 3px rgba(0,0,0,0.85);
+    letter-spacing: 0.04em;
+    z-index: 25;
 }
 
 /* ---- 选择和弦 ---- */
@@ -999,8 +1000,10 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
     color: #5a4030;
 }
 [data-theme="light"] .string-label {
-    color: #6b4020;
-    text-shadow: 0 0 6px rgba(180,130,60,0.4), 0 1px 2px rgba(0,0,0,0.3);
+    color: #5a2d10;
+    font-weight: 900;
+    text-shadow: 0 0 8px rgba(180,130,60,0.6), 0 1px 2px rgba(0,0,0,0.4);
+    z-index: 25;
 }
 [data-theme="light"] .test-item-time,
 [data-theme="light"] .test-list-item-time {

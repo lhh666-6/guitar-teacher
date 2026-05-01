@@ -23,10 +23,6 @@ from core.llm_service import LLMService
 from models import db, TrainingRecord, User
 from core.tts_service import VolcTTS
 from api.auth import auth_bp
-from core.voice_commands import (
-    process_teach_command, process_tuning_command, process_solo_command,
-    process_general_command
-)
 from core.recommendation import generate_smart_recommendations
 from core.utils import base64_to_cv2, safe_socketio_emit, cache_result, check_model_files
 from core.video_processor import process_and_emit
@@ -220,6 +216,10 @@ def health_check():
     })
 
 # ---------- 页面路由 ----------
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -443,38 +443,6 @@ def tts_speak():
     else:
         logger.error(f"[TTS] 合成失败, 耗时={elapsed:.1f}ms")
         return jsonify({'error': 'synthesis failed'}), 500
-
-# ---------- 语音指令处理 ----------
-@socketio.on('voice_command')
-def handle_voice_command(data):
-    sid = request.sid
-    command = data.get('command', '').strip()
-    page = data.get('page', '/')
-    session_id = data.get('session_id', sid)
-
-    if not command:
-        return
-
-    if page.startswith('/teach'):
-        result = process_teach_command(command)
-    elif page.startswith('/tuning'):
-        result = process_tuning_command(command)
-    elif page.startswith('/solo'):
-        result = process_solo_command(command)
-    else:
-        result = None
-
-    if result is None:
-        result = process_general_command(command, session_id, llm_service)
-
-    if result and result.get('text'):
-        audio = tts_service.synthesize(result['text'])
-        if audio:
-            result['audio_base64'] = base64.b64encode(audio).decode()
-        else:
-            result['fallback'] = True
-
-    socketio.emit('voice_response', result, room=sid)
 
 # ---------- 【最终修复】启动代码（解决 WebSocket 400） ----------
 if __name__ == '__main__':

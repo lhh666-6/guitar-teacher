@@ -238,10 +238,6 @@ class YINTuner {
     let isTuning = false;
     const tuner = new YINTuner();
 
-    let lastSpokenGuide = '';
-    let lastVoiceTime = 0;
-    const voiceCooldown = 2000;
-
     let autoMode = false;
 
     const autoModeBtn = document.getElementById('auto-mode-btn');
@@ -262,23 +258,12 @@ class YINTuner {
     const defaultDeviationText = '当前偏差：未开始调弦';
     const defaultGuideHTML = '<i class="fas fa-hand-pointer" aria-hidden="true"></i> 未开始调弦';
 
-    function speak(text, rate = 0.9) {
-        // 统一走 VoiceGuide TTS，语音关闭时静默
-        if (!window.VoiceGuide || !window.VoiceGuide.isEnabled()) return;
-        window.VoiceGuide.speak(text, { rate });
-    }
-
-    function stopSpeak() {
-        if (window.VoiceGuide) window.VoiceGuide.stop();
-    }
-
     function resetTuningDisplay() {
         needle.style.left = '50%';
         deviationEl.textContent = defaultDeviationText;
         gaugeCenterNumber.textContent = '0';
         guideEl.innerHTML = defaultGuideHTML;
         guideEl.style.color = '';
-        lastSpokenGuide = '';
         centsHistory = [];
         volumeBar.style.width = '0%';
         drawTrendChart();
@@ -323,7 +308,6 @@ class YINTuner {
                 startBtn.textContent = '开始调这根弦';
                 startBtn.classList.remove('tuning');
                 vibrateString.classList.remove('vibrating');
-                stopSpeak();
             }
             document.querySelectorAll('.string-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
@@ -340,13 +324,11 @@ class YINTuner {
         if (autoMode) {
             autoModeBtn.classList.add('active');
             autoStatusSpan.textContent = '开启';
-            if (isTuning) speak('自动模式已开启');
         } else {
             autoModeBtn.classList.remove('active');
             autoStatusSpan.textContent = '关闭';
             tuner.isPaused = false;
             if (tuner.pauseTimer) { clearTimeout(tuner.pauseTimer); tuner.pauseTimer = null; }
-            if (isTuning) speak('自动模式已关闭');
         }
     });
 
@@ -367,11 +349,9 @@ class YINTuner {
                     drawTrendChart();
 
                     let guideHTML = '';
-                    let voiceText = '';
 
                     if (fire) {
                         guideHTML = '<i class="fas fa-circle-check" aria-hidden="true"></i> 音调准确，恭喜！';
-                        voiceText = '音调准确，恭喜';
                         createFirework();
                         tuner.accurateCount = 0;
 
@@ -396,22 +376,13 @@ class YINTuner {
                         }
                     } else if (Math.abs(cents) <= 8) {
                         guideHTML = '<i class="fas fa-circle-check" aria-hidden="true"></i> 音调准确';
-                        voiceText = '音调准确';
                     } else if (cents > 8) {
                         guideHTML = `<i class="fas fa-arrow-rotate-left" aria-hidden="true"></i> 音调偏高，逆时针调${cents.toFixed(1)}音分`;
-                        voiceText = '偏高';
                     } else if (cents < -8) {
                         guideHTML = `<i class="fas fa-arrow-rotate-right" aria-hidden="true"></i> 音调偏低，顺时针调${Math.abs(cents).toFixed(1)}音分`;
-                        voiceText = '偏低';
                     }
 
                     guideEl.innerHTML = guideHTML;
-                    const now = Date.now();
-                    if (voiceText && voiceText !== lastSpokenGuide && now - lastVoiceTime > voiceCooldown) {
-                        speak(voiceText, 1.0);
-                        lastSpokenGuide = voiceText;
-                        lastVoiceTime = now;
-                    }
 
                     if (isTuning) vibrateString.classList.add('vibrating');
 
@@ -429,7 +400,6 @@ class YINTuner {
                             document.querySelector(`.string-btn[data-string="${currentString}"]`).classList.add('active');
                             document.getElementById('current-string').textContent =
                                 `${currentString}弦 (${['E', 'B', 'G', 'D', 'A', 'E'][currentString - 1]})`;
-                            speak(`请调${currentString}弦`);
                         }
                     }
                 } else if (status === 'invalid') {
@@ -438,26 +408,18 @@ class YINTuner {
                     guideEl.innerHTML = '<i class="fas fa-triangle-exclamation" aria-hidden="true"></i> 没有检测到琴声，请拨动琴弦';
                     guideEl.style.color = document.documentElement.getAttribute('data-theme') === 'light' ? '#b87a14' : '#ffaa00';
                     vibrateString.classList.remove('vibrating');
-                    const now = Date.now();
-                    if (lastSpokenGuide !== 'noSignal' && now - lastVoiceTime > voiceCooldown) {
-                        speak('请拨动琴弦');
-                        lastSpokenGuide = 'noSignal';
-                        lastVoiceTime = now;
-                    }
                 }
             });
 
             isTuning = true;
             startBtn.textContent = '停止调音';
             startBtn.classList.add('tuning');
-            lastSpokenGuide = '';
         } else {
             tuner.stop();
             isTuning = false;
             startBtn.textContent = '开始调这根弦';
             startBtn.classList.remove('tuning');
             vibrateString.classList.remove('vibrating');
-            stopSpeak();
             resetTuningDisplay();
         }
     });
