@@ -1065,8 +1065,17 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 [data-theme="light"] .chord-selected-count {
     color: #6b5040;
 }
+[data-theme="light"] .popup-chord-name {
+    color: #1a0f08;
+}
 [data-theme="light"] .popup-chord-desc {
-    color: #6b5040;
+    color: #4a3020;
+}
+[data-theme="light"] .popup-chord-item {
+    background: rgba(0,0,0,0.03);
+}
+[data-theme="light"] .popup-chord-item:hover {
+    background: rgba(0,0,0,0.08);
 }
 [data-theme="light"] .particle {
     background: rgba(180,140,90,0.15);
