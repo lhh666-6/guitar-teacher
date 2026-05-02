@@ -1052,7 +1052,9 @@
                     if (!QUICK_MODE) {
                         this._quickAdvanceTimer = setTimeout(() => {
                             this._quickAdvanceTimer = null;
+                            console.log('⏰ 不稳定时器触发, testMode=' + this.testMode);
                             if (this.testMode) this.moveToNextTest();
+                            else console.log('❌ testMode=false, 未跳过');
                         }, 1500);
                     }
                     break;
