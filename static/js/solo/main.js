@@ -119,8 +119,6 @@
             document.addEventListener('msfullscreenchange', this._onFullscreenChange);
             this._startRttLogging();
             window.addEventListener('beforeunload', () => this.cleanup());
-            this._onResize = () => this._syncOverlayPosition();
-            window.addEventListener('resize', this._onResize);
 
             window.guitarApp = this;
         }
@@ -138,7 +136,6 @@
                     this.elements.videoContainer.classList.remove('video-expanded');
                 }
             }
-            setTimeout(() => this._syncOverlayPosition(), 50);
         }
 
         cacheElements() {
@@ -176,27 +173,21 @@
                 this.overlayCanvas = document.createElement('canvas');
                 this.overlayCanvas.id = 'overlayCanvas';
                 this.overlayCanvas.style.position = 'absolute';
+                this.overlayCanvas.style.top = '0';
+                this.overlayCanvas.style.left = '0';
+                this.overlayCanvas.style.width = '100%';
+                this.overlayCanvas.style.height = '100%';
                 this.overlayCanvas.style.pointerEvents = 'none';
-                this.overlayCanvas.style.zIndex = '1';
-                this.overlayCanvas.style.objectFit = 'contain';
-                const parent = this.elements.cameraFeed.parentElement;
-                parent.style.position = 'relative';
-                parent.appendChild(this.overlayCanvas);
+                const video = this.elements.cameraFeed;
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'relative';
+                wrapper.style.width = '100%';
+                wrapper.style.display = 'block';
+                video.parentNode.insertBefore(wrapper, video);
+                wrapper.appendChild(video);
+                wrapper.appendChild(this.overlayCanvas);
             }
             this.overlayCtx = this.overlayCanvas.getContext('2d');
-        }
-
-        _syncOverlayPosition() {
-            if (!this.overlayCanvas || !this.elements.cameraFeed) return;
-            const video = this.elements.cameraFeed;
-            const canvas = this.overlayCanvas;
-            const parent = video.parentElement;
-            const parentRect = parent.getBoundingClientRect();
-            const videoRect = video.getBoundingClientRect();
-            canvas.style.top = (videoRect.top - parentRect.top) + 'px';
-            canvas.style.left = (videoRect.left - parentRect.left) + 'px';
-            canvas.style.width = videoRect.width + 'px';
-            canvas.style.height = videoRect.height + 'px';
         }
 
         createParticles() {
@@ -1473,7 +1464,6 @@
                             this.overlayCanvas.width = this.elements.cameraFeed.videoWidth;
                             this.overlayCanvas.height = this.elements.cameraFeed.videoHeight;
                             console.log('画布尺寸已设为:', this.overlayCanvas.width, this.overlayCanvas.height);
-                            this._syncOverlayPosition();
                             resolve();
                         }, { once: true });
                     });
@@ -1698,10 +1688,6 @@
             document.removeEventListener('fullscreenchange', this._onFullscreenChange);
             document.removeEventListener('webkitfullscreenchange', this._onFullscreenChange);
             document.removeEventListener('msfullscreenchange', this._onFullscreenChange);
-            if (this._onResize) {
-                window.removeEventListener('resize', this._onResize);
-                this._onResize = null;
-            }
         }
     }
 
