@@ -167,7 +167,7 @@
                 perfIndicator: document.getElementById('perfIndicator')
             };
 
-            // 叠加画布（若不存在则创建）
+            // 叠加画布（若不存在则创建，自动对齐 video 位置）
             this.overlayCanvas = document.getElementById('overlayCanvas');
             if (!this.overlayCanvas) {
                 this.overlayCanvas = document.createElement('canvas');
@@ -181,6 +181,21 @@
                 const container = this.elements.cameraFeed.parentElement;
                 container.style.position = 'relative';
                 container.appendChild(this.overlayCanvas);
+
+                if (this._alignObserver) this._alignObserver.disconnect();
+                this._alignObserver = new ResizeObserver(() => {
+                    const video = this.elements.cameraFeed;
+                    if (!video || !this.overlayCanvas) return;
+                    const vr = video.getBoundingClientRect();
+                    const cr = video.parentElement.getBoundingClientRect();
+                    const cs = getComputedStyle(video);
+                    this.overlayCanvas.style.top = (vr.top - cr.top) + 'px';
+                    this.overlayCanvas.style.left = (vr.left - cr.left) + 'px';
+                    this.overlayCanvas.style.width = vr.width + 'px';
+                    this.overlayCanvas.style.height = vr.height + 'px';
+                    this.overlayCanvas.style.objectFit = cs.objectFit;
+                });
+                this._alignObserver.observe(this.elements.cameraFeed);
             }
             this.overlayCtx = this.overlayCanvas.getContext('2d');
         }
@@ -1661,6 +1676,10 @@
             document.removeEventListener('fullscreenchange', this._onFullscreenChange);
             document.removeEventListener('webkitfullscreenchange', this._onFullscreenChange);
             document.removeEventListener('msfullscreenchange', this._onFullscreenChange);
+            if (this._alignObserver) {
+                this._alignObserver.disconnect();
+                this._alignObserver = null;
+            }
         }
     }
 
