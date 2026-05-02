@@ -1122,7 +1122,7 @@
                     this._visualErrorStart = null;
                     // 视觉正确后启动0.5s保护期，给听觉留采样窗口
                     if (!this._visualGraceUntil) {
-                        this._visualGraceUntil = performance.now() + 500;
+                        this._visualGraceUntil = performance.now() + 1000;
                     }
                 } else {
                     // 保护期内视觉失败 → 忽略

@@ -131,8 +131,13 @@ class CameraManager {
             this.videoElement.srcObject = null;
             this.videoElement.style.transform = '';
         }
-        this.hands = null;
+        if (this.hands) {
+            try { this.hands.close(); } catch (e) { /* 忽略 */ }
+            this.hands = null;
+        }
         this._cropCanvas = null;
         this._cropCtx = null;
+        this._logMediaPipeReady = false;
+        this._logCameraStartFail = false;
     }
 }
