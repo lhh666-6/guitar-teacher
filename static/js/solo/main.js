@@ -22,13 +22,10 @@
     class GuitarTrainApp {
         constructor() {
             // 状态变量
-            this.thumbnailDynamicInterval = 200;
+            this.thumbnailDynamicInterval = 150;
             this.thumbnailRttHistory = [];
             this._serverTimingHistory = [];
             this._lastServerTiming = 0;
-            this.thumbnailFastStartTime = null;
-            this.thumbnailModeCheckTimer = null;
-            this.thumbnailModeDecided = false;
             this.chords = [];
             this.currentChord = null;
             this.testList = [];
@@ -163,8 +160,7 @@
                 fretboardMini: document.getElementById('fretboardMini'),
                 trainLayout: document.querySelector('.train-layout'),
                 videoContainer: document.querySelector('.camera-container'),
-                difficultyBadge: document.getElementById('difficultyBadge'),
-                perfIndicator: document.getElementById('perfIndicator')
+                difficultyBadge: document.getElementById('difficultyBadge')
             };
 
             // 叠加画布（若不存在则创建，自动对齐 video 位置）
@@ -606,9 +602,7 @@
             if (this.elements.videoContainer) {
                 this.elements.videoContainer.classList.remove('streaming');
             }
-            this._perfFrameTimes = [];
             this._lastThumbnailRtt = 0;
-            if (this.elements.perfIndicator) this.elements.perfIndicator.style.display = 'none';
             this.socketManager.disconnect();
             this.filters = [];
             this.latestLocalLandmarks = null;
@@ -715,7 +709,6 @@
             this.updateStats('correct');
             this.recordedForCurrentChord = true;
             this.renderTestList();
-            this._showResultFlash(true);
             fetch('/api/save_record', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -732,23 +725,6 @@
                     this._quickAdvanceTimer = null;
                     if (this.testMode) this.moveToNextTest();
                 }, 1200);
-            }
-        }
-
-        _showResultFlash(isCorrect) {
-            const flash = document.getElementById('resultFlash');
-            if (!flash) return;
-            flash.className = 'result-flash ' + (isCorrect ? 'correct' : 'wrong');
-            flash.textContent = isCorrect ? '✓' : '✗';
-            flash.classList.add('show');
-            setTimeout(() => flash.classList.remove('show'), 900);
-
-            const fretboard = document.getElementById('fretboardMini');
-            if (fretboard) {
-                const cls = isCorrect ? 'flash-correct' : 'flash-wrong';
-                fretboard.classList.remove('flash-correct', 'flash-wrong');
-                void fretboard.offsetWidth;
-                fretboard.classList.add(cls);
             }
         }
 
@@ -1028,7 +1004,6 @@
             this.stats.wrong++;
             this.updateStats('wrong');
             this.renderTestList();
-            this._showResultFlash(false);
 
             if (QUICK_MODE) {
                 // 快速模式无重试，错误即最终结果
@@ -1326,39 +1301,6 @@
             if (this._serverTimingHistory.length > 5) {
                 this._serverTimingHistory.shift();
             }
-            this._adjustThumbnailInterval();
-        }
-
-        _adjustThumbnailInterval() {
-            // 前 2 秒由 _evaluateThumbnailMode 负责初始快评，之后持续自适应
-            if (!this.thumbnailModeDecided) return;
-            if (this._serverTimingHistory.length === 0) return;
-
-            const avgServer = this._serverTimingHistory.reduce((a, b) => a + b, 0) / this._serverTimingHistory.length;
-            // 目标：让后端处理时间不超过帧间隔的 70%，避免积压
-            // 帧间隔 = max(server_time / 0.7, 150)，clamp 到 [150, 600]
-            const target = Math.max(150, Math.min(600, Math.round(avgServer / 0.7)));
-            // 平滑过渡，避免突变
-            this.thumbnailDynamicInterval = Math.round(this.thumbnailDynamicInterval * 0.7 + target * 0.3);
-        }
-
-        _evaluateThumbnailMode() {
-            this.thumbnailModeDecided = true;
-            if (this.thumbnailModeCheckTimer) {
-                clearTimeout(this.thumbnailModeCheckTimer);
-                this.thumbnailModeCheckTimer = null;
-            }
-
-            if (this.thumbnailRttHistory.length === 0) return;
-
-            const avgRtt = this.thumbnailRttHistory.reduce((a, b) => a + b, 0) / this.thumbnailRttHistory.length;
-
-            if (avgRtt > 300) {
-                this.thumbnailDynamicInterval = 500;  // 降为 2 帧/秒
-            } else {
-                this.thumbnailDynamicInterval = 200;  // 保持 5 帧/秒
-            }
-            // 之后不再改变，舍弃多余帧的逻辑由降低发送频率自然实现
         }
 
         sendThumbnail() {
@@ -1367,23 +1309,6 @@
             if (!video.videoWidth) return;
 
             const now = performance.now();
-
-            // 首次发送时启动 2 秒评估定时器
-            if (!this.thumbnailModeDecided && this.thumbnailFastStartTime === null) {
-             this.thumbnailFastStartTime = now;
-             this.thumbnailModeCheckTimer = setTimeout(() => {
-              this._evaluateThumbnailMode();
-           }, 2000);
-       }
-
-            // FPS 统计
-            if (!this._perfFrameTimes) this._perfFrameTimes = [];
-            this._perfFrameTimes.push(now);
-            // 只保留最近 1 秒内的帧
-            while (this._perfFrameTimes.length > 0 && this._perfFrameTimes[0] < now - 1000) {
-                this._perfFrameTimes.shift();
-            }
-            this._updatePerfDisplay();
 
             const sendTime = now;
             const targetHeight = Math.round(THUMBNAIL_WIDTH * video.videoHeight / video.videoWidth);
@@ -1406,28 +1331,6 @@
                 this._updateThumbnailRtt(rtt);
             });
         }
-
-        _updatePerfDisplay() {
-            var el = this.elements.perfIndicator;
-            if (!el) return;
-            // 摄像头关闭时隐藏
-            if (!this.cameraManager.stream) {
-                el.style.display = 'none';
-                return;
-            }
-            el.style.display = 'inline';
-            var now = performance.now();
-            // 节流更新，200ms 一次
-            if (this._lastPerfUpdate && now - this._lastPerfUpdate < 200) return;
-            this._lastPerfUpdate = now;
-            var fps = this._perfFrameTimes ? this._perfFrameTimes.length : 0;
-            var rtt = this._lastThumbnailRtt || 0;
-            var serverMs = this._lastServerTiming || 0;
-            var interval = this.thumbnailDynamicInterval;
-            el.textContent = fps + 'fps | sv:' + serverMs + 'ms | rtt:' + rtt + 'ms | →' + interval + 'ms';
-        }
-
-
 
         _handleStreamEnded() {
             console.warn('摄像头流意外终止');
