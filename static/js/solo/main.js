@@ -22,7 +22,7 @@
     class GuitarTrainApp {
         constructor() {
             // 状态变量
-            this.thumbnailDynamicInterval = 120;
+            this.thumbnailDynamicInterval = 180;
             this.thumbnailRttHistory = [];
             this._serverTimingHistory = [];
             this._lastServerTiming = 0;
@@ -618,6 +618,7 @@
                 this.elements.videoContainer.classList.remove('streaming');
             }
             this._lastThumbnailRtt = 0;
+            this._thumbnailStartTime = null;
             this.socketManager.disconnect();
             this.filters = [];
             this.latestLocalLandmarks = null;
@@ -1185,6 +1186,8 @@
             if (targetHandIndex === -1) {
                 this.latestLocalLandmarks = null;
                 this.drawAll();
+                // 无手部时仍需发缩略图，否则后端 YOLO 停摆，指板叠加层冻结
+                this._maybeSendThumbnail(now);
                 return;
             }
 
@@ -1205,6 +1208,7 @@
             if (!landmarks) {
                 this.latestLocalLandmarks = null;
                 this.drawAll();
+                this._maybeSendThumbnail(now);
                 return;
             }
 
@@ -1294,7 +1298,26 @@
                 }
             }
 
-            // 缩略图发送 (保持原样)
+            this._maybeSendThumbnail(now);
+        }
+
+        _maybeSendThumbnail(now) {
+            // 首秒慢启动：前 1 秒只发 2 帧让 YOLO 热起来，之后切 180ms 常规速率
+            if (!this._thumbnailStartTime) {
+                this._thumbnailStartTime = now;
+                this._thumbnailWarmupCount = 0;
+            }
+            const elapsed = now - this._thumbnailStartTime;
+            if (elapsed < 1000) {
+                // 首秒：第 0ms 和第 500ms 各发一帧
+                const targetCount = elapsed > 500 ? 2 : 1;
+                if (this._thumbnailWarmupCount < targetCount) {
+                    this.sendThumbnail();
+                    this._thumbnailWarmupCount++;
+                    this.lastThumbnailTime = now;
+                }
+                return;
+            }
             if (now - this.lastThumbnailTime > this.thumbnailDynamicInterval) {
                 this.sendThumbnail();
                 this.lastThumbnailTime = now;
@@ -1409,6 +1432,7 @@
             } else {
                 try {
                     await this.cameraManager.open();
+                    this._thumbnailStartTime = null;  // 重置预热，新会话首秒慢启动
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
                     if (this.elements.videoContainer) {

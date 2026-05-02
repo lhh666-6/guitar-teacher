@@ -243,6 +243,8 @@ class GuitarFingeringRecognizer:
             bridge_center = None
             nut_box = None
             bridge_box = None
+            nut_best_conf = 0
+            bridge_best_conf = 0
 
             for r in results:
                 for box in r.boxes:
@@ -250,14 +252,40 @@ class GuitarFingeringRecognizer:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                     cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
                     conf = float(box.conf[0])
-                    if cls_id == 0:
+                    if cls_id == 0 and conf > nut_best_conf:
                         nut_center = np.array([cx, cy])
                         nut_box = (x1, y1, x2, y2)
+                        nut_best_conf = conf
                         logger.info(f"YOLO 琴枕: 中心({cx:.1f},{cy:.1f}), 宽度{x2-x1:.1f}, 置信度{conf:.2f}")
-                    elif cls_id == 1:
+                    elif cls_id == 1 and conf > bridge_best_conf:
                         bridge_center = np.array([cx, cy])
                         bridge_box = (x1, y1, x2, y2)
+                        bridge_best_conf = conf
                         logger.info(f"YOLO 琴桥: 中心({cx:.1f},{cy:.1f}), 宽度{x2-x1:.1f}, 置信度{conf:.2f}")
+
+            # 检测持久化：单类漏检时用上一帧位置顶，最多 3 帧
+            if not hasattr(self, '_nut_miss_count'):
+                self._nut_miss_count = 0
+                self._bridge_miss_count = 0
+                self._cached_nut_center = None
+                self._cached_nut_box = None
+                self._cached_bridge_center = None
+                self._cached_bridge_box = None
+
+            max_miss = 3
+            if nut_center is not None:
+                self._cached_nut_center, self._cached_nut_box = nut_center, nut_box
+                self._nut_miss_count = 0
+            elif self._cached_nut_center is not None and self._nut_miss_count < max_miss:
+                nut_center, nut_box = self._cached_nut_center, self._cached_nut_box
+                self._nut_miss_count += 1
+
+            if bridge_center is not None:
+                self._cached_bridge_center, self._cached_bridge_box = bridge_center, bridge_box
+                self._bridge_miss_count = 0
+            elif self._cached_bridge_center is not None and self._bridge_miss_count < max_miss:
+                bridge_center, bridge_box = self._cached_bridge_center, self._cached_bridge_box
+                self._bridge_miss_count += 1
 
             if nut_center is None or bridge_center is None:
                 logger.warning("update_fretboard: 未同时检测到琴枕和琴桥")
