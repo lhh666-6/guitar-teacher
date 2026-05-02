@@ -26,6 +26,16 @@
             this.thumbnailRttHistory = [];
             this._serverTimingHistory = [];
             this._lastServerTiming = 0;
+
+            // 调试：各环节耗时采样
+            this._debug = {
+                handCalls: 0, handLastTs: 0, handIntervals: [],   // MediaPipe 回调
+                drawCalls: 0, drawDurations: [],                    // drawAll 耗时
+                thumbSends: 0, thumbEncodes: [],                   // toBlob 编码延迟
+                paramCalls: 0, paramLastTs: 0, paramIntervals: [], // fretboard_params 接收
+                logTimer: null
+            };
+            this._startDebugLog();
             this.chords = [];
             this.currentChord = null;
             this.testList = [];
@@ -612,6 +622,12 @@
         }
 
         _onFretboardParams(params) {
+            const t0 = performance.now();
+            const d = this._debug;
+            if (d.paramLastTs) { d.paramIntervals.push(t0 - d.paramLastTs); }
+            d.paramLastTs = t0;
+            d.paramCalls++;
+
             if (!this._logFretboardReady) {
                 console.log('✅ 指板参数已就绪，弦线/品丝绘制可用');
                 this._logFretboardReady = true;
@@ -909,6 +925,7 @@
 
         // ================= 核心绘制函数 =================
         drawAll() {
+            const t0 = performance.now();
             if (!this.overlayCanvas) return;
             const ctx = this.overlayCtx;
             const w = this.overlayCanvas.width;
@@ -983,6 +1000,8 @@
                     if (this.testMode) this.moveToNextTest();
                 }, 1200);
             }
+            this._debug.drawCalls++;
+            this._debug.drawDurations.push(performance.now() - t0);
         }
 
         _clearAllTimers() {
@@ -1139,6 +1158,12 @@
             }
         };
         onHandResults(results) {
+            const t0 = performance.now();
+            const d = this._debug;
+            if (d.handLastTs) { d.handIntervals.push(t0 - d.handLastTs); }
+            d.handLastTs = t0;
+            d.handCalls++;
+
             if (!this._handModelTriggered) {
                 console.log('✅ MediaPipe 手部模型首次成功调用，返回手部数据');
                 this._handModelTriggered = true;
@@ -1289,6 +1314,33 @@
             }
         }
 
+        _startDebugLog() {
+            this._debug.logTimer = setInterval(() => {
+                const d = this._debug;
+                const avg = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0) / arr.length) : 0;
+                const hz = arr => arr.length ? (1000 / (arr.reduce((a,b)=>a+b,0) / arr.length)).toFixed(1) : 0;
+                console.log(
+                    '🔍 [管线诊断] ' +
+                    '👋MediaPipe:' + d.handCalls + '次 | 间隔avg:' + avg(d.handIntervals) + 'ms(~' + hz(d.handIntervals) + 'fps) | ' +
+                    '🎨drawAll:' + d.drawCalls + '次 | 耗时avg:' + avg(d.drawDurations) + 'ms | ' +
+                    '📷缩略图发送:' + d.thumbSends + '次 | 编码avg:' + avg(d.thumbEncodes) + 'ms | ' +
+                    '📡fretboard_params接收:' + d.paramCalls + '次 | 间隔avg:' + avg(d.paramIntervals) + 'ms(~' + hz(d.paramIntervals) + 'fps)'
+                );
+                // 重置计数器，每轮显示增量
+                d.handCalls = 0; d.handIntervals = [];
+                d.drawCalls = 0; d.drawDurations = [];
+                d.thumbSends = 0; d.thumbEncodes = [];
+                d.paramCalls = 0; d.paramIntervals = [];
+            }, 3000);
+        }
+
+        _stopDebugLog() {
+            if (this._debug.logTimer) {
+                clearInterval(this._debug.logTimer);
+                this._debug.logTimer = null;
+            }
+        }
+
         _updateThumbnailRtt(rtt) {
             this.thumbnailRttHistory.push(rtt);
             if (this.thumbnailRttHistory.length > 5) {
@@ -1323,13 +1375,22 @@
 
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, THUMBNAIL_WIDTH, targetHeight);
-            const imageBase64 = canvas.toDataURL('image/jpeg', THUMBNAIL_QUALITY);
-
-            this.socketManager.emit('thumbnail', { image: imageBase64 }, (response) => {
-                const rtt = performance.now() - sendTime;
-                this._lastThumbnailRtt = Math.round(rtt);
-                this._updateThumbnailRtt(rtt);
-            });
+            // 使用 toBlob 异步编码，避免 toDataURL 同步阻塞主线程拖慢 MediaPipe 渲染
+            const tEncode = performance.now();
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    this._debug.thumbSends++;
+                    this._debug.thumbEncodes.push(performance.now() - tEncode);
+                    this.socketManager.emit('thumbnail', { image: reader.result }, (response) => {
+                        const rtt = performance.now() - sendTime;
+                        this._lastThumbnailRtt = Math.round(rtt);
+                        this._updateThumbnailRtt(rtt);
+                    });
+                };
+                reader.readAsDataURL(blob);
+            }, 'image/jpeg', THUMBNAIL_QUALITY);
         }
 
         _handleStreamEnded() {
@@ -1570,6 +1631,7 @@
         cleanup() {
             this.sendingEnabled = false;
             this._stopRttLogging();
+            this._stopDebugLog();
             if (this.timerInterval) {
                 clearInterval(this.timerInterval);
                 this.timerInterval = null;
