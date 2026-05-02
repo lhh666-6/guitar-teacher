@@ -179,11 +179,13 @@
                 this.overlayCanvas.style.height = '100%';
                 this.overlayCanvas.style.pointerEvents = 'none';
                 const video = this.elements.cameraFeed;
+                const container = video.parentElement;
+                container.style.position = 'relative';
                 const wrapper = document.createElement('div');
                 wrapper.style.position = 'relative';
                 wrapper.style.width = '100%';
                 wrapper.style.display = 'block';
-                video.parentNode.insertBefore(wrapper, video);
+                container.insertBefore(wrapper, video);
                 wrapper.appendChild(video);
                 wrapper.appendChild(this.overlayCanvas);
             }
