@@ -58,7 +58,7 @@ MOTION_FRAMES = 4                                       # 连续超过阈值帧�
 FRET_HISTORY_LEN = 5
 
 # ---------- 横按检测参数 ----------
-BARRE_ANGLE_THRESH = 25                                 # 食指直线与指板垂直方向的最大夹角（度）
+BARRE_ANGLE_THRESH = 35                                 # 食指直线与指板垂直方向的最大夹角（度）
 BARRE_MIN_COVERED = 4                                   # 最少覆盖琴弦数才判定为横按（仅计4弦及以上）
 USE_FIXED_DIST_THRESH = False                           # 是否使用固定距离阈值
 FIXED_DIST_THRESH = 40                                  # 固定距离阈值（像素）
@@ -69,7 +69,7 @@ PINKY_PRESS_THRESHOLD_PX = 25                           # 小拇指离品丝阈�
 PINKY_STRING_DIST_THRESH = 40                           # 小拇指离琴弦阈值
 PINKY_FRET_HISTORY_LEN = 5
 PINKY_SMOOTH_ALPHA = 0.4
-PINKY_ANGLE_THRESH = 30                                 # 小拇指弯曲角度阈值
+PINKY_ANGLE_THRESH = 20                                 # 小拇指弯曲角度阈值
 
 # ---------- 琴枕琴桥方向配置 ----------
 FORCE_NUT_LEFT = False                                  # 视频 CSS 镜像已处理左右翻转

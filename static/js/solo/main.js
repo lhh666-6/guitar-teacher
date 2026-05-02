@@ -49,6 +49,7 @@
             this._visualStablePassed = false;
             this._visualErrorStart = null;
             this._visualStableReady = false;
+            this._visualGraceUntil = 0;
             this.latestBarre = null;
 
             this.cooldownTimer = null;
@@ -1001,6 +1002,7 @@
             this.audioTimeout = null;
             this.quickTimer = null;
             this._quickAdvanceTimer = null;
+            this._visualGraceUntil = 0;
             this.audioWaiting = false;
         }
 
@@ -1071,6 +1073,7 @@
                         this.audioResultCache = null;
                         this.audioWaiting = false;
                         if (this.audioTimeout) { clearTimeout(this.audioTimeout); this.audioTimeout = null; }
+                        this._visualGraceUntil = 0;
                     }
                     break;
             }
@@ -1117,11 +1120,20 @@
                     this._visualStablePassed = true;
                     this._visualStableReady = true;
                     this._visualErrorStart = null;
+                    // 视觉正确后启动0.5s保护期，给听觉留采样窗口
+                    if (!this._visualGraceUntil) {
+                        this._visualGraceUntil = performance.now() + 500;
+                    }
                 } else {
+                    // 保护期内视觉失败 → 忽略
+                    if (this._visualGraceUntil && performance.now() < this._visualGraceUntil) {
+                        return;
+                    }
+                    this._visualGraceUntil = 0;
+                    this._visualStablePassed = false;
                     if (!this._visualErrorStart) {
                         this._visualErrorStart = performance.now();
                     } else if (performance.now() - this._visualErrorStart >= 1500) {
-                        this._visualStablePassed = false;
                         this._visualStableReady = true;
                     }
                 }

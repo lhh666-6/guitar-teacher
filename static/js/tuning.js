@@ -363,6 +363,7 @@ class YINTuner {
                                 tuner.isPaused = false;
                                 tuner.pauseTimer = null;
                                 tuner.tuningSuccess = false;
+                                tuner.smoothedCents = 0;
                                 if (autoMode && isTuning) {
                                     guideEl.innerHTML = '继续检测...';
                                 }
@@ -396,6 +397,7 @@ class YINTuner {
                         }
                         if (matchedString !== currentString && minDiff < 10 && !tuner.isPaused) {
                             currentString = matchedString;
+                            tuner.targetString = matchedString;
                             document.querySelectorAll('.string-btn').forEach(b => b.classList.remove('active'));
                             document.querySelector(`.string-btn[data-string="${currentString}"]`).classList.add('active');
                             document.getElementById('current-string').textContent =

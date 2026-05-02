@@ -14,12 +14,12 @@ class FingeringDetector {
         this.STRING_DIST_THRESH = 30;
         this.PINKY_PRESS_THRESHOLD_PX = 20;
         this.PINKY_STRING_DIST_THRESH = 25;
-        this.BARRE_ANGLE_THRESH = 25;
+        this.BARRE_ANGLE_THRESH = 35;
         this.BARRE_MIN_COVERED = 4;
         this.BARRE_FRET_HISTORY_LEN = 5;
         this.FRET_HISTORY_LEN = 3;
         this.PINKY_FRET_HISTORY_LEN = 5;
-        this.PINKY_ANGLE_THRESH = 120;
+        this.PINKY_ANGLE_THRESH = 90;
 
         // 手指定义
         this.FINGER_DEFS = [
