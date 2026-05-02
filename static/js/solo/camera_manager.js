@@ -98,10 +98,19 @@ class CameraManager {
                 }
             }
             if (this._handLoopRunning) {
-                this.handLoopId = requestAnimationFrame(handLoop);
+                // 用 requestVideoFrameCallback 跟摄像头帧率同步，避免 rAF 在 144Hz 显示器上跑满主线程
+                if (videoElement.requestVideoFrameCallback) {
+                    this.handLoopId = videoElement.requestVideoFrameCallback(handLoop);
+                } else {
+                    this.handLoopId = requestAnimationFrame(handLoop);
+                }
             }
         };
-        this.handLoopId = requestAnimationFrame(handLoop);
+        if (videoElement.requestVideoFrameCallback) {
+            this.handLoopId = videoElement.requestVideoFrameCallback(handLoop);
+        } else {
+            this.handLoopId = requestAnimationFrame(handLoop);
+        }
     }
 
     stopLoops() {

@@ -128,6 +128,11 @@
             window.addEventListener('beforeunload', () => this.cleanup());
 
             window.guitarApp = this;
+            // 启动自检：确认关键 DOM 和状态
+            console.log('🔧 [启动诊断] overlayCanvas=' + !!this.overlayCanvas +
+                ' overlayCtx=' + !!this.overlayCtx +
+                ' cameraFeed=' + !!this.elements.cameraFeed +
+                ' socket=' + !!this.socketManager);
         }
 
         _handleFullscreenChange() {
@@ -926,7 +931,8 @@
         // ================= 核心绘制函数 =================
         drawAll() {
             const t0 = performance.now();
-            if (!this.overlayCanvas) return;
+            this._debug.drawCalls++;
+            if (!this.overlayCanvas) { this._debug.drawSkipped = (this._debug.drawSkipped||0)+1; return; }
             const ctx = this.overlayCtx;
             const w = this.overlayCanvas.width;
             const h = this.overlayCanvas.height;
@@ -1000,7 +1006,6 @@
                     if (this.testMode) this.moveToNextTest();
                 }, 1200);
             }
-            this._debug.drawCalls++;
             this._debug.drawDurations.push(performance.now() - t0);
         }
 
@@ -1322,7 +1327,7 @@
                 console.log(
                     '🔍 [管线诊断] ' +
                     '👋MediaPipe:' + d.handCalls + '次 | 间隔avg:' + avg(d.handIntervals) + 'ms(~' + hz(d.handIntervals) + 'fps) | ' +
-                    '🎨drawAll:' + d.drawCalls + '次 | 耗时avg:' + avg(d.drawDurations) + 'ms | ' +
+                    '🎨drawAll:' + d.drawCalls + '次(skip:' + (d.drawSkipped||0) + ') | 耗时avg:' + avg(d.drawDurations) + 'ms | ' +
                     '📷缩略图发送:' + d.thumbSends + '次 | 编码avg:' + avg(d.thumbEncodes) + 'ms | ' +
                     '📡fretboard_params接收:' + d.paramCalls + '次 | 间隔avg:' + avg(d.paramIntervals) + 'ms(~' + hz(d.paramIntervals) + 'fps)'
                 );
