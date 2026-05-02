@@ -900,6 +900,13 @@
                 barreDiv.style.opacity = '0.9';
                 barreDiv.style.borderRadius = '4px';
                 barreDiv.style.position = 'absolute';
+                barreDiv.style.display = 'flex';
+                barreDiv.style.alignItems = 'center';
+                barreDiv.style.justifyContent = 'center';
+                barreDiv.style.color = '#fff';
+                barreDiv.style.fontSize = '10px';
+                barreDiv.style.fontWeight = 'bold';
+                barreDiv.textContent = b.fret;
                 container.appendChild(barreDiv);
             });
         }
@@ -953,6 +960,24 @@
                     ctx.fillStyle = '#22c55e';
                     ctx.fillText(label, tx, ty + 22);
                 }
+            }
+
+            // 调试：左上角显示检测状态
+            if (this.latestBarre) {
+                ctx.font = '14px monospace';
+                const dbg = '横按: ' + this.latestBarre.fret + '品 弦' + this.latestBarre.startString + '-' + this.latestBarre.endString;
+                const tw2 = ctx.measureText(dbg).width;
+                ctx.fillStyle = 'rgba(0,0,0,0.65)';
+                ctx.fillRect(2, 2, tw2 + 12, 22);
+                ctx.fillStyle = '#22c55e';
+                ctx.fillText(dbg, 8, 18);
+            } else {
+                ctx.font = '14px monospace';
+                const dbg = '横按: 未检测到';
+                ctx.fillStyle = 'rgba(0,0,0,0.65)';
+                ctx.fillRect(2, 2, 120, 22);
+                ctx.fillStyle = '#ef4444';
+                ctx.fillText(dbg, 8, 18);
             }
         }
 
@@ -1246,6 +1271,15 @@
                     this.elements.cameraFeed.videoWidth,
                     this.elements.cameraFeed.videoHeight
                 );
+                // 诊断：每秒打印一次横按状态
+                if (!this._lastBarreLogTime || now - this._lastBarreLogTime > 1000) {
+                    this._lastBarreLogTime = now;
+                    if (detection.barre) {
+                        console.log('🟢 横按检测: ' + detection.barre.fret + '品, 弦' + detection.barre.startString + '-' + detection.barre.endString);
+                    } else {
+                        console.log('🔴 横按未检测到 (detector ready=' + this.fingeringDetector.ready + ')');
+                    }
+                }
                 const result = {
                     status: 'success',
                     positions: detection.positions,

@@ -939,12 +939,12 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 }
 [data-theme="light"] #chordSelect {
     background-color: #e0d0b8;
-    color: #3d2e1e;
+    color: #1a0f08;
     border-color: rgba(180,140,90,0.3);
 }
 [data-theme="light"] #chordSelect option {
     background-color: #f0e5d4;
-    color: #3d2e1e;
+    color: #1a0f08;
 }
 [data-theme="light"] #toggleCamera,
 [data-theme="light"] #fullscreenVideoBtn {
