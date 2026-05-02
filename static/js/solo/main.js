@@ -250,6 +250,9 @@
                 }));
             }
 
+            // 先加载驾驶舱传入的待训练和弦，避免被后续自动选中覆盖
+            this.loadPendingChordsFromLocalStorage();
+
             const select = this.elements.chordSelect;
             select.innerHTML = '';
             this.chords.forEach(chord => {
@@ -265,7 +268,6 @@
             }
 
             this.renderPopupList();
-            this.loadPendingChordsFromLocalStorage();
         }
 
         // 拼音首字母映射（覆盖常用和弦）
