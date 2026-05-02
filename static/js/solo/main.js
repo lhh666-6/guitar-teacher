@@ -914,73 +914,45 @@
             });
         }
 
-        // ================= 核心绘制函数（回归简单，永不偏移） =================
+        // ================= 核心绘制函数 =================
         drawAll() {
             if (!this.overlayCanvas) return;
             const ctx = this.overlayCtx;
-            // 直接使用画布的固有像素尺寸（在 loadedmetadata 中已设为视频原始分辨率）
             const w = this.overlayCanvas.width;
             const h = this.overlayCanvas.height;
 
-            ctx.clearRect(0, 0, w, h);
+            if (this.cachedDrawingData || this.latestLocalLandmarks) {
+                ctx.clearRect(0, 0, w, h);
 
-            // 诊断红框，用于验证对齐（正式发布可注释）
-            // ctx.strokeStyle = 'red';
-            // ctx.lineWidth = 4;
-            // ctx.strokeRect(0, 0, w, h);
-
-            if (this.cachedDrawingData) {
-                if (!this._drawStartedLogged) {
-                    console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
-                    this._drawStartedLogged = true;
+                if (this.cachedDrawingData) {
+                    if (!this._drawStartedLogged) {
+                        console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
+                        this._drawStartedLogged = true;
+                    }
+                    drawOverlay(ctx, w, h, this.cachedDrawingData);
                 }
-                drawOverlay(ctx, w, h, this.cachedDrawingData);
-            } else {
-                if (this._drawStartedLogged) {
-                    console.warn('⚠️ cachedDrawingData 丢失，停止绘制指板');
-                    this._drawStartedLogged = false;
+
+                if (this.latestLocalLandmarks) {
+                    drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
+
+                    if (this.latestBarre && this.latestLocalLandmarks.length > 8) {
+                        const tip = this.latestLocalLandmarks[8];
+                        const bx = w - tip.x * w;
+                        const by = tip.y * h;
+                        const label = this.latestBarre.fret + '品';
+                        ctx.font = 'bold 22px Arial';
+                        const tw = ctx.measureText(label).width;
+                        const tx = bx - tw / 2;
+                        const ty = by - 40;
+                        const pad = 6;
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                        ctx.beginPath();
+                        ctx.roundRect(tx - pad, ty - pad, tw + pad * 2, 28 + pad * 2, 8);
+                        ctx.fill();
+                        ctx.fillStyle = '#22c55e';
+                        ctx.fillText(label, tx, ty + 22);
+                    }
                 }
-            }
-
-            if (this.latestLocalLandmarks) {
-                drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
-
-                // 横按品数标签
-                if (this.latestBarre && this.latestLocalLandmarks.length > 8) {
-                    const tip = this.latestLocalLandmarks[8];
-                    const bx = w - tip.x * w;
-                    const by = tip.y * h;
-                    const label = this.latestBarre.fret + '品';
-                    ctx.font = 'bold 22px Arial';
-                    const tw = ctx.measureText(label).width;
-                    const tx = bx - tw / 2;
-                    const ty = by - 40;
-                    const pad = 6;
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                    ctx.beginPath();
-                    ctx.roundRect(tx - pad, ty - pad, tw + pad * 2, 28 + pad * 2, 8);
-                    ctx.fill();
-                    ctx.fillStyle = '#22c55e';
-                    ctx.fillText(label, tx, ty + 22);
-                }
-            }
-
-            // 调试：左上角显示检测状态
-            if (this.latestBarre) {
-                ctx.font = '14px monospace';
-                const dbg = '横按: ' + this.latestBarre.fret + '品 弦' + this.latestBarre.startString + '-' + this.latestBarre.endString;
-                const tw2 = ctx.measureText(dbg).width;
-                ctx.fillStyle = 'rgba(0,0,0,0.65)';
-                ctx.fillRect(2, 2, tw2 + 12, 22);
-                ctx.fillStyle = '#22c55e';
-                ctx.fillText(dbg, 8, 18);
-            } else {
-                ctx.font = '14px monospace';
-                const dbg = '横按: 未检测到';
-                ctx.fillStyle = 'rgba(0,0,0,0.65)';
-                ctx.fillRect(2, 2, 120, 22);
-                ctx.fillStyle = '#ef4444';
-                ctx.fillText(dbg, 8, 18);
             }
         }
 
@@ -1469,7 +1441,7 @@
                         }, { once: true });
                     });
 
-                    // 启动 MediaPipe 手部跟踪循环（绘制由数据驱动，不再开独立 rAF 循环）
+                    // 启动 MediaPipe 手部跟踪循环
                     this.cameraManager.startHandLoop(this.elements.cameraFeed);
                 } catch (err) {
                     console.error('无法访问摄像头：' + err.message);
