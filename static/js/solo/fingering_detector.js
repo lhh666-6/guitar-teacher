@@ -14,7 +14,7 @@ class FingeringDetector {
         this.STRING_DIST_THRESH = 30;
         this.PINKY_PRESS_THRESHOLD_PX = 20;
         this.PINKY_STRING_DIST_THRESH = 25;
-        this.BARRE_ANGLE_THRESH = 20;
+        this.BARRE_ANGLE_THRESH = 25;
         this.BARRE_MIN_COVERED = 4;
         this.BARRE_FRET_HISTORY_LEN = 5;
         this.FRET_HISTORY_LEN = 3;
@@ -131,7 +131,14 @@ class FingeringDetector {
                 for (const finger of this.FINGER_DEFS) {
                     if (finger.name === '食指' && barre) continue;
                     const result = this._detectFingerPress(pxLandmarks, finger);
-                    if (result) positions.push(result);
+                    if (result) {
+                        result.finger = finger.name;
+                        positions.push(result);
+                    }
+                }
+                if (barre) {
+                    barre.finger = '食指';
+                    barre.index_points = [5, 6, 7, 8].map(i => pxLandmarks[i]);
                 }
                 return { positions, barre };
             } finally {
@@ -285,7 +292,9 @@ class FingeringDetector {
 
         return {
             string: mappedString,
-            fret: finalFret
+            fret: finalFret,
+            tip_x: Math.round(tipPt[0]),
+            tip_y: Math.round(tipPt[1])
         };
     }
 

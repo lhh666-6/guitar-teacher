@@ -13,8 +13,9 @@ function validateVisual(detectedPositions, detectedBarre, targetChord) {
     if (targetChord.barre) {
         if (!detectedBarre) return false;
         if (detectedBarre.fret !== targetChord.barre.fret) return false;
-        if (detectedBarre.startString !== targetChord.barre.startString) return false;
-        if (detectedBarre.endString !== targetChord.barre.endString) return false;
+        const detRange = [detectedBarre.startString, detectedBarre.endString].sort((a, b) => a - b);
+        const tgtRange = [targetChord.barre.startString, targetChord.barre.endString].sort((a, b) => a - b);
+        if (detRange[0] !== tgtRange[0] || detRange[1] !== tgtRange[1]) return false;
         return true;
     }
 

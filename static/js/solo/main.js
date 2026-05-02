@@ -51,6 +51,7 @@
             this._visualStablePassed = false;
             this._visualErrorStart = null;
             this._visualStableReady = false;
+            this.latestBarre = null;
 
             this.cooldownTimer = null;
             this.quickTimer = null;
@@ -591,6 +592,7 @@
             this.socketManager.disconnect();
             this.filters = [];
             this.latestLocalLandmarks = null;
+            this.latestBarre = null;
             this.cachedDrawingData = null;
             if (this.fingeringDetector) this.fingeringDetector.reset();
         }
@@ -932,6 +934,25 @@
 
             if (this.latestLocalLandmarks) {
                 drawLocalHandLandmarks(ctx, w, h, this.latestLocalLandmarks);
+
+                // 横按品数标签
+                if (this.latestBarre && this.latestLocalLandmarks.length > 8) {
+                    const tip = this.latestLocalLandmarks[8];
+                    const bx = w - tip.x * w;
+                    const by = tip.y * h;
+                    const label = this.latestBarre.fret + '品';
+                    ctx.font = 'bold 22px Arial';
+                    const tw = ctx.measureText(label).width;
+                    const tx = bx - tw / 2;
+                    const ty = by - 40;
+                    const pad = 6;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.beginPath();
+                    ctx.roundRect(tx - pad, ty - pad, tw + pad * 2, 28 + pad * 2, 8);
+                    ctx.fill();
+                    ctx.fillStyle = '#22c55e';
+                    ctx.fillText(label, tx, ty + 22);
+                }
             }
         }
 
@@ -1081,6 +1102,7 @@
                 this.cachedDrawingData = data.drawing_data;
                 this.drawAll();
             }
+            this.latestBarre = data.barre || null;
             if (!this.testMode || !this.currentChord) return;
             if (data.status === 'success') {
                 const processStart = performance.now();
