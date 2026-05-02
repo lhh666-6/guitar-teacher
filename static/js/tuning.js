@@ -364,10 +364,11 @@ class YINTuner {
                                 tuner.pauseTimer = null;
                                 tuner.tuningSuccess = false;
                                 tuner.smoothedCents = 0;
+                                tuner.accurateCount = 0;
                                 if (autoMode && isTuning) {
                                     guideEl.innerHTML = '继续检测...';
                                 }
-                            }, 500);
+                            }, 2000);
                         } else {
                             tuner.stop();
                             isTuning = false;

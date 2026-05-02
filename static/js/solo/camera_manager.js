@@ -131,13 +131,9 @@ class CameraManager {
             this.videoElement.srcObject = null;
             this.videoElement.style.transform = '';
         }
-        if (this.hands) {
-            try { this.hands.close(); } catch (e) { /* 忽略 */ }
-            this.hands = null;
-        }
+        // 不销毁 Hands 实例 — MediaPipe 不支持反复 new/close/new，复用同一实例
         this._cropCanvas = null;
         this._cropCtx = null;
-        this._logMediaPipeReady = false;
         this._logCameraStartFail = false;
     }
 }
