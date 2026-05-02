@@ -124,6 +124,13 @@ def handle_thumbnail(data):
         return True
     with _frame_lock:
         if _frame_busy['value']:
+            if not hasattr(app, '_drop_count'):
+                app._drop_count = 0
+                app._drop_last_log = 0
+            app._drop_count += 1
+            if time.time() - app._drop_last_log > 5:
+                logger.warning("缩略图丢帧: %d 次 (后端繁忙)", app._drop_count)
+                app._drop_last_log = time.time()
             return True
         _frame_busy['value'] = True
 

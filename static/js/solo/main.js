@@ -22,7 +22,7 @@
     class GuitarTrainApp {
         constructor() {
             // 状态变量
-            this.thumbnailDynamicInterval = 150;
+            this.thumbnailDynamicInterval = 120;
             this.thumbnailRttHistory = [];
             this._serverTimingHistory = [];
             this._lastServerTiming = 0;
@@ -1332,10 +1332,10 @@
                     '📡fretboard_params接收:' + d.paramCalls + '次 | 间隔avg:' + avg(d.paramIntervals) + 'ms(~' + hz(d.paramIntervals) + 'fps)'
                 );
                 // 重置计数器，每轮显示增量
-                d.handCalls = 0; d.handIntervals = [];
-                d.drawCalls = 0; d.drawDurations = [];
+                d.handCalls = 0; d.handIntervals = []; d.handLastTs = 0;
+                d.drawCalls = 0; d.drawDurations = []; d.drawSkipped = 0;
                 d.thumbSends = 0; d.thumbEncodes = [];
-                d.paramCalls = 0; d.paramIntervals = [];
+                d.paramCalls = 0; d.paramIntervals = []; d.paramLastTs = 0;
             }, 3000);
         }
 
