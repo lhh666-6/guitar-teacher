@@ -15,7 +15,8 @@ class FingeringDetector {
         this.PINKY_PRESS_THRESHOLD_PX = 20;
         this.PINKY_STRING_DIST_THRESH = 25;
         this.BARRE_ANGLE_THRESH = 20;
-        this.BARRE_MIN_COVERED = 2;
+        this.BARRE_MIN_COVERED = 4;
+        this.BARRE_FRET_HISTORY_LEN = 5;
         this.FRET_HISTORY_LEN = 3;
         this.PINKY_FRET_HISTORY_LEN = 5;
         this.PINKY_ANGLE_THRESH = 120;
@@ -196,10 +197,16 @@ class FingeringDetector {
 
         if (longestEnd - longestStart + 1 < this.BARRE_MIN_COVERED) return null;
 
-        // 计算品柱
+        // 计算品柱 + 历史平滑
         const tipIdx = 8;
         const tipPt = landmarks[tipIdx];
-        const fret = this._getFretFromPoint(tipPt);
+        const rawFret = this._getFretFromPoint(tipPt);
+
+        this.barreHistory.push(rawFret);
+        if (this.barreHistory.length > this.BARRE_FRET_HISTORY_LEN) {
+            this.barreHistory.shift();
+        }
+        const fret = this._mostFrequent(this.barreHistory);
 
         // 应用弦号映射
         const startMapped = this.stringNoMap[longestStart] || longestStart;

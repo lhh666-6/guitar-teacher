@@ -592,6 +592,7 @@
             this.filters = [];
             this.latestLocalLandmarks = null;
             this.cachedDrawingData = null;
+            if (this.fingeringDetector) this.fingeringDetector.reset();
         }
 
         _onFretboardParams(params) {
@@ -652,6 +653,7 @@
                 this._visualStableReady = false;
                 this._visualErrorStart = null;
                 this.audioResultCache = null;
+                if (this.fingeringDetector) this.fingeringDetector.reset();
                 this.audioWaiting = false;
                 this._clearAllTimers();
                 if (this.audioVerifier && this.audioVerifier.isRunning()) {
@@ -1077,6 +1079,7 @@
             }
             if (data.drawing_data) {
                 this.cachedDrawingData = data.drawing_data;
+                this.drawAll();
             }
             if (!this.testMode || !this.currentChord) return;
             if (data.status === 'success') {
@@ -1404,16 +1407,8 @@
                         }, { once: true });
                     });
 
-                    // 启动 MediaPipe 手部跟踪循环
-                    if (this.cameraManager.useMediaPipe) {
-                        this.cameraManager.startHandLoop(this.elements.cameraFeed);
-                        this.cameraManager.startDrawLoop(() => this.drawAll());
-                    } else {
-                        if (!this.cameraManager._logMediaPipeFallback) {
-                            console.log('使用降级图像发送模式');
-                            this.cameraManager._logMediaPipeFallback = true;
-                        }
-                    }
+                    // 启动 MediaPipe 手部跟踪循环（绘制由数据驱动，不再开独立 rAF 循环）
+                    this.cameraManager.startHandLoop(this.elements.cameraFeed);
                 } catch (err) {
                     console.error('无法访问摄像头：' + err.message);
                     alert('无法访问摄像头：' + err.message);
@@ -1553,6 +1548,7 @@
                 const id = this.elements.chordSelect.value;
                 this.currentChord = this.chords.find(c => c.id === id);
                 if (this.currentChord) {
+                    if (this.fingeringDetector) this.fingeringDetector.reset();
                     if (this.elements.selChordName) this.elements.selChordName.textContent = this.currentChord.name;
                     if (this.elements.selChordDesc) this.elements.selChordDesc.textContent = this.currentChord.description;
                     if (this.elements.currentChordName) this.elements.currentChordName.textContent = this.currentChord.name;

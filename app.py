@@ -25,7 +25,6 @@ from core.tts_service import VolcTTS
 from api.auth import auth_bp
 from core.recommendation import generate_smart_recommendations
 from core.utils import base64_to_cv2, safe_socketio_emit, cache_result, check_model_files
-from core.video_processor import process_and_emit
 
 # ---------- 日志配置 ----------
 logging.basicConfig(
@@ -148,24 +147,6 @@ def handle_thumbnail(data):
 
     executor.submit(_process_thumb, image_base64, request.sid)
     return True
-
-@socketio.on('frame')
-def handle_frame(data, callback=None):
-    image_base64 = data.get('image')
-    if not image_base64:
-        if callback:
-            callback('failed')
-        return
-    with _frame_lock:
-        if _frame_busy['value']:
-            if callback:
-                callback('busy')
-            return
-        _frame_busy['value'] = True
-    sid = request.sid
-    executor.submit(process_and_emit, image_base64, sid, socketio, recognizer, _frame_lock, _frame_busy, config.DEBUG)
-    if callback:
-        callback('ok')
 
 # ---------- HTTP 接口 ----------
 @app.route('/api/solo/save_record', methods=['POST'])
@@ -295,7 +276,6 @@ def history_data():
 
 
 @app.route('/api/history/stats')
-@cache_result(ttl=5)
 @login_required
 def history_stats():
     total = db.session.query(func.count(TrainingRecord.id))\
@@ -338,8 +318,12 @@ def history_stats():
 @app.route('/api/history/clear', methods=['POST'])
 @login_required
 def clear_history():
+    global play_records
     TrainingRecord.query.filter_by(user_id=current_user.id).delete()
     db.session.commit()
+    # 同时清空内存中的练习记录（防止 solo 模式残留）
+    with records_lock:
+        play_records.pop(current_user.id, None)
     return jsonify({'status': 'ok', 'message': '记录已清空'})
 
 # ---------- 练习统计 API ----------

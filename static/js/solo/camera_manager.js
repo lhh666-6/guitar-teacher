@@ -10,11 +10,8 @@ class CameraManager {
 
         this.stream = null;
         this.hands = null;
-        this.useMediaPipe = true;
         this.handLoopId = null;
-        this.drawLoopId = null;
         this._handLoopRunning = false;
-        this._logMediaPipeFallback = false;
         this._logMediaPipeReady = false;
         this._logCameraStartFail = false;
         this._cropCanvas = null;
@@ -23,34 +20,28 @@ class CameraManager {
 
     async open() {
         if (typeof Hands === 'undefined') {
-            if (!this._logMediaPipeFallback) {
-                console.warn('⚠️ MediaPipe Hands 库未加载，将使用降级模式');
-                this._logMediaPipeFallback = true;
-            }
-            this.useMediaPipe = false;
-        } else {
-            if (!this.hands) {
-                this.hands = new Hands({
-                    locateFile: (file) =>
-                        `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
-                });
-                this.hands.setOptions({
-                    maxNumHands: 1,
-                    modelComplexity: 1,
-                    minDetectionConfidence: 0.15,
-                    minTrackingConfidence: 0.15
-                });
-                if (this.onResults) {
-                    this.hands.onResults(this.onResults);
-                }
-                if (!this._logMediaPipeReady) {
-                    console.log('✅ MediaPipe Hands 已成功加载');
-                    this._logMediaPipeReady = true;
-                }
-            }
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            this.useMediaPipe = true;
+            throw new Error('MediaPipe Hands 库未加载，无法启动摄像头');
         }
+        if (!this.hands) {
+            this.hands = new Hands({
+                locateFile: (file) =>
+                    `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
+            });
+            this.hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.15,
+                minTrackingConfidence: 0.15
+            });
+            if (this.onResults) {
+                this.hands.onResults(this.onResults);
+            }
+            if (!this._logMediaPipeReady) {
+                console.log('✅ MediaPipe Hands 已成功加载');
+                this._logMediaPipeReady = true;
+            }
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         this.stream = await navigator.mediaDevices.getUserMedia({
             video: { width: 1920, height: 1080 }
@@ -72,7 +63,7 @@ class CameraManager {
     }
 
     startHandLoop(videoElement) {
-        if (!this.useMediaPipe || !this.hands) return;
+        if (!this.hands) return;
         this._handLoopRunning = true;
 
         // 创建离屏裁剪画布（只保留左侧60%，右侧40%涂黑）
@@ -113,27 +104,11 @@ class CameraManager {
         this.handLoopId = requestAnimationFrame(handLoop);
     }
 
-    startDrawLoop(drawFn) {
-        if (!this.useMediaPipe) return;
-        this._handLoopRunning = true;
-        const animate = () => {
-            if (drawFn) drawFn();
-            if (this._handLoopRunning) {
-                this.drawLoopId = requestAnimationFrame(animate);
-            }
-        };
-        this.drawLoopId = requestAnimationFrame(animate);
-    }
-
     stopLoops() {
         this._handLoopRunning = false;
         if (this.handLoopId) {
             cancelAnimationFrame(this.handLoopId);
             this.handLoopId = null;
-        }
-        if (this.drawLoopId) {
-            cancelAnimationFrame(this.drawLoopId);
-            this.drawLoopId = null;
         }
     }
 
