@@ -66,13 +66,13 @@ class CameraManager {
         if (!this.hands) return;
         this._handLoopRunning = true;
 
-        // 创建离屏裁剪画布（只保留左侧60%，右侧40%涂黑）
+        // 创建离屏裁剪画布（左侧60%涂黑，只保留右侧40%用于手部识别）
         if (!this._cropCanvas) {
             this._cropCanvas = document.createElement('canvas');
             this._cropCtx = this._cropCanvas.getContext('2d');
         }
 
-        const cropRatio = 0.6; // 按弦手在画面右侧（原始帧），保留右侧60%
+        const cropRatio = 0.40; // 按弦手在画面右侧（原始帧），保留右侧40%
         const handLoop = async () => {
             if (!this._handLoopRunning || !this.hands || !this.stream) return;
             if (videoElement.readyState >= 2) {
@@ -85,7 +85,7 @@ class CameraManager {
                         this._cropCanvas.height = vh;
                     }
                     const ctx = this._cropCtx;
-                    // 全帧 → 把左侧40%涂黑 → MediaPipe 只看右侧60%（原始帧中按弦手区域）
+                    // 全帧 → 把左侧60%涂黑 → MediaPipe 只看右侧40%（原始帧中按弦手区域）
                     ctx.drawImage(videoElement, 0, 0, vw, vh);
                     ctx.fillStyle = '#000';
                     ctx.fillRect(0, 0, vw - cropW, vh);
