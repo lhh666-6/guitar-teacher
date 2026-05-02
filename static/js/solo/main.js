@@ -1025,27 +1025,28 @@
             this.testResults[this.currentTestIndex] = { correct: false, time: elapsed };
             this.stats.wrong++;
             this.updateStats('wrong');
-            this.recordedForCurrentChord = true;
             this.renderTestList();
             this._showResultFlash(false);
 
-            fetch('/api/save_record', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chord_name: this.currentChord.name,
-                    correct: false,
-                    time_spent: elapsed,
-                    mode: QUICK_MODE ? 'quick' : 'normal'
-                })
-            }).catch(err => console.error('保存记录失败:', err));
-
             if (QUICK_MODE) {
+                // 快速模式无重试，错误即最终结果
+                this.recordedForCurrentChord = true;
+                fetch('/api/save_record', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chord_name: this.currentChord.name,
+                        correct: false,
+                        time_spent: elapsed,
+                        mode: 'quick'
+                    })
+                }).catch(err => console.error('保存记录失败:', err));
                 this._quickAdvanceTimer = setTimeout(() => {
                     this._quickAdvanceTimer = null;
                     if (this.testMode) this.moveToNextTest();
                 }, 1200);
             }
+            // 普通模式：错误不入库，重置状态允许重试，最终结果由 recordCorrect/recordSkip/_recordUnstable 保存
         }
 
         _finalizeChord(result, options = {}) {

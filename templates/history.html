@@ -133,7 +133,11 @@
 
     function formatDate(iso) {
         if (!iso) return '--';
-        try { return new Date(iso).toLocaleString(); } catch(e) { return iso; }
+        try {
+            // 服务端存的是 UTC 时间 'YYYY-MM-DD HH:MM:SS'，补时区标识避免浏览器解析差异
+            var d = new Date(iso.replace(' ', 'T') + '+00:00');
+            return d.toLocaleString();
+        } catch(e) { return iso; }
     }
 
     // ========== 加载统计 ==========
