@@ -905,7 +905,7 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 }
 [data-theme="light"] .chord-info {
     background: rgba(0,0,0,0.04);
-    color: #6b5040;
+    color: #1a0f08;
 }
 [data-theme="light"] .test-list {
     background: rgba(0,0,0,0.05);
@@ -941,6 +941,7 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
     background-color: #e0d0b8;
     color: #1a0f08;
     border-color: rgba(180,140,90,0.3);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%231a0f08' viewBox='0 0 16 16'><path d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/></svg>");
 }
 [data-theme="light"] #chordSelect option {
     background-color: #f0e5d4;
@@ -1020,13 +1021,13 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
     color: #8b5820;
 }
 [data-theme="light"] .panel-label {
-    color: #8b5820;
+    color: #1a0f08;
 }
 [data-theme="light"] .test-section-title {
     color: #8b5820;
 }
 [data-theme="light"] .chord-title {
-    color: #8b5820;
+    color: #1a0f08;
     filter: none;
 }
 [data-theme="light"] .detail-title {
