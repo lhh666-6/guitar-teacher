@@ -119,6 +119,8 @@
             document.addEventListener('msfullscreenchange', this._onFullscreenChange);
             this._startRttLogging();
             window.addEventListener('beforeunload', () => this.cleanup());
+            this._onResize = () => this._alignOverlayToVideo();
+            window.addEventListener('resize', this._onResize);
 
             window.guitarApp = this;
         }
@@ -136,6 +138,7 @@
                     this.elements.videoContainer.classList.remove('video-expanded');
                 }
             }
+            setTimeout(() => this._alignOverlayToVideo(), 100);
         }
 
         cacheElements() {
@@ -178,19 +181,25 @@
                 this.overlayCanvas.style.width = '100%';
                 this.overlayCanvas.style.height = '100%';
                 this.overlayCanvas.style.pointerEvents = 'none';
-                const video = this.elements.cameraFeed;
-                const container = video.parentElement;
+                const container = this.elements.cameraFeed.parentElement;
                 container.style.position = 'relative';
-                const wrapper = document.createElement('div');
-                wrapper.style.position = 'relative';
-                wrapper.style.width = '100%';
-                wrapper.style.height = '100%';
-                wrapper.style.display = 'block';
-                container.insertBefore(wrapper, video);
-                wrapper.appendChild(video);
-                wrapper.appendChild(this.overlayCanvas);
+                container.appendChild(this.overlayCanvas);
+                this._alignOverlayToVideo();
             }
             this.overlayCtx = this.overlayCanvas.getContext('2d');
+        }
+
+        _alignOverlayToVideo() {
+            if (!this.overlayCanvas || !this.elements.cameraFeed) return;
+            const video = this.elements.cameraFeed;
+            const canvas = this.overlayCanvas;
+            const container = video.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            const videoRect = video.getBoundingClientRect();
+            canvas.style.top = (videoRect.top - containerRect.top) + 'px';
+            canvas.style.left = (videoRect.left - containerRect.left) + 'px';
+            canvas.style.width = videoRect.width + 'px';
+            canvas.style.height = videoRect.height + 'px';
         }
 
         createParticles() {
@@ -1473,6 +1482,7 @@
                             this.overlayCanvas.width = this.elements.cameraFeed.videoWidth;
                             this.overlayCanvas.height = this.elements.cameraFeed.videoHeight;
                             console.log('画布尺寸已设为:', this.overlayCanvas.width, this.overlayCanvas.height);
+                            this._alignOverlayToVideo();
                             resolve();
                         }, { once: true });
                     });
@@ -1697,6 +1707,10 @@
             document.removeEventListener('fullscreenchange', this._onFullscreenChange);
             document.removeEventListener('webkitfullscreenchange', this._onFullscreenChange);
             document.removeEventListener('msfullscreenchange', this._onFullscreenChange);
+            if (this._onResize) {
+                window.removeEventListener('resize', this._onResize);
+                this._onResize = null;
+            }
         }
     }
 
