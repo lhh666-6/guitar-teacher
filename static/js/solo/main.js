@@ -184,6 +184,7 @@
                 const wrapper = document.createElement('div');
                 wrapper.style.position = 'relative';
                 wrapper.style.width = '100%';
+                wrapper.style.height = '100%';
                 wrapper.style.display = 'block';
                 container.insertBefore(wrapper, video);
                 wrapper.appendChild(video);
@@ -593,6 +594,9 @@
             this.cameraManager.close();
             this.elements.toggleCamera.textContent = '开启';
             this.elements.cameraStatus.innerText = '📷 摄像头已关闭';
+            if (this.elements.videoContainer) {
+                this.elements.videoContainer.classList.remove('streaming');
+            }
             this._perfFrameTimes = [];
             this._lastThumbnailRtt = 0;
             if (this.elements.perfIndicator) this.elements.perfIndicator.style.display = 'none';
@@ -1456,6 +1460,9 @@
                     await this.cameraManager.open();
                     this.elements.toggleCamera.textContent = '关闭';
                     this.elements.cameraStatus.innerText = '📷 摄像头已开启';
+                    if (this.elements.videoContainer) {
+                        this.elements.videoContainer.classList.add('streaming');
+                    }
 
                     this.socketManager.connect();
                     this._startRttLogging();
