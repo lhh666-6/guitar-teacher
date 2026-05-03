@@ -957,6 +957,37 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 [data-theme="light"] .chord-detail-footer {
     background: rgba(240,225,210,0.6);
     border-color: rgba(180,140,90,0.3);
+    color: #2a1a10;
+}
+[data-theme="light"] .detail-content {
+    color: #3d2e1e;
+}
+[data-theme="light"] .chord-modal-close {
+    color: #2a1a10;
+}
+[data-theme="light"] .chord-modal-search::placeholder {
+    color: #8a7060;
+}
+[data-theme="light"] .chord-recent-tag {
+    color: #2a5090;
+    background: rgba(74,144,226,0.12);
+    border-color: rgba(74,144,226,0.2);
+}
+[data-theme="light"] .chord-quick-add-btn {
+    color: #2d6a2d;
+    background: rgba(111,191,76,0.12);
+    border-color: rgba(111,191,76,0.25);
+}
+[data-theme="light"] .popup-chord-stars {
+    color: #b8860b;
+}
+[data-theme="light"] .difficulty-badge {
+    color: #2a1a10;
+    background: rgba(140,110,70,0.12);
+    border-color: rgba(140,110,70,0.2);
+}
+[data-theme="light"] .chord-batch-add-btn:disabled {
+    color: #8a7a6a;
 }
 [data-theme="light"] .chord-modal-card {
     background: linear-gradient(145deg, #f0e5d4, #e8d8c0);
