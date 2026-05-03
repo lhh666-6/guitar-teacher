@@ -425,6 +425,7 @@ class YINTuner {
             tunedStrings = new Set();
             updateTunedButtons();
             updateProgress();
+            tuner.tuningSuccess = false;
             tuner.isPaused = false;
             if (tuner.pauseTimer) { clearTimeout(tuner.pauseTimer); tuner.pauseTimer = null; }
         }
