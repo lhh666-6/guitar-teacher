@@ -173,9 +173,8 @@ cython_debug/
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+#  and can be added to the global gitignore or merged into this file.
+.idea/
 
 # Project documentation (local only, not shipped)
 CLAUDE.md
@@ -195,6 +194,11 @@ tts_cache/
 # Claude Code local config
 .claude/
 
+# AI-generated planning / scratch files (not shipped)
+AI_PLAN*.md
+TODO_AI*.md
+*.ai.md
+
 # Abstra
 # Abstra is an AI-powered process automation framework.
 # Ignore directories containing user credentials, local state, and settings.
@@ -202,11 +206,10 @@ tts_cache/
 .abstra/
 
 # Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#  you could uncomment the following to ignore the entire vscode folder
-# .vscode/
+#  and can be added to the global gitignore or merged into this file.
+.vscode/
 
 # Ruff stuff:
 .ruff_cache/
@@ -218,8 +221,39 @@ tts_cache/
 #  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
 #  refer to https://docs.cursor.com/context/ignore-files
+.cursor/
 .cursorignore
 .cursorindexingignore
+
+# Windsurf (AI IDE)
+.windsurf/
+
+# GitHub Copilot
+.copilot/
+.copilot-instructions.md
+.github/copilot-instructions.md
+
+# Cline (VS Code AI agent)
+.cline/
+
+# Continue (VS Code AI plugin)
+.continue/
+
+# Aider (AI pair programming)
+.aider*
+.aider.conf.yml
+.aiderignore
+
+# GPT-Pilot
+.pilot/
+
+# OpenHands / OpenDevin
+.openhands/
+.opendevin/
+
+# Claude API / SDK local env
+.anthropic/
+.anthropic.env
 
 # Marimo
 marimo/_static/
