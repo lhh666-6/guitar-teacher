@@ -121,7 +121,7 @@
 
             window.guitarApp = this;
             // 启动自检：确认关键 DOM 和状态
-            console.log('🔧 [启动诊断] overlayCanvas=' + !!this.overlayCanvas +
+            console.log('[DIAG] overlayCanvas=' + !!this.overlayCanvas +
                 ' overlayCtx=' + !!this.overlayCtx +
                 ' cameraFeed=' + !!this.elements.cameraFeed +
                 ' socket=' + !!this.socketManager);
@@ -621,7 +621,7 @@
 
         _onFretboardParams(params) {
             if (!this._logFretboardReady) {
-                console.log('✅ 指板参数已就绪，弦线/品丝绘制可用');
+                console.log('[ OK ] 指板参数已就绪，弦线/品丝绘制可用');
                 this._logFretboardReady = true;
                 this._logFretboardMissing = false;
             }
@@ -927,7 +927,7 @@
 
                 if (this.cachedDrawingData) {
                     if (!this._drawStartedLogged) {
-                        console.log('🖌️ 开始绘制指板叠加层（弦线/品丝）');
+                        console.log('[DRAW] 开始绘制指板叠加层（弦线/品丝）');
                         this._drawStartedLogged = true;
                     }
                     drawOverlay(ctx, w, h, this.cachedDrawingData);
@@ -1054,9 +1054,9 @@
                     if (!QUICK_MODE) {
                         this._quickAdvanceTimer = setTimeout(() => {
                             this._quickAdvanceTimer = null;
-                            console.log('⏰ 不稳定时器触发, testMode=' + this.testMode);
+                            console.log('[TIME] 不稳定时器触发, testMode=' + this.testMode);
                             if (this.testMode) this.moveToNextTest();
-                            else console.log('❌ testMode=false, 未跳过');
+                            else console.log('[FAIL] testMode=false, 未跳过');
                         }, 1500);
                     }
                     break;
@@ -1161,7 +1161,7 @@
         };
         onHandResults(results) {
             if (!this._handModelTriggered) {
-                console.log('✅ MediaPipe 手部模型首次成功调用，返回手部数据');
+                console.log('[ OK ] MediaPipe 手部模型首次成功调用，返回手部数据');
                 this._handModelTriggered = true;
             }
 
@@ -1282,7 +1282,7 @@
             } else {
                 if (this.testMode) {
                     if (!this._logFretboardMissing) {
-                        console.warn('⚠️ 指板参数未就绪，无法进行本地按弦检测');
+                        console.warn('[WARN] 指板参数未就绪，无法进行本地按弦检测');
                         this._logFretboardMissing = true;
                     }
                 }
@@ -1318,9 +1318,9 @@
             this._rttLogTimer = setInterval(() => {
                 if (this.thumbnailRttHistory && this.thumbnailRttHistory.length > 0) {
                     const avg = this.thumbnailRttHistory.reduce((a, b) => a + b, 0) / this.thumbnailRttHistory.length;
-                    console.log(`📊 [RTT] 最近 ${this.thumbnailRttHistory.length} 次缩略图平均延迟: ${avg.toFixed(1)} ms`);
+                    console.log(`[STAT] [RTT] 最近 ${this.thumbnailRttHistory.length} 次缩略图平均延迟: ${avg.toFixed(1)} ms`);
                 } else {
-                    console.log('📊 [RTT] 暂无缩略图数据');
+                    console.log('[STAT] [RTT] 暂无缩略图数据');
                 }
             }, 3000);
         }

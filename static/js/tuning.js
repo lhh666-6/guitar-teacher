@@ -101,7 +101,7 @@ class YINTuner {
         const maxLag = Math.min(Math.floor(buffer.length / 2), Math.floor(sampleRate / minFreq));
         const minLag = Math.floor(sampleRate / maxFreq);
 
-        const W = maxLag; // 窗宽 = lag 上限，保证全部 τ 有足量样本
+        const W = maxLag;
         const diff = new Float32Array(maxLag);
 
         // Step 1: 差值函数 d(τ) = Σ(x_j - x_{j+τ})²
@@ -123,7 +123,7 @@ class YINTuner {
             cmndf[tau] = tau > 0 ? diff[tau] * tau / runningSum : 1;
         }
 
-        // Step 3: 找第一个低于阈值的 τ（向下搜索局部最小值）
+        // Step 3: 找第一个低于阈值的 τ
         let tauEstimate = -1;
         for (let tau = minLag; tau < maxLag - 1; tau++) {
             if (cmndf[tau] < threshold) {
@@ -192,7 +192,6 @@ class YINTuner {
         if (rms > this.rmsThreshold * 2) {
             this.rmsThreshold = Math.max(this.rmsFloor, rms * 0.6);
         }
-        // 静默时缓慢衰减（每帧 ~0.07%，约 2 秒衰减一半 @60fps）
         if (rms < this.rmsThreshold * 0.3) {
             this.rmsThreshold = Math.max(this.rmsFloor, this.rmsThreshold * 0.988);
         }
@@ -239,6 +238,45 @@ class YINTuner {
     const tuner = new YINTuner();
 
     let autoMode = false;
+    let tunedStrings = new Set();
+
+    const STRING_NAMES = ['', 'E', 'B', 'G', 'D', 'A', 'E'];
+    const AUTO_MATCH_TOLERANCE = 100; // ±100 音分容差
+
+    // 音分差值计算
+    function centsDiff(freq, target) {
+        return 1200 * Math.log2(freq / target);
+    }
+
+    // 更新已调弦按钮样式
+    function updateTunedButtons() {
+        document.querySelectorAll('.string-btn').forEach(btn => {
+            const s = parseInt(btn.dataset.string);
+            const baseLabel = `${s}弦 (${STRING_NAMES[s]})`;
+            if (tunedStrings.has(s)) {
+                btn.classList.add('tuned');
+                btn.textContent = '✓ ' + baseLabel;
+            } else {
+                btn.classList.remove('tuned');
+                btn.textContent = baseLabel;
+            }
+        });
+    }
+
+    // 更新进度条
+    function updateProgress() {
+        const progressDiv = document.getElementById('tuning-progress');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        const count = tunedStrings.size;
+        if (autoMode && isTuning) {
+            progressDiv.style.display = 'flex';
+            progressFill.style.width = (count / 6 * 100) + '%';
+            progressText.textContent = count + '/6';
+        } else {
+            progressDiv.style.display = 'none';
+        }
+    }
 
     const autoModeBtn = document.getElementById('auto-mode-btn');
     const autoStatusSpan = document.getElementById('auto-status');
@@ -299,9 +337,68 @@ class YINTuner {
         });
     }
 
-    // ========== 弦选择 ==========
+    // 切换到指定弦（更新 UI + tuner 状态）
+    function switchToString(stringNumber) {
+        currentString = stringNumber;
+        tuner.targetString = stringNumber;
+        tuner.smoothedCents = 0;
+        tuner.accurateCount = 0;
+        tuner.tuningSuccess = false;
+        tuner.isPaused = false;
+        if (tuner.pauseTimer) { clearTimeout(tuner.pauseTimer); tuner.pauseTimer = null; }
+
+        document.querySelectorAll('.string-btn').forEach(b => {
+            b.classList.remove('active');
+            if (parseInt(b.dataset.string) === stringNumber) b.classList.add('active');
+        });
+        document.getElementById('current-string').textContent =
+            `${stringNumber}弦 (${STRING_NAMES[stringNumber]})`;
+        resetTuningDisplay();
+    }
+
+    // 自动模式：从检测频率匹配最近的未调弦
+    function findClosestUntunedString(freq) {
+        let bestMatch = null;
+        let bestCents = Infinity;
+        for (let s in tuner.stringFreqs) {
+            const si = parseInt(s);
+            if (tunedStrings.has(si)) continue;
+            const diff = Math.abs(centsDiff(freq, tuner.stringFreqs[s]));
+            if (diff < bestCents) { bestCents = diff; bestMatch = si; }
+        }
+        return { stringNumber: bestMatch, centsOff: bestCents };
+    }
+
+    // 找下一根未调的弦（6→1 方向）
+    function findNextUntunedString() {
+        for (let s = 6; s >= 1; s--) {
+            if (!tunedStrings.has(s)) return s;
+        }
+        return null;
+    }
+
+    // ========== 弦选择按钮 ==========
     document.querySelectorAll('.string-btn').forEach(btn => {
         btn.addEventListener('click', function () {
+            const clickedString = parseInt(this.dataset.string);
+
+            if (autoMode) {
+                // 自动模式：已调弦可点击重调
+                if (tunedStrings.has(clickedString)) {
+                    tunedStrings.delete(clickedString);
+                    updateTunedButtons();
+                    updateProgress();
+                }
+                if (!isTuning) {
+                    switchToString(clickedString);
+                    return;
+                }
+                // 正在调音中：直接切换目标
+                switchToString(clickedString);
+                return;
+            }
+
+            // 手动模式：先停再切
             if (isTuning) {
                 tuner.stop();
                 isTuning = false;
@@ -309,24 +406,25 @@ class YINTuner {
                 startBtn.classList.remove('tuning');
                 vibrateString.classList.remove('vibrating');
             }
-            document.querySelectorAll('.string-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentString = parseInt(this.dataset.string);
-            document.getElementById('current-string').textContent =
-                `${currentString}弦 (${['E', 'B', 'G', 'D', 'A', 'E'][currentString - 1]})`;
-            resetTuningDisplay();
+            switchToString(clickedString);
         });
     });
 
-    // ========== 自动模式 ==========
+    // ========== 自动模式开关 ==========
     autoModeBtn.addEventListener('click', function () {
         autoMode = !autoMode;
         if (autoMode) {
             autoModeBtn.classList.add('active');
             autoStatusSpan.textContent = '开启';
+            tunedStrings = new Set();
+            updateTunedButtons();
+            updateProgress();
         } else {
             autoModeBtn.classList.remove('active');
             autoStatusSpan.textContent = '关闭';
+            tunedStrings = new Set();
+            updateTunedButtons();
+            updateProgress();
             tuner.isPaused = false;
             if (tuner.pauseTimer) { clearTimeout(tuner.pauseTimer); tuner.pauseTimer = null; }
         }
@@ -349,6 +447,7 @@ class YINTuner {
                     drawTrendChart();
 
                     let guideHTML = '';
+                    const guideColor = '';
 
                     if (fire) {
                         guideHTML = '<i class="fas fa-circle-check" aria-hidden="true"></i> 音调准确，恭喜！';
@@ -356,8 +455,35 @@ class YINTuner {
                         tuner.accurateCount = 0;
 
                         if (autoMode) {
+                            // 标记当前弦已调好
+                            tunedStrings.add(currentString);
+                            updateTunedButtons();
+                            updateProgress();
+
+                            // 找下一根未调弦
+                            const nextString = findNextUntunedString();
+
+                            if (!nextString) {
+                                // 全部完成！
+                                guideHTML = '<i class="fas fa-trophy" aria-hidden="true"></i> 全部6根琴弦调音完成！';
+                                guideEl.innerHTML = guideHTML;
+                                createFirework();
+                                setTimeout(createFirework, 300);
+                                setTimeout(createFirework, 600);
+                                updateProgress();
+                                tuner.stop();
+                                isTuning = false;
+                                startBtn.textContent = '重新调音';
+                                startBtn.classList.remove('tuning');
+                                vibrateString.classList.remove('vibrating');
+                                return;
+                            }
+
+                            // 暂停片刻，自动切换到下一根
+                            const nextName = STRING_NAMES[nextString];
+                            guideHTML += ` → 下一根: ${nextString}弦 (${nextName})`;
+
                             tuner.isPaused = true;
-                            guideHTML += ' (暂停中...)';
                             if (tuner.pauseTimer) clearTimeout(tuner.pauseTimer);
                             tuner.pauseTimer = setTimeout(() => {
                                 tuner.isPaused = false;
@@ -365,11 +491,14 @@ class YINTuner {
                                 tuner.tuningSuccess = false;
                                 tuner.smoothedCents = 0;
                                 tuner.accurateCount = 0;
-                                if (autoMode && isTuning) {
-                                    guideEl.innerHTML = '继续检测...';
+                                if (autoMode && isTuning && nextString) {
+                                    switchToString(nextString);
+                                    guideEl.innerHTML =
+                                        `<i class="fas fa-arrow-right" aria-hidden="true"></i> 切换到 ${nextString}弦 (${nextName})，请拨弦...`;
                                 }
-                            }, 2000);
+                            }, 1500);
                         } else {
+                            // 手动模式：调好即停
                             tuner.stop();
                             isTuning = false;
                             startBtn.textContent = '开始调这根弦';
@@ -379,30 +508,23 @@ class YINTuner {
                     } else if (Math.abs(cents) <= 8) {
                         guideHTML = '<i class="fas fa-circle-check" aria-hidden="true"></i> 音调准确';
                     } else if (cents > 8) {
-                        guideHTML = `<i class="fas fa-arrow-rotate-left" aria-hidden="true"></i> 音调偏高，逆时针调${cents.toFixed(1)}音分`;
+                        guideHTML = `<i class="fas fa-arrow-rotate-left" aria-hidden="true"></i> 音调偏高，逆时针调 ${cents.toFixed(1)} 音分`;
                     } else if (cents < -8) {
-                        guideHTML = `<i class="fas fa-arrow-rotate-right" aria-hidden="true"></i> 音调偏低，顺时针调${Math.abs(cents).toFixed(1)}音分`;
+                        guideHTML = `<i class="fas fa-arrow-rotate-right" aria-hidden="true"></i> 音调偏低，顺时针调 ${Math.abs(cents).toFixed(1)} 音分`;
                     }
 
                     guideEl.innerHTML = guideHTML;
+                    guideEl.style.color = guideColor || '';
 
                     if (isTuning) vibrateString.classList.add('vibrating');
 
-                    // 自动模式：匹配最近弦
-                    if (autoMode && freq && !tuner.tuningSuccess) {
-                        let minDiff = Infinity;
-                        let matchedString = currentString;
-                        for (let s in tuner.stringFreqs) {
-                            const diff = Math.abs(freq - tuner.stringFreqs[s]);
-                            if (diff < minDiff) { minDiff = diff; matchedString = parseInt(s); }
-                        }
-                        if (matchedString !== currentString && minDiff < 10 && !tuner.isPaused) {
-                            currentString = matchedString;
-                            tuner.targetString = matchedString;
-                            document.querySelectorAll('.string-btn').forEach(b => b.classList.remove('active'));
-                            document.querySelector(`.string-btn[data-string="${currentString}"]`).classList.add('active');
-                            document.getElementById('current-string').textContent =
-                                `${currentString}弦 (${['E', 'B', 'G', 'D', 'A', 'E'][currentString - 1]})`;
+                    // 自动模式：智能匹配琴弦（跳过已调的）
+                    if (autoMode && freq && !tuner.tuningSuccess && !tuner.isPaused) {
+                        const { stringNumber: matched, centsOff } = findClosestUntunedString(freq);
+                        if (matched && matched !== currentString && centsOff < AUTO_MATCH_TOLERANCE) {
+                            switchToString(matched);
+                            guideEl.innerHTML =
+                                `<i class="fas fa-magnifying-glass" aria-hidden="true"></i> 检测到 ${matched}弦 (${STRING_NAMES[matched]})，已自动切换`;
                         }
                     }
                 } else if (status === 'invalid') {
@@ -417,6 +539,11 @@ class YINTuner {
             isTuning = true;
             startBtn.textContent = '停止调音';
             startBtn.classList.add('tuning');
+            if (autoMode) {
+                tunedStrings = new Set();
+                updateTunedButtons();
+                updateProgress();
+            }
         } else {
             tuner.stop();
             isTuning = false;
@@ -424,6 +551,11 @@ class YINTuner {
             startBtn.classList.remove('tuning');
             vibrateString.classList.remove('vibrating');
             resetTuningDisplay();
+            if (autoMode) {
+                tunedStrings = new Set();
+                updateTunedButtons();
+                updateProgress();
+            }
         }
     });
 

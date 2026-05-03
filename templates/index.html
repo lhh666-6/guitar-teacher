@@ -47,21 +47,21 @@
                         <i class="fas fa-microphone-alt"></i>
                     </div>
                     <h3 class="mode-name">调音器</h3>
-                    <p class="mode-desc">逐弦调音，实时音高偏差显示，支持自动弦识别</p>
+                    <p class="mode-desc">YIN 音高检测引擎，±2 音分精度，智能逐弦引导</p>
                 </div>
                 <div class="mode-card" onclick="window.location.href='/solo'" role="button" tabindex="0">
                     <div class="mode-icon">
                         <i class="fas fa-guitar"></i>
                     </div>
                     <h3 class="mode-name">和弦测试</h3>
-                    <p class="mode-desc">摄像头检测指法，实时判断对错，支持 70+ 和弦</p>
+                    <p class="mode-desc">视听融合识别：指法视觉检测 + 音高听觉验证，覆盖 70+ 标准和弦</p>
                 </div>
                 <div class="mode-card" onclick="window.location.href='/teach'" role="button" tabindex="0">
                     <div class="mode-icon">
                         <i class="fas fa-chalkboard-teacher"></i>
                     </div>
                     <h3 class="mode-name">教学驾驶舱</h3>
-                    <p class="mode-desc">查看练习记录、掌握度雷达图、进步趋势</p>
+                    <p class="mode-desc">练习数据全景视图，掌握度雷达分析与进步曲线追踪</p>
                 </div>
             </div>
         </div>
@@ -144,7 +144,7 @@
             const hintBtn = document.getElementById('intro-hint');
 
             if (!overlay || !guitarImg || !mainContent) {
-                console.warn('❌ 开场元素缺失，直接显示主内容');
+                console.warn('[WARN] 开场元素缺失，直接显示主内容');
                 if (overlay) overlay.style.display = 'none';
                 if (mainContent) {
                     mainContent.style.visibility = 'visible';
@@ -154,7 +154,7 @@
             }
 
             if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                console.log('🎯 检测到减少动效偏好，跳过开场动画');
+                console.log('[A11Y] 检测到减少动效偏好，跳过开场动画');
                 overlay.style.display = 'none';
                 mainContent.style.visibility = 'visible';
                 mainContent.style.opacity = '1';
@@ -162,18 +162,18 @@
             }
 
             if (typeof gsap === 'undefined') {
-                console.warn('⚠️ GSAP 未加载（CDN不可用），跳过开场动画');
+                console.warn('[WARN] GSAP 未加载（CDN不可用），跳过开场动画');
                 overlay.style.display = 'none';
                 mainContent.style.visibility = 'visible';
                 mainContent.style.opacity = '1';
                 return;
             }
 
-            guitarImg.onload = () => console.log('✅ 图片加载成功:', guitarImg.src);
-            guitarImg.onerror = () => console.error('❌ 图片加载失败:', guitarImg.src);
+            guitarImg.onload = () => console.log('[ OK ] 图片加载成功:', guitarImg.src);
+            guitarImg.onerror = () => console.error('[FAIL] 图片加载失败:', guitarImg.src);
 
             if (redirectAfter) {
-                console.log('🚀 检测到重定向参数，自动跳转');
+                console.log('[AUTO] 检测到重定向参数，自动跳转');
                 overlay.style.pointerEvents = 'auto';
                 gsap.set(guitarImg, {
                     opacity: 0,
@@ -226,7 +226,7 @@
             }
 
             function skipIntro() {
-                console.log('⏩ 开场动画已播放过，跳过');
+                console.log('[SKIP] 开场动画已播放过，跳过');
                 showMainContent();
             }
 
@@ -244,7 +244,7 @@
                 return;
             }
 
-            console.log('🎬 首次进入，展示开场动画，等待点击');
+            console.log('[INTRO] 首次进入，展示开场动画，等待点击');
             overlay.style.display = 'flex';
             overlay.style.opacity = '1';
             overlay.style.pointerEvents = 'auto';
@@ -292,7 +292,7 @@
             const enterMain = () => {
                 if (isTransitioning) return;
                 isTransitioning = true;
-                console.log('✨ 用户点击进入，记录标记并淡出');
+                console.log('[DONE] 用户点击进入，记录标记并淡出');
                 sessionStorage.setItem('introPlayed', 'true');
                 idleTl.kill();
                 gsap.killTweensOf(guitarImg);
@@ -318,7 +318,7 @@
                             { y: 30, opacity: 0 },
                             { y: 0, opacity: 1, duration: 1.0, ease: "back.out(0.5)", clearProps: "y" }
                         );
-                        console.log('🏠 主界面已显示');
+                        console.log('[READY] 主界面已显示');
                     }
                 });
             };

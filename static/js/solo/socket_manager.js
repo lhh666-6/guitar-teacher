@@ -32,7 +32,7 @@ class SocketManager {
 
         this.socket.on('connect', () => {
             if (!this._logConnected) {
-                console.log('✅ WebSocket 连接成功，ID:', this.socket.id);
+                console.log('[ OK ] WebSocket 连接成功，ID:', this.socket.id);
                 this._logConnected = true;
                 this._logDisconnected = false;
                 this._logError = false;
@@ -42,7 +42,7 @@ class SocketManager {
 
         this.socket.on('disconnect', (reason) => {
             if (!this._logDisconnected) {
-                console.log('❌ WebSocket 断开，原因:', reason);
+                console.log('[FAIL] WebSocket 断开，原因:', reason);
                 this._logDisconnected = true;
                 this._logConnected = false;
             }

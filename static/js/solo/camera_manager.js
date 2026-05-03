@@ -37,7 +37,7 @@ class CameraManager {
                 this.hands.onResults(this.onResults);
             }
             if (!this._logMediaPipeReady) {
-                console.log('✅ MediaPipe Hands 已成功加载');
+                console.log('[ OK ] MediaPipe Hands 已成功加载');
                 this._logMediaPipeReady = true;
             }
         }
@@ -92,7 +92,7 @@ class CameraManager {
                     await this.hands.send({ image: this._cropCanvas });
                 } catch (e) {
                     if (!this._logCameraStartFail) {
-                        console.error('❌ MediaPipe hands.send() 失败:', e);
+                        console.error('[FAIL] MediaPipe hands.send() 失败:', e);
                         this._logCameraStartFail = true;
                     }
                 }

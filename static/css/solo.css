@@ -434,7 +434,7 @@ body {
 
 /* ---- 测试列表 ---- */
 .test-section-title {
-    color: #ffd966; font-size: 1rem; font-weight: 700;
+    color: #ecd9b4; font-size: 1rem; font-weight: 700;
     letter-spacing: 0.05em; margin-bottom: 8px;
     display: flex; align-items: center; gap: 8px;
 }
@@ -451,7 +451,7 @@ body {
     font-size: 0.92rem; line-height: 1.45; gap: 10px;
 }
 .test-item-name, .test-list-item-name {
-    font-weight: 700; color: #ffd966; letter-spacing: 0.03em;
+    font-weight: 700; color: #ecd9b4; letter-spacing: 0.03em;
 }
 .test-item-difficulty {
     color: #f4d9b6; font-size: 0.82rem; font-weight: 600;
@@ -551,7 +551,7 @@ body {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 10px; flex-shrink: 0;
 }
-.chord-modal-header h3 { margin: 0; color: #ffd966; font-size: 1.05rem; }
+.chord-modal-header h3 { margin: 0; color: #ecd9b4; font-size: 1.05rem; }
 .chord-modal-close {
     background: none; border: none; font-size: clamp(20px, 3vw, 28px);
     color: #ecd9b4; cursor: pointer; padding: 0 4px;
@@ -568,7 +568,7 @@ body {
     border: 1px solid rgba(255,215,140,0.15); cursor: pointer; transition: all 0.2s;
 }
 .chord-cat-tab.active {
-    background: rgba(255,215,140,0.2); color: #ffd966; border-color: #b98c5f;
+    background: rgba(255,215,140,0.2); color: #ecd9b4; border-color: #b98c5f;
 }
 .chord-recent-row { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; flex-shrink: 0; }
 .chord-recent-tag {
@@ -589,11 +589,11 @@ body {
     width: 18px; height: 18px; border-radius: 4px;
     border: 2px solid rgba(255,215,140,0.3); flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: clamp(9px, 1.3vw, 12px); color: #ffd966; transition: all 0.2s;
+    font-size: clamp(9px, 1.3vw, 12px); color: #ecd9b4; transition: all 0.2s;
 }
-.popup-chord-check.checked { background: rgba(255,215,140,0.3); border-color: #ffd966; }
+.popup-chord-check.checked { background: rgba(255,215,140,0.3); border-color: #ecd9b4; }
 .popup-chord-info { flex: 1; min-width: 0; }
-.popup-chord-name { font-weight: 700; color: #ffd966; font-size: 0.95rem; }
+.popup-chord-name { font-weight: 700; color: #ecd9b4; font-size: 0.95rem; }
 .popup-chord-desc { font-size: 0.7rem; color: #c0a88b; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .popup-chord-stars { color: #e6a817; letter-spacing: 1px; font-size: 0.75rem; flex-shrink: 0; }
 
@@ -610,7 +610,7 @@ body {
 .chord-quick-add-btn:hover { background: rgba(111,191,76,0.3); }
 .chord-batch-add-btn {
     padding: 7px 14px; border-radius: 20px; font-size: 0.78rem;
-    background: rgba(255,215,140,0.15); color: #ffd966;
+    background: rgba(255,215,140,0.15); color: #ecd9b4;
     border: 1px solid #b98c5f; cursor: pointer; transition: all 0.2s;
     margin-left: auto; white-space: nowrap;
 }
@@ -636,7 +636,7 @@ body {
 }
 .result-modal.show .result-modal-card { transform: scale(1); }
 .result-modal-title {
-    color: #ffd966; font-size: 1.22rem; font-weight: 800;
+    color: #ecd9b4; font-size: 1.22rem; font-weight: 800;
     letter-spacing: 0.04em; margin-bottom: 12px;
 }
 .result-modal-body {
@@ -885,7 +885,7 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 }
 [data-theme="light"] .test-item-name,
 [data-theme="light"] .test-list-item-name {
-    color: #8b5820;
+    color: #2a1a10;
 }
 [data-theme="light"] .test-progress-area {
     background: rgba(0,0,0,0.05);
@@ -985,13 +985,13 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
     background: rgba(240,225,210,0.5);
 }
 [data-theme="light"] .section-title {
-    color: #8b5820;
+    color: #2a1a10;
 }
 [data-theme="light"] .panel-label {
     color: #1a0f08;
 }
 [data-theme="light"] .test-section-title {
-    color: #8b5820;
+    color: #2a1a10;
 }
 [data-theme="light"] .chord-title {
     color: #1a0f08;
@@ -1001,7 +1001,7 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
     color: #8b5820;
 }
 [data-theme="light"] .result-modal-title {
-    color: #8b5820;
+    color: #2a1a10;
 }
 [data-theme="light"] .fret-label {
     color: #5a4030;
@@ -1026,7 +1026,7 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 }
 [data-theme="light"] .chord-cat-tab.active {
     background: rgba(140,110,70,0.18);
-    color: #8b5820;
+    color: #2a1a10;
 }
 [data-theme="light"] .chord-recent-label,
 [data-theme="light"] .chord-selected-count {
@@ -1034,6 +1034,22 @@ body.video-overlay-active .train-layout.test-mode .test-list { max-height: calc(
 }
 [data-theme="light"] .popup-chord-name {
     color: #1a0f08;
+}
+[data-theme="light"] .chord-modal-header h3 {
+    color: #2a1a10;
+}
+[data-theme="light"] .popup-chord-check {
+    color: #2a1a10;
+    border-color: rgba(140,110,70,0.3);
+}
+[data-theme="light"] .popup-chord-check.checked {
+    background: rgba(140,110,70,0.18);
+    border-color: #6b5040;
+}
+[data-theme="light"] .chord-batch-add-btn {
+    color: #2a1a10;
+    background: rgba(140,110,70,0.1);
+    border-color: #a08060;
 }
 [data-theme="light"] .popup-chord-desc {
     color: #4a3020;

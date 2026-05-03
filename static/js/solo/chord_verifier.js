@@ -47,12 +47,12 @@ class ChordVerifier {
     _log(msg, isError = false) {
         if (!this._debug) return;
         const prefix = '[ChordVerifier]';
-        if (isError) console.error(`${prefix} ❌ ${msg}`);
+        if (isError) console.error(`${prefix} [FAIL] ${msg}`);
         else console.log(`${prefix} ${msg}`);
     }
 
     _warn(msg) {
-        if (this._debug) console.warn(`[ChordVerifier] ⚠️ ${msg}`);
+        if (this._debug) console.warn(`[ChordVerifier] [WARN] ${msg}`);
     }
 
     // ================== 吉他轻度优化 ==================
