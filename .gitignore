@@ -225,3 +225,6 @@ tts_cache/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Local submission folder
+提交文件夹/
