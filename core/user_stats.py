@@ -46,7 +46,7 @@ def get_chord_mastery(user_id):
         'values': [c['value'] for c in chords]
     }
 
-def get_progress_trend(user_id, days=30):
+def get_progress_trend(user_id, days=60):
     """返回当前用户最近 days 天的正确率趋势（按天聚合）"""
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=days)
@@ -62,7 +62,17 @@ def get_progress_trend(user_id, days=30):
 
     dates = [row.day for row in progress_query]
     rates = [int(row.acc * 100) for row in progress_query]
-    return {'dates': dates, 'rates': rates}
+
+    # 简单移动平均平滑（窗口5天），减少日间波折
+    window = 5
+    smoothed = []
+    for i in range(len(rates)):
+        half = window // 2
+        start = max(0, i - half)
+        end = min(len(rates), i + half + 1)
+        avg = sum(rates[start:end]) / (end - start)
+        smoothed.append(round(avg))
+    return {'dates': dates, 'rates': smoothed}
 
 def get_mode_ratio(user_id):
     """返回 quick vs normal 模式使用次数和比例"""

@@ -312,13 +312,21 @@ def history_stats():
         .order_by(TrainingRecord.created_at.desc()).first()
     last_time = last.created_at.isoformat() if last else None
 
+    unstable_count = db.session.query(func.count(TrainingRecord.id))\
+        .filter(TrainingRecord.user_id == current_user.id, TrainingRecord.is_unstable == True).scalar()
+    unstable_ratio = round((unstable_count / total * 100) if total else 0.0, 1)
+    latest_mode = last.mode if last else 'normal'
+
     return jsonify({
         'total_count': total,
         'accuracy': accuracy,
         'last_practice': last_time,
         'weak_chords': weak_chords,
         'chords': chords,
-        'accuracies': accuracies
+        'accuracies': accuracies,
+        'unstable_count': unstable_count,
+        'unstable_ratio': unstable_ratio,
+        'latest_mode': latest_mode
     })
 
 
