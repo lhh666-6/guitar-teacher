@@ -317,6 +317,13 @@ class GuitarFingeringRecognizer:
             bridge_top = bridge_center + perp_unit * (bridge_h / 2)
             bridge_bottom = bridge_center - perp_unit * (bridge_h / 2)
 
+            # 整体琴弦向上平移 nut_h 的 10%
+            shift = perp_unit * (nut_h * 0.10)
+            nut_top = nut_top + shift
+            nut_bottom = nut_bottom + shift
+            bridge_top = bridge_top + shift
+            bridge_bottom = bridge_bottom + shift
+
             # 生成品丝线（长度从琴枕到琴桥线性递增）
             self.fret_lines = []
             fret_ratios = [0.0] * (self.NUM_FRETS + 1)
