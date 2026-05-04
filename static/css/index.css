@@ -135,7 +135,7 @@ body::after {
 
 /* ---- 标题 ---- */
 .title {
-    font-size: 1.85rem;
+    font-size: 3.1rem;
     font-weight: 700;
     margin-bottom: 0;
     line-height: 1.1;
@@ -173,7 +173,7 @@ body::after {
 }
 
 .subtitle {
-    font-size: 1.85rem;
+    font-size: 2.2rem;
     font-weight: 800;
     font-family: var(--font-display);
     background: linear-gradient(135deg, var(--gold-bright) 0%, var(--gold-primary) 40%, var(--gold-warm) 100%);
@@ -416,11 +416,11 @@ body::after {
     .top-right-btn { right: 10px; }
     .nav-btn { padding: 6px 12px; font-size: 14px; }
     .container { padding: 1.5rem 1rem; }
-    .title { font-size: 1.5rem; margin-bottom: 0; }
+    .title { font-size: 2.6rem; margin-bottom: 0; }
     .title::before, .title::after { font-size: 1.8rem; }
     .title::before { left: -30px; }
     .title::after { right: -30px; }
-    .subtitle { font-size: 1.5rem; max-width: 420px; }
+    .subtitle { font-size: 1.7rem; max-width: 440px; }
     .title-notation { margin-bottom: 1rem; }
     .mode-grid { gap: 1.2rem; }
     .mode-card { padding: 1.5rem 1rem 2rem 1rem; }
@@ -430,7 +430,7 @@ body::after {
 }
 
 @media (max-width: 380px) {
-    .title { font-size: 1.2rem; }
+    .title { font-size: 2.1rem; }
     .title::before, .title::after { display: none; }
     .subtitle { font-size: 1.2rem; max-width: 280px; letter-spacing: 1px; }
 }
