@@ -25,7 +25,7 @@ class ChordVerifier {
         this.recordingChunks = [];
         this.triggerTimer = null;
 
-        this.similarityThreshold = 0.55;
+        this.similarityThreshold = 0.45;
         this.energyThreshold = 0.3;
         this.triggerEnergyThreshold = 0.5;
         this.holdDuration = 1.0;

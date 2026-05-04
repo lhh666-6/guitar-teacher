@@ -64,13 +64,6 @@ USE_FIXED_DIST_THRESH = False                           # 是否使用固定距�
 FIXED_DIST_THRESH = 40                                  # 固定距离阈值（像素）
 DYNAMIC_THRESH_RATIO = 1.5                              # 动态阈值比例
 
-# ---------- 小拇指专属参数 ----------
-PINKY_PRESS_THRESHOLD_PX = 25                           # 小拇指离品丝阈值
-PINKY_STRING_DIST_THRESH = 40                           # 小拇指离琴弦阈值
-PINKY_FRET_HISTORY_LEN = 5
-PINKY_SMOOTH_ALPHA = 0.4
-PINKY_ANGLE_THRESH = 20                                 # 小拇指弯曲角度阈值
-
 # ---------- 琴枕琴桥方向配置 ----------
 FORCE_NUT_LEFT = False                                  # 视频 CSS 镜像已处理左右翻转
 

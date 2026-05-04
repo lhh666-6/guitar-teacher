@@ -65,7 +65,7 @@ function validateFusion(visualResult, audioResult, targetChord, options = { mode
  * @param {Object} options - { threshold: 0.55 }
  * @returns {string} 'correct' | 'unstable' | 'wrong'
  */
-function evaluateChord(visualOk, audioResult, options = { threshold: 0.55 }) {
+function evaluateChord(visualOk, audioResult, options = { threshold: 0.45 }) {
     // 视觉错误 → 直接判错（不论音频）
     if (!visualOk) return 'wrong';
     // 视觉正确，但无音频（超时） → 不稳

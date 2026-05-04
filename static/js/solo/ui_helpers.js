@@ -10,7 +10,9 @@
  */
 function drawLocalHandLandmarks(ctx, canvasWidth, canvasHeight, landmarks) {
     if (!landmarks) return;
-    landmarks.forEach(lm => {
+    landmarks.forEach((lm, i) => {
+        // 跳过拇指关键点 (indices 1-4)，index 0 是手腕也跳过
+        if (i >= 1 && i <= 4) return;
         const x = canvasWidth - lm.x * canvasWidth;
         const y = lm.y * canvasHeight;
         ctx.beginPath();

@@ -49,12 +49,6 @@ class GuitarFingeringRecognizer:
                  use_fixed_dist_thresh=USE_FIXED_DIST_THRESH,
                  fixed_dist_thresh=FIXED_DIST_THRESH,
                  dynamic_thresh_ratio=1.5,
-                 pinky_press_threshold_px=PINKY_PRESS_THRESHOLD_PX,          
-                 pinky_string_dist_thresh=PINKY_STRING_DIST_THRESH,           
-                 pinky_fret_history_len=PINKY_FRET_HISTORY_LEN,               
-                 pinky_smooth_alpha=PINKY_SMOOTH_ALPHA,                 
-                 pinky_angle_thresh=PINKY_ANGLE_THRESH,                   
-                 pinky_prefer_low_strings=False,
                  force_nut_left=FORCE_NUT_LEFT,
                  preferred_hand='auto'):
         # 保存配置参数
@@ -86,13 +80,6 @@ class GuitarFingeringRecognizer:
         self.FIXED_DIST_THRESH = fixed_dist_thresh
         self.DYNAMIC_THRESH_RATIO = dynamic_thresh_ratio
 
-        self.pinky_press_threshold_px = pinky_press_threshold_px
-        self.pinky_string_dist_thresh = pinky_string_dist_thresh
-        self.pinky_fret_history_len = pinky_fret_history_len
-        self.pinky_smooth_alpha = pinky_smooth_alpha
-        self.pinky_angle_thresh = pinky_angle_thresh
-        self.pinky_prefer_low_strings = pinky_prefer_low_strings
-
         self.force_nut_left = force_nut_left
         self.preferred_hand = preferred_hand
 
@@ -114,8 +101,6 @@ class GuitarFingeringRecognizer:
             ("无名指", [14, 15, 16]),
             ("小指", [18, 19, 20])
         ]
-        self.THUMB_LANDMARK_IDS = [0, 1, 2, 3, 4]
-
         # 加载YOLO模型
         logger.info("加载YOLO模型...")
         if not os.path.exists(self.yolo_model_path):
@@ -488,28 +473,9 @@ class GuitarFingeringRecognizer:
                 tip_pt_thumb = landmarks_thumb_np[tip_idx]
                 tip_px = landmarks_px[tip_idx]
 
-                is_pinky = (finger_name == "小指")
-                if is_pinky:
-                    p18 = landmarks_thumb_np[18]
-                    p19 = landmarks_thumb_np[19]
-                    p20 = landmarks_thumb_np[20]
-                    v1 = p19 - p18
-                    v2 = p20 - p19
-                    norm1 = np.linalg.norm(v1)
-                    norm2 = np.linalg.norm(v2)
-                    if norm1 > 0 and norm2 > 0:
-                        cos_angle = np.dot(v1, v2) / (norm1 * norm2)
-                        angle = np.degrees(np.arccos(np.clip(cos_angle, -1, 1)))
-                        if angle < self.pinky_angle_thresh:
-                            continue
-                    else:
-                        continue
-
-                press_thresh_orig = self.pinky_press_threshold_px if is_pinky else self.PRESS_THRESHOLD_PX
-                string_thresh_orig = self.pinky_string_dist_thresh if is_pinky else self.STRING_DIST_THRESH
-                press_thresh = press_thresh_orig * scale
-                string_thresh = string_thresh_orig * scale
-                history_len = self.pinky_fret_history_len if is_pinky else self.FRET_HISTORY_LEN
+                press_thresh = self.PRESS_THRESHOLD_PX * scale
+                string_thresh = self.STRING_DIST_THRESH * scale
+                history_len = self.FRET_HISTORY_LEN
 
                 if len(self.fret_p1s) > 0:
                     dists_to_frets = self._point_to_line_distance_vectorized(tip_pt_thumb, self.fret_p1s, self.fret_p2s)

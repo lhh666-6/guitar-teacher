@@ -774,7 +774,7 @@
             const baseY = topPadding;
             const baseX = leftPadding;
 
-            const stringOffset = 4;
+            const stringOffset = 0;
             document.querySelectorAll('.string-mini').forEach((el, idx) => {
                 el.style.top = (baseY + stringOffset + idx * stringSpacing - 1) + 'px';
             });
@@ -811,7 +811,7 @@
             const baseY = topPadding;
             const baseX = leftPadding;
 
-            const stringOffset = 4;
+            const stringOffset = 0;
             const stringLines = document.querySelectorAll('.string-mini');
             stringLines.forEach((el, idx) => {
                 const y = baseY + stringOffset + idx * stringSpacing;
@@ -1085,7 +1085,7 @@
             this.audioTimeout = null;
             this.audioWaiting = false;
             const visualOk = this._visualStableReady ? this._visualStablePassed : false;
-            const result = window.evaluateChord(visualOk, this.audioResultCache, { threshold: 0.55 });
+            const result = window.evaluateChord(visualOk, this.audioResultCache, { threshold: 0.45 });
             this._finalizeChord(result);
         }
 

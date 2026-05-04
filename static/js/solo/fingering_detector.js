@@ -12,14 +12,10 @@ class FingeringDetector {
         // 可调阈值（与 config.py 保持一致）
         this.PRESS_THRESHOLD_PX = 25;
         this.STRING_DIST_THRESH = 30;
-        this.PINKY_PRESS_THRESHOLD_PX = 20;
-        this.PINKY_STRING_DIST_THRESH = 25;
         this.BARRE_ANGLE_THRESH = 35;
         this.BARRE_MIN_COVERED = 4;
         this.BARRE_FRET_HISTORY_LEN = 5;
         this.FRET_HISTORY_LEN = 3;
-        this.PINKY_FRET_HISTORY_LEN = 5;
-        this.PINKY_ANGLE_THRESH = 90;
 
         // 手指定义
         this.FINGER_DEFS = [
@@ -230,37 +226,13 @@ class FingeringDetector {
         const tipIdx = finger.indices[2];
         const tipPt = landmarks[tipIdx];
 
-        const isPinky = finger.name === '小指';
-        const pressThresh = isPinky ? this.PINKY_PRESS_THRESHOLD_PX : this.PRESS_THRESHOLD_PX;
-        const stringThresh = isPinky ? this.PINKY_STRING_DIST_THRESH : this.STRING_DIST_THRESH;
-        const historyLen = isPinky ? this.PINKY_FRET_HISTORY_LEN : this.FRET_HISTORY_LEN;
-
-        // 小指角度检查
-        if (isPinky) {
-            const p18 = landmarks[18];
-            const p19 = landmarks[19];
-            const p20 = landmarks[20];
-            const v1 = [p19[0] - p18[0], p19[1] - p18[1]];
-            const v2 = [p20[0] - p19[0], p20[1] - p19[1]];
-            const len1 = Math.hypot(v1[0], v1[1]);
-            const len2 = Math.hypot(v2[0], v2[1]);
-            if (len1 > 0 && len2 > 0) {
-                const dot = v1[0]*v2[0] + v1[1]*v2[1];
-                const cos = dot / (len1 * len2);
-                const angle = Math.acos(Math.min(1, Math.max(-1, cos))) * 180 / Math.PI;
-                if (angle < this.PINKY_ANGLE_THRESH) return null;
-            } else {
-                return null;
-            }
-        }
-
         // 距离品丝检查
         let minFretDist = Infinity;
         for (const seg of this.fretSegments) {
             const dist = this._pointToSegmentDistance(tipPt, seg.p1, seg.p2);
             if (dist < minFretDist) minFretDist = dist;
         }
-        if (minFretDist > pressThresh) return null;
+        if (minFretDist > this.PRESS_THRESHOLD_PX) return null;
 
         // 找最近的弦
         let minStringDist = Infinity;
@@ -273,7 +245,7 @@ class FingeringDetector {
                 closestString = i + 1;
             }
         }
-        if (minStringDist > stringThresh) return null;
+        if (minStringDist > this.STRING_DIST_THRESH) return null;
 
         // 计算品柱
         const fret = this._getFretFromPoint(tipPt);
@@ -283,7 +255,7 @@ class FingeringDetector {
             this.fretHistory[finger.name] = [];
         }
         this.fretHistory[finger.name].push(fret);
-        if (this.fretHistory[finger.name].length > historyLen) {
+        if (this.fretHistory[finger.name].length > this.FRET_HISTORY_LEN) {
             this.fretHistory[finger.name].shift();
         }
         const finalFret = this._mostFrequent(this.fretHistory[finger.name]);
