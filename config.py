@@ -81,8 +81,6 @@ VOLCANO_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
 FALLBACK_MODEL = 'doubao-seed-2-0-mini-260215'
 ENABLE_LLM = True
 
-VOLC_TTS_VOICE_TYPE = "zh-CN-XiaoxiaoNeural"   # 或其他音色
-
 # ---------- 邮箱验证码配置 ----------
 SMTP_HOST = 'smtp.qq.com'
 SMTP_PORT = 465

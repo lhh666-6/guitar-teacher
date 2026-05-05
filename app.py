@@ -5,7 +5,6 @@ import json
 import threading
 import queue
 import time
-import io
 from concurrent.futures import ThreadPoolExecutor
 
 from api.chords import chords_bp
@@ -21,7 +20,6 @@ import config
 from core import user_stats
 from core.llm_service import LLMService
 from models import db, TrainingRecord, User
-from core.tts_service import VolcTTS
 from api.auth import auth_bp
 from core.recommendation import generate_smart_recommendations
 from core.utils import base64_to_cv2, safe_socketio_emit, cache_result, check_model_files
@@ -89,9 +87,6 @@ _frame_lock = threading.Lock()
 play_records = {}
 records_lock = threading.Lock()
 MAX_RECORDS = 100
-
-# ---------- TTS 服务 ----------
-tts_service = VolcTTS()
 
 # ---------- 工具函数（已迁移至 core/utils.py） ----------
 # base64_to_cv2, safe_socketio_emit, cache_result 从 core.utils 导入
@@ -428,27 +423,6 @@ def recommend_chords():
             {'name': 'D', 'reason': '常用和弦'}
         ]
         return jsonify({'chords': fallback})
-
-# ---------- TTS 路由 ----------
-@app.route('/api/tts/speak', methods=['POST'])
-def tts_speak():
-    start_time = time.time()
-    data = request.get_json()
-    text = data.get('text', '').strip()
-    if not text:
-        logger.warning("[TTS] 请求文本为空")
-        return jsonify({'error': 'no text'}), 400
-    emotion = data.get('emotion')
-    logger.info(f"[TTS] 收到合成请求: text='{text}', emotion={emotion}")
-
-    audio_bytes = tts_service.synthesize(text, emotion=emotion)
-    elapsed = (time.time() - start_time) * 1000
-    if audio_bytes:
-        logger.info(f"[TTS] 合成成功, 耗时={elapsed:.1f}ms, 音频大小={len(audio_bytes)} bytes")
-        return send_file(io.BytesIO(audio_bytes), mimetype='audio/mpeg')
-    else:
-        logger.error(f"[TTS] 合成失败, 耗时={elapsed:.1f}ms")
-        return jsonify({'error': 'synthesis failed'}), 500
 
 # ---------- 【最终修复】启动代码（解决 WebSocket 400） ----------
 if __name__ == '__main__':

@@ -20,9 +20,6 @@ ultralytics>=8.0.0
 requests==2.31.0
 python-dotenv==1.0.0
 
-# ========== TTS 语音合成 ==========
-edge-tts==6.1.12
-
 # ========== PyTorch（可选，YOLO GPU 推理需要） ==========
 # 根据 CUDA 版本选择安装：
 #   CUDA 11.8: pip install torch==2.0.1 torchvision==0.15.1 --index-url https://download.pytorch.org/whl/cu118
